@@ -1,0 +1,26 @@
+Let V be the function space over domain Omega \subset R^3 and Q a function space
+of domain Gamma a 1d curve contained in Omega. We consider the following problem
+from D'Angelo & Quarteroni: Find u\in V, p \in Q such that
+
+  C0*(grad u, grad v) + C1*(u, v) + beta*<Pi u, v> - beta*<p, v> = (f, v),
+
+  c0*<grad p, grad q> + c1*<p, q> - beta*<Pi u, q> + beta*<p, q> = <g, q>,
+
+for all v \in V, q \in Q. Here C0, C1, c0, c1 and beta are constants, (o, o)
+denotes L2 inner product over Omega while <o, o> is the L2 inner product over
+Gamma. Finitally Pi is the averaging operator for u over the surface of 
+with radius R whose centerline is Gamma
+
+  (Pi u)(x) = \int_{y\in Circle(x, R)} u(y) dl.
+
+In the implementation we let both V and Q be approximated by CG1 elements.
+Futher funnctions (Pi v), v\in V will be constructed in Q. Then, letting A, M be
+respectively the stiffness and mass matrices of V and a, m the stiffness and
+mass matrices for Q while T is the trace matrix V -> Q the linear system to be
+assembled is
+
+[(C0*A + C1*M + beta*T'*m*Pi), -beta*T'm;  [u;       [f;
+                                                   = 
+ - beta*m*Pi,      (c0*a + c1*m + beta*m)]  p]        g].
+
+And that's what we do...

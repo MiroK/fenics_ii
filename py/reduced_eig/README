@@ -1,0 +1,8 @@
+Illustration of the idea for the reduced eigenvalue problem
+-------------------------------------------------------------------------------
+    reduced_evp.py   [check ideas for EVP]
+    reduced_gevp.py  [check ideas for GEVP]
+
+Operators of norms
+-------------------------------------------------------------------------------
+    reduced_op.py    [core functionlity + sanity checks]
