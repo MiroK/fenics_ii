@@ -11,3 +11,6 @@ Dependencies:
   - cbc.block
   - FEniCS stack prior to
     DOLFIN's [commit](https://bitbucket.org/fenics-project/dolfin/commits/670c1f385c27d5ce64e9123114baa33f945761a4) which introduced this [bug](https://bitbucket.org/fenics-project/dolfin/issues/805/dirichletbc-check_arguments-is-too-strict)
+
+To install the package put this directory on python path. For this shell
+session you can achieve this by `source setup.rc`. 
