@@ -25,6 +25,7 @@ def convert(bmat, algorithm='numpy'):
     
     # Conversion of bmat is bit more involved because of the possibility
     # that some of the blocks are numbers or composition of matrix operations
+    print type(bmat)
     if isinstance(bmat, block_mat):
         # Create collpsed bmat
         row_sizes, col_sizes = sizes(bmat)
@@ -173,7 +174,7 @@ def block_mat_to_numpy(bmat):
     '''Collapsing block mat of matrices to scipy's bmat'''
     # A single matrix
     if is_petsc_mat(bmat):
-        bmat = as_backend_type(bmat).mat()
+        bmat = as_petsc(bmat)
         return csr_matrix(bmat.getValuesCSR()[::-1], shape=bmat.size)
     # Recurse on blocks
     blocks = np.array(map(block_mat_to_numpy, bmat.blocks.flatten()))

@@ -85,7 +85,7 @@ def petsc_serial_matrix(test_space, trial_space, nnz=None):
         
     assert comm.size == 1
 
-    lgmap = lambda indices: (PETSc.LGMap().create(indices, comm)
+    lgmap = lambda indices: (PETSc.LGMap().create(indices, comm=comm)
                              if isinstance(indices, list)
                              else
                              PETSc.LGMap().createIS(indices))
@@ -119,7 +119,7 @@ def sizes(bmat):
         return (bmat.create_vec(0).size(), bmat.create_vec(1).size())
     except AttributeError:
         pass
-    
+
     if isinstance(bmat, block_mat):
         bmat = bmat.blocks
         row_sizes , col_sizes = [], []
@@ -143,4 +143,4 @@ def sizes(bmat):
         # However we return both to indicate this was matrix like
         return (tuple(row_sizes), tuple(col_sizes))
 
-    raise ValueError('Unable to extract size of %r' % (type(bmat)))
+    return (None, None)
