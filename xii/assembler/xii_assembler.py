@@ -24,7 +24,7 @@ def assemble(form):
             return df.assemble(form)
 
         if arity == 1:
-            for module in (trace_assembly, ): # average, restriction):
+            for module in (xii.assembler.trace_assembly, ): # average, restriction):
                 b = module.assemble_linear_form(form)
                 if b is not None:
                     return b

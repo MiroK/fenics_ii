@@ -3,14 +3,17 @@ from ufl.core.terminal import Terminal
 from itertools import ifilter
 
 
+
 def topological_dim(thing):
     '''Extract topological dimension of thing's cell'''
-    return thing.ufl_domain().ufl_cell().topological_dimension()
+    domain = thing.ufl_domain()  # None with e.g. Constants
+    return -1 if domain is None else domain.ufl_cell().topological_dimension()
 
 
 def geometric_dim(thing):
     '''Extract geoemtric dimension of thing's cell'''
-    return thing.ufl_domain().ufl_cell().geometric_dimension()
+    domain = thing.ufl_domain()
+    return -1 if domain is None else domain.ufl_cell().geometric_dimension()
 
 
 def is_terminal(o):

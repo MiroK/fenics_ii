@@ -99,7 +99,7 @@ def assemble_bilinear_form(form):
     return reduce(operator.add, matrices)
 
 
-def assemble_linear_trace_form(form):
+def assemble_linear_form(form):
     '''
     Trace form that can be assembled must allow for the following representation
     of the assembled matrix: T' * assemble(reduced_form)
@@ -145,7 +145,6 @@ def assemble_linear_trace_form(form):
         else:
             normal = None
 
-
         integrand = ufl2uflcopy(integrand)
         # The terace space
         V = tterm.function_space()
@@ -162,7 +161,7 @@ def assemble_linear_trace_form(form):
         # Assemble the reduced form
         b = xii.assembler.xii_assembler.assemble(trace_form)
         # The result it T' * b 
-        Tb = Function(V).vector()
+        Tb = df.Function(V).vector()
         T.transpmult(b, Tb)
 
         vectors.append(Tb)
