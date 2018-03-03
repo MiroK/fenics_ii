@@ -76,7 +76,9 @@ def assemble_bilinear_form(form):
 
             # Setup the matrix to from space of the trace_terminal to the
             # intermediate space. FIXME: normal and trace_mesh
-            T = xii.assembler.trace_matrix.trace_mat(V, TV, restriction=ttype, normal=normal)
+            T = xii.assembler.trace_matrix.trace_mat(V, TV, restriction=ttype,
+                                                            trace_mesh=trace_mesh,
+                                                            normal=normal)
 
             if is_test_function(tterm):
                 components[0] = block_transpose(T)
@@ -150,8 +152,9 @@ def assemble_linear_form(form):
         V = tterm.function_space()
         TV = trace_space(V, trace_mesh)
         # Setup the matrix to from space of the trace_terminal to the
-        T = xii.assembler.trace_matrix.trace_mat(V, TV, restriction=ttype, normal=normal)
-
+        T = xii.assembler.trace_matrix.trace_mat(V, TV, restriction=ttype,
+                                                        trace_mesh=trace_mesh,
+                                                        normal=normal)
         replacement = df.TestFunction(TV)
 
         # With substitution

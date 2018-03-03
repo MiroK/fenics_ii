@@ -25,7 +25,6 @@ def convert(bmat, algorithm='numpy'):
     
     # Conversion of bmat is bit more involved because of the possibility
     # that some of the blocks are numbers or composition of matrix operations
-    print type(bmat)
     if isinstance(bmat, block_mat):
         # Create collpsed bmat
         row_sizes, col_sizes = sizes(bmat)
@@ -167,7 +166,7 @@ def collapse_mul(bmat):
 # Conversion via numpy
 def block_vec_to_numpy(bvec):
     '''Collapsing block bector to numpy array'''
-    return np.hstack([v.array() for v in bvec])
+    return np.hstack([v.get_local() for v in bvec])
 
 
 def block_mat_to_numpy(bmat):

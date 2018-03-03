@@ -7,7 +7,7 @@ class EmbeddedMesh(df.Mesh):
     '''
     Construct a mesh of marked entities in marking_function.
     The output is the mesh with cell function which inherited the markers. 
-    and an antribute `entity_map` which is a map of new mesh vertices to 
+    and an antribute `parent_entity_map` which is a map of new mesh vertices to 
     the old ones, and new mesh cells to the old mesh entities.
     '''
     def __init__(self, marking_function, markers):
@@ -79,7 +79,7 @@ class EmbeddedMesh(df.Mesh):
         editor.close()
 
         # The entity mapping attribute
-        self.entity_map = {0: new_vertices, tdim: cell_map}
+        self.parent_entity_map = {0: new_vertices, tdim: cell_map}
 
         f = df.MeshFunction('size_t', self, tdim, 0)
         f_ = f.array()
@@ -170,7 +170,7 @@ def build_embedding_map(emesh, mesh, tol=1E-14):
             mcell_vertices = c2v(mcells[0])
             the_vertex = min(mcell_vertices, key=lambda v: np.linalg.norm(vertex_x-mesh_x[v]))
             error = np.linalg.norm(vertex_x - mesh_x[the_vertex])/scale
-            assert error < tol, error
+            assert error < tol, 'Found a hanging node %16f' % error
             
             entity_map[0][vertex] = the_vertex
             
