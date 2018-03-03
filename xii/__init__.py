@@ -1,2 +1,2 @@
-from xii.assembler import *
 from xii.linalg import *
+from xii.assembler import *

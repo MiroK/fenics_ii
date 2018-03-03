@@ -15,22 +15,14 @@ def assemble(form):
     # dolfin can handle (hopefully)
     if isinstance(form, Form):
         arity = form_arity(form)
-        if arity == 2:
-            for module in (xii.assembler.trace_assembly, ): # average, restriction):
-                A = module.assemble_bilinear_form(form)
-                if A is not None:
-                    return A
-            
-            return df.assemble(form)
+        # Try with our reduced assemblers
+        for module in (xii.assembler.trace_assembly, ): # average, restriction):
+            tensor = module.assemble_form(form, arity)
+            if tensor is not None:
+                return tensor
+        # Fallback
+        return df.assemble(form)
 
-        if arity == 1:
-            for module in (xii.assembler.trace_assembly, ): # average, restriction):
-                b = module.assemble_linear_form(form)
-                if b is not None:
-                    return b
-            
-            return df.assemble(form)
-         
     # We might get number
     if is_number(form): return form
 
@@ -38,5 +30,5 @@ def assemble(form):
     if isinstance(form, list): form = np.array(form, dtype='object')
 
     blocks = np.array(map(assemble, form.flatten())).reshape(form.shape)
-
+    
     return (block_vec if blocks.ndim == 1 else block_mat)(blocks)

@@ -42,9 +42,10 @@ def convert(bmat, algorithm='numpy'):
                 A = diagonal_matrix(row_sizes[i], A)
             # The converted block
             blocks[i, j] = A
-        # Now every block is a matrix and we can make a monolithic thing
+        # Now every block is a matrix/number and we can make a monolithic thing
         bmat = block_mat(blocks)
 
+        assert all(is_petsc_mat(block) for block in bmat.blocks.flatten())
         # Do this via scipy sparse bmat
         if algorithm == 'numpy':
             # Convert to numpy
@@ -159,6 +160,9 @@ def collapse_mul(bmat):
             C_ = B_.copy()
             C_.scale(A)
             return PETScMatrix(C_)
+        # Some compositions
+        else:
+            return collapse(collapse(A)*collapse(B))
     # Recurse
     else:
         return collapse_mul(collapse(A)*collapse(reduce(operator.mul, B)))                                    
