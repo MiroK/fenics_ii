@@ -1,4 +1,4 @@
-from xii.linalg.matrix_utils import (is_petsc_vec, is_petsc_mat, sizes, diagonal_matrix,
+from xii.linalg.matrix_utils import (is_petsc_vec, is_petsc_mat, diagonal_matrix,
                                      is_number, as_petsc, petsc_serial_matrix)
 
 from block.block_compose import block_mul, block_add, block_sub, block_transpose
@@ -27,7 +27,7 @@ def convert(bmat, algorithm='numpy'):
     # that some of the blocks are numbers or composition of matrix operations
     if isinstance(bmat, block_mat):
         # Create collpsed bmat
-        row_sizes, col_sizes = sizes(bmat)
+        row_sizes, col_sizes = bmat_sizes(bmat)
         nrows, ncols = len(row_sizes), len(col_sizes)
         indices = itertools.product(range(nrows), range(ncols))
         
@@ -100,6 +100,7 @@ def collapse_tr(bmat):
     # Recurse
     return collapse_tr(collapse(bmat))
 
+
 def collapse_add(bmat):
     '''A + B to single matrix'''
     A, B = bmat.A, bmat.B
@@ -167,6 +168,7 @@ def collapse_mul(bmat):
     else:
         return collapse_mul(collapse(A)*collapse(reduce(operator.mul, B)))                                    
 
+    
 # Conversion via numpy
 def block_vec_to_numpy(bvec):
     '''Collapsing block bector to numpy array'''
@@ -204,7 +206,7 @@ def block_mat_to_petsc(bmat):
         for i in range(matrix.size(0)):
             yield matrix.getrow(i)
 
-    row_sizes, col_sizes = sizes(bmat)
+    row_sizes, col_sizes = get_sizes(bmat)
     row_offsets = np.cumsum([0] + list(row_sizes))
     col_offsets = np.cumsum([0] + list(col_sizes))
 
@@ -224,6 +226,98 @@ def block_mat_to_petsc(bmat):
 
                 row += 1
     return PETScMatrix(mat)
+
+
+def get_dims(thing):
+    '''
+    Size of Rn vector or operator Rn to Rm. We return None for scalars
+    and raise when such an operator cannot be established, i.e. there 
+    are consistency checks going on 
+    '''
+    if is_petsc_vec(thing): return thing.size()
+
+    if is_petsc_mat(thing): return (thing.size(0), thing.size(1))
+    
+    if is_number(thing): return None
+    
+    # Now let's handdle block stuff
+    # Multiplication
+    if isinstance(thing, block_mul):
+        A, B = thing.chain[0], thing.chain[1:]
+
+        dims_A, dims_B = get_dims(A), get_dims(B[0])
+        # A number does not change
+        if dims_A is None:
+            return dims_B
+        if dims_B is None:
+            return dims_A
+        # Otherwise, consistency
+        if len(B) == 1:
+            assert len(dims_A) == len(dims_B) 
+            assert dims_A[1] == dims_B[0]  
+            return (dims_A[0], dims_B[1])
+        else:
+            dims_B = get_dims(reduce(operator.mul, B))
+            
+            assert len(dims_A) == len(dims_B) 
+            assert dims_A[1] == dims_B[0]  
+            return (dims_A[0], dims_B[1])
+    # +, -
+    elif isinstance(thing, (block_add, block_sub)):
+        A, B = thing.A, thing.B
+        if is_number(A):
+            return get_dims(B)
+
+        if is_number(B):
+            return get_dims(A)
+
+        dims = get_dims(A)
+        assert dims == get_dims(B), (dims, get_dims(B))
+        return dims
+    # T
+    elif isinstance(thing, block_transpose):
+        dims = get_dims(thing.A)
+        return (dims[1], dims[0])
+    # Some things in cbc.block know their matrix representation
+    # E.g. InvLumpDiag...
+    elif hasattr(thing, 'A'):
+        assert is_petsc_mat(thing.A)
+        return get_dims(thing.A)
+
+    raise ValueError('Cannot get_dims of %r, %s' % (type(thing), thing))
+
+    
+def bmat_sizes(bmat):
+    '''Return a tuple which represents sizes of (blocks of) bmat'''
+    if isinstance(bmat, block_vec):
+        return tuple(map(get_dims, block_vec.blocks))
+
+    if isinstance(bmat, block_mat):
+        bmat = bmat.blocks
+        row_sizes , col_sizes = [], []
+        for row in bmat:
+            # In each row there must be something that be used to get
+            # the row size
+            size = set([dim[0]
+                        for dim in [get_dims(A) for A in row]
+                        if dim is not None])
+            # Moreover all the things should agree on the row size
+            # (since they are in the same row)
+            assert len(size) == 1, size
+            row_sizes.append(size.pop())
+
+        for col in bmat.T:
+            size = set([dim[1]
+                        for dim in [get_dims(A) for A in col]
+                        if dim is not None])
+            
+            assert len(size) == 1, size
+            col_sizes.append(size.pop())
+            
+        # However we return both to indicate this was matrix like
+        return (tuple(row_sizes), tuple(col_sizes))
+
+    raise ValueError('Cannot bmat_sizes of %r, %s' % (type(bmat), bmat))
 
 
 # -------------------------------------------------------------------
