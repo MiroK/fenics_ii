@@ -1,15 +1,15 @@
-from xii.linalg.matrix_utils import is_petsc_vec
-from dolfin import Function, as_backend_type
+from dolfin import Function, as_backend_type, PETScVector
 from petsc4py import PETSc
 
+from xii.linalg.matrix_utils import is_petsc_vec
 
 first = lambda iterable: next(iter(iterable))
 
 
 class ii_Function(object):
     '''Really a list of functions where each is in some W[i]'''
-    def __init__(self, W, components):
-        if functions is None:
+    def __init__(self, W, components=None):
+        if components is None:
             self.functions = map(Function, W)
         else:
             assert len(components) == W.num_sub_spaces()
@@ -28,7 +28,7 @@ class ii_Function(object):
         
     def vectors(self):
         '''Coefficient vectors of the functions I hold'''
-        return [f.vector() for f in self]
+        return [f.vector() for f in self.functions]
 
     def vector(self):
         '''
@@ -43,5 +43,8 @@ class ii_Function(object):
     
     def __getitem__(self, i):
         '''Get the function in the ith subspace'''
-        assert i <= 0 < len(self)
+        assert 0 <= i < len(self), (i, len(self))
         return self.functions[i]
+
+    def __iter__(self):
+        for i in range(len(self)): yield self[i]

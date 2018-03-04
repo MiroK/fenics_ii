@@ -37,16 +37,10 @@ AA, bb = map(ii_assemble, (a, L))
 
 AA, bb = map(ii_convert, (AA, bb))
 
-# w = ii_Function(W)
-#print solve(AA, w.vector(), bb)
-#x = bb.copy()
-uh, ph = map(Function, W)
+wh = ii_Function(W)
+solve(AA, wh.vector(), bb)
 
-from petsc4py import PETSc
-x = PETSc.Vec().createNest([as_backend_type(uh.vector()).vec(),
-                            as_backend_type(ph.vector()).vec()])
-solve(AA, PETScVector(x), bb)
-
+uh, ph = wh
 
 File('foo0.pvd') << uh
 File('foo1.pvd') << ph
