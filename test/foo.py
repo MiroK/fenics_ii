@@ -39,11 +39,14 @@ AA, bb = map(ii_convert, (AA, bb))
 
 # w = ii_Function(W)
 #print solve(AA, w.vector(), bb)
-x = bb.copy()
-solve(AA, x, bb)
+#x = bb.copy()
+uh, ph = map(Function, W)
 
-uh = Function(V); uh.vector().set_local(x.get_local()[:V.dim()]); uh.vector().apply('insert')
-ph = Function(Q); ph.vector().set_local(x.get_local()[V.dim():]); ph.vector().apply('insert')
+from petsc4py import PETSc
+x = PETSc.Vec().createNest([as_backend_type(uh.vector()).vec(),
+                            as_backend_type(ph.vector()).vec()])
+solve(AA, PETScVector(x), bb)
+
 
 File('foo0.pvd') << uh
 File('foo1.pvd') << ph
