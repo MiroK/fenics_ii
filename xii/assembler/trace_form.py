@@ -32,11 +32,22 @@ def trace_space(V, mesh):
     family = elm.family()
     degree = elm.degree()
 
-    elm = type(elm)  # I.e. vector element stays verctor element
-    # NOTE: Check out Witze Bonn's work on this and fill more
     family_map = {'Lagrange': 'Lagrange'}
     # This seems like a reasonable fall back option
     family = family_map.get(family, 'Discontinuous Lagrange')
+
+    # There is an issue here where e.g. Hdiv are not scalars
+    elmtype_map = {0: df.FiniteElement,
+                   1: df.VectorElement,
+                   2: df.TensorElement}
+    # So let's check first for elements where scalar = FiniteElm
+    # vector == VectorElm etc
+    rank = len(elm.value_shape())
+    if elmtype_map[rank] == type(elm):
+        elm = type(elm)  # I.e. vector element stays verctor element
+    else:
+        elm = elmtype_map[rank]
+    # NOTE: Check out Witze Bonn's work on this and fill more
 
     return df.FunctionSpace(mesh, elm(family, mesh.ufl_cell(), degree))
 
