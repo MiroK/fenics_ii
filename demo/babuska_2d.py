@@ -40,13 +40,7 @@ def solve_problem(n, (f, g)):
     # Turn into a (monolithic) PETScMatrix/Vector
     AA, bb = map(ii_convert, (AA, bb))
 
-    wh = ii_Function(W)
-    solve(AA, wh.vector(), bb)
-
-    # Split
-    uh, ph = wh
-
-    return uh, ph
+    return AA, bb, W
 
 # --------------------------------------------------------------------
 

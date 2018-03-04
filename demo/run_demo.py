@@ -1,6 +1,8 @@
 # Driver for demos
 
 from runpy import run_module
+from xii import ii_Function
+from dolfin import solve
 
 
 def main(module, ncells):
@@ -18,8 +20,12 @@ def main(module, ncells):
     monitor = module.setup_error_monitor(u_true, memory)
     
     for n in ncells:
-        result = module.solve_problem(n, rhs_data)
-        monitor.send(result)
+        AA, bb, W = module.solve_problem(n, rhs_data)
+
+        wh = ii_Function(W)
+        solve(AA, wh.vector(), bb)
+
+        monitor.send(wh)
 
 # --------------------------------------------------------------------
 
