@@ -1,15 +1,17 @@
 # The `Hello World` of fractional problems:
+# H-0.5 problem
 #
 # -Delta u + u = f in Omega
 #            u = g on boundary
 #
-#  with the boundary conditions enforced weakly by Lagrange multiplier.
+# with the boundary conditions enforced weakly by Lagrange multiplier.
 from dolfin import *
 from xii import *
 
 
-def solve_problem(n, (f, g)):
+def solve_problem(i, (f, g)):
     '''Babuska on [0, 1]^2'''
+    n = 4*2**i
     mesh = UnitSquareMesh(*(n, )*2)
     bmesh = BoundaryMesh(mesh, 'exterior')
 

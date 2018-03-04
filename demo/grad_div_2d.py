@@ -1,16 +1,17 @@
-#   
+# H0.5 problem   
 #    -grad(div(sigma)) + sigma = f in Omega
 #                      sigma.n = g on the boundary
 #   
-#   To be solved with Lagrange multiplier to enforce bcs rather then
-#   enforcing them on the function space level.
+# To be solved with Lagrange multiplier to enforce bcs rather then
+# enforcing them on the function space level.
 
 from dolfin import *
 from xii import *
 
 
-def solve_problem(n, (f, g)):
+def solve_problem(i, (f, g)):
     '''grad-div on [0, 1]^2'''
+    n = 4*2**i
     mesh = UnitSquareMesh(*(n, )*2)
     bmesh = BoundaryMesh(mesh, 'exterior')
 

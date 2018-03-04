@@ -2,15 +2,16 @@
 
 from runpy import run_module
 from xii import ii_Function
-from dolfin import solve
+from dolfin import solve, File
+import os
 
 
-def main(module, ncells):
+def main(module_name, ncells, save_dir=''):
     '''Run the test case in module with ncells'''
     RED = '\033[1;37;31m%s\033[0m'
-    print RED % ('\tRuning %s' % module)
+    print RED % ('\tRuning %s' % module_name)
 
-    module = __import__(module)  # no importlib in python2.7
+    module = __import__(module_name)  # no importlib in python2.7
 
     # Setup the MMS case
     u_true, rhs_data = module.setup_mms()
@@ -26,27 +27,34 @@ def main(module, ncells):
         solve(AA, wh.vector(), bb)
 
         monitor.send(wh)
+    # Only send the final
+    if save_dir:
+        path = os.path.join(save_dir, module_name)
+        for i, wh_i in enumerate(wh):
+            File('%s_%d.pvd' % (path, i)) << wh_i
 
 # --------------------------------------------------------------------
 
 if __name__ == '__main__':
-    import argparse, os
+    import argparse
     
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     # The demo file: runnning it defines setups*
-    parser.add_argument('demo', nargs='?', default='all', type=str, help='Which demo to run')
-    # Seed the refinements
-    parser.add_argument('-seed', type=int, default=2, help='Resolutions to start with')
+    parser.add_argument('demo', nargs='?', default='all', type=str,
+                        help='Which demo to run')
     # How many uniform refinements to make
-    parser.add_argument('-nrefines', type=int, default=5, help='How many times to refine')
+    parser.add_argument('-ncases', type=int, default=1,
+                        help='Run convergence study with # cases')
     # How many uniform refinements to make
-    parser.add_argument('-save', type=str, default='', help='Path for storing')
+    parser.add_argument('-save_dir', type=str, default='',
+                        help='Path for directory storing results')
 
     args = parser.parse_args()
-    assert args.seed > 0 and args.nrefines > -1
+    assert args.ncases > 0
 
-    ncells = [args.seed] 
-    for i in range(args.nrefines): ncells.append(2*ncells[-1])
+    if args.save_dir:
+        assert os.path.exists(args.save_dir)
+        assert os.path.isdir(args.save_dir)
 
     # The setups
     module, _ = os.path.splitext(args.demo)
@@ -56,4 +64,4 @@ if __name__ == '__main__':
     else:
         modules = [module]
 
-    [main(module, ncells) for module in modules]
+    [main(module, range(args.ncases), args.save_dir) for module in modules]
