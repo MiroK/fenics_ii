@@ -1,5 +1,6 @@
 from xii.linalg.matrix_utils import (is_petsc_vec, is_petsc_mat, diagonal_matrix,
-                                     is_number, as_petsc, petsc_serial_matrix)
+                                     is_number, as_petsc, petsc_serial_matrix,
+                                     zero_matrix)
 
 from block.block_compose import block_mul, block_add, block_sub, block_transpose
 from block import block_mat, block_vec
@@ -38,14 +39,18 @@ def convert(bmat, algorithm='numpy'):
             # Only numbers on the diagonal block are interpresented as
             # scaled identity matrices
             if is_number(A):
-                assert row_sizes[i] == col_sizes[j]
-                A = diagonal_matrix(row_sizes[i], A)
+                if A != 0:
+                    assert row_sizes[i] == col_sizes[j]
+                    A = diagonal_matrix(row_sizes[i], A)
+                else:
+                    A = 0
             # The converted block
             blocks[i, j] = A
         # Now every block is a matrix/number and we can make a monolithic thing
         bmat = block_mat(blocks)
 
-        assert all(is_petsc_mat(block) for block in bmat.blocks.flatten())
+        assert all(is_petsc_mat(block) or is_number(block)
+                   for block in bmat.blocks.flatten())
         # Do this via scipy sparse bmat
         if algorithm == 'numpy':
             # Convert to numpy
@@ -181,6 +186,9 @@ def block_mat_to_numpy(bmat):
     if is_petsc_mat(bmat):
         bmat = as_petsc(bmat)
         return csr_matrix(bmat.getValuesCSR()[::-1], shape=bmat.size)
+    # 0
+    if is_number(bmat):
+        return None  # What bmat accepts
     # Recurse on blocks
     blocks = np.array(map(block_mat_to_numpy, bmat.blocks.flatten()))
     blocks = blocks.reshape(bmat.blocks.shape)

@@ -51,6 +51,13 @@ def diagonal_matrix(size, A=1):
     return PETScMatrix(I)
 
 
+def zero_matrix(nrows, ncols):
+    '''Zero matrix'''
+    I = PETSc.Mat().createAIJ(size=[[nrows, nrows], [ncols, ncols]])
+
+    return PETScMatrix(I)
+
+
 @contextmanager
 def petsc_serial_matrix(test_space, trial_space, nnz=None):
     '''

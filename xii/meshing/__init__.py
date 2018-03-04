@@ -1,1 +1,1 @@
-from mesh import EmbeddedMesh, OuterNormal
+from mesh import EmbeddedMesh, OuterNormal, InnerNormal

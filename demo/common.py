@@ -47,7 +47,7 @@ def monitor_error(u, norms, memory, reduction=lambda x: x):
     while True:
         uh = yield
         mesh_size = uh[0].function_space().mesh().hmin()
-
+        
         error = [norm(ui, uhi) for norm, ui, uhi in zip(norms, u, uh)]
         error = np.array(reduction(error))
 

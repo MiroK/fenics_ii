@@ -131,6 +131,13 @@ class OuterNormal(df.Function):
         self.vector().apply('insert')
 
 
+def InnerNormal(mesh, orientation):
+    '''-1 * the outer normal'''
+    n = OuterNormal(mesh, orientation)
+    n.vector()[:] *= -1
+    return n
+
+
 def build_embedding_map(emesh, mesh, tol=1E-14):
     '''
     Operating with the assumption that the emsh consists of entities 

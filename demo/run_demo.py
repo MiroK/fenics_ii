@@ -6,10 +6,10 @@ from dolfin import solve, File
 import os
 
 
-def main(module_name, ncells, save_dir=''):
-    '''Run the test case in module with ncells'''
+def main(module_name, ncases, save_dir=''):
+    '''Run the test case in module with ncases'''
     RED = '\033[1;37;31m%s\033[0m'
-    print RED % ('\tRuning %s' % module_name)
+    print RED % ('\tRunning %s' % module_name)
 
     module = __import__(module_name)  # no importlib in python2.7
 
@@ -19,14 +19,21 @@ def main(module_name, ncells, save_dir=''):
     # Setup the convergence monitor
     memory = []
     monitor = module.setup_error_monitor(u_true, memory)
+
+    # Sometimes it is usedful to transform the solution before computing
+    # the error. e.g. consider subdomains
+    if hasattr(module, 'setup_transform'):
+        transform = module.setup_transform
+    else:
+        transform = lambda x: x
     
-    for n in ncells:
-        AA, bb, W = module.solve_problem(n, rhs_data)
+    for i in ncases:
+        AA, bb, W = module.solve_problem(i, rhs_data)
 
         wh = ii_Function(W)
         solve(AA, wh.vector(), bb)
-
-        monitor.send(wh)
+        monitor.send(transform(i, wh))
+        
     # Only send the final
     if save_dir:
         path = os.path.join(save_dir, module_name)
