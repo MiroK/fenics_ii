@@ -23,9 +23,11 @@ def main(module_name, ncases, save_dir=''):
     # Sometimes it is usedful to transform the solution before computing
     # the error. e.g. consider subdomains
     if hasattr(module, 'setup_transform'):
+        # NOTE: transform take two args for case and the current computed
+        # solution
         transform = module.setup_transform
     else:
-        transform = lambda x: x
+        transform = lambda i, x: x
     
     for i in ncases:
         AA, bb, W = module.solve_problem(i, rhs_data)

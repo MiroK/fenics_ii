@@ -28,7 +28,7 @@ def trace_mat(V, TV, restriction='', normal=None, trace_mesh=None):
 
     # Typically with CG spaces - any parent cell can set the valeus
     if not restriction:
-        Tmat = trace_mat_no_restrict(V, TV, trace_mesh)
+        Tmat = trace_mat_no_restrict(V, TV, trace_mesh=trace_mesh)
     else:
         if restriction in ('+', '-'):
             Tmat = trace_mat_one_restrict(V, TV, restriction, normal, trace_mesh)
@@ -43,23 +43,13 @@ def trace_mat_no_restrict(V, TV, trace_mesh=None):
     mesh = V.mesh()
     fdim = mesh.topology().dim() - 1
     
-    # Consistency of trace_mesh. Yay the map for entitis is ready
-    if hasattr(trace_mesh, 'parent_entity_map') and hasattr(trace_mesh, 'parent_mesh'):
-        assert mesh.id() == trace_mesh.parent_mesh.id()
-        mapping = trace_mesh.parent_entity_map[fdim]  # Map cell of TV to cells of V
-    # Okay this is not coming        
-    else:
-        info('Computing embedding map')
-        if trace_mesh is None: trace_mesh = TV.mesh()
-        
-        parent_entity_map = build_embedding_map(trace_mesh, mesh)
-        # If success we attach it to the mesh (to prevent future recomputing
-        trace_mesh.parent_mesh = mesh
-        trace_mesh.parent_entity_map = parent_entity_map
-        # Rerun with okay data
-        return trace_mat_no_restrict(V, TV, trace_mesh)
+    if trace_mesh is None: trace_mesh = TV.mesh()
 
-        
+    # Init/extract the mapping
+    assert get_entity_map(mesh, trace_mesh)
+    # We can get it
+    mapping = trace_mesh.parent_entity_map[mesh.id()][fdim]  # Map cell of TV to cells of V
+
     mesh.init(fdim, fdim+1)
     f2c = mesh.topology()(fdim, fdim+1)  # Facets of V to cell of V
 
@@ -120,21 +110,12 @@ def trace_mat_one_restrict(V, TV, restriction, normal, trace_mesh=None):
     mesh = V.mesh()
     fdim = mesh.topology().dim() - 1
     
-    # Consistency of trace_mesh. Yay the map for entitis is ready
-    if hasattr(trace_mesh, 'parent_entity_map') and hasattr(trace_mesh, 'parent_mesh'):
-        assert mesh.id() == trace_mesh.parent_mesh.id()
-        mapping = trace_mesh.parent_entity_map[fdim]  # Map cell of TV to cells of V
-    # Okay this is not coming        
-    else:
-        info('Computing embedding map')
-        if trace_mesh is None: trace_mesh = TV.mesh()
-        
-        parent_entity_map = build_embedding_map(trace_mesh, mesh)
-        # If success we attach it to the mesh (to prevent future recomputing
-        trace_mesh.parent_mesh = mesh
-        trace_mesh.parent_entity_map = parent_entity_map
-        # Rerun with okay data
-        return trace_mat_no_restrict(V, TV, trace_mesh)
+    if trace_mesh is None: trace_mesh = TV.mesh()
+
+    # Init/extract entity map
+    assert get_entity_map(mesh, trace_mesh)
+    # We can get it
+    mapping = trace_mesh.parent_entity_map[mesh.id()][fdim]  # Map cell of TV to cells of V
         
     mesh.init(fdim, fdim+1)
     f2c = mesh.topology()(fdim, fdim+1)  # Facets of V to cell of V
@@ -211,22 +192,13 @@ def trace_mat_two_restrict(V, TV, restriction, normal, trace_mesh=None):
     mesh = V.mesh()
     fdim = mesh.topology().dim() - 1
     
-    if hasattr(trace_mesh, 'parent_entity_map') and hasattr(trace_mesh, 'parent_mesh'):
-        assert mesh.id() == trace_mesh.parent_mesh.id()
-        mapping = trace_mesh.parent_entity_map[fdim]  # Map cell of TV to cells of V
-    # Okay this is not coming        
-    else:
-        info('Computing embedding map')
-        if trace_mesh is None: trace_mesh = TV.mesh()
-        
-        parent_entity_map = build_embedding_map(trace_mesh, mesh)
-        # If success we attach it to the mesh (to prevent future recomputing
-        trace_mesh.parent_mesh = mesh
-        trace_mesh.parent_entity_map = parent_entity_map
-        # Rerun with okay data
-        return trace_mat_no_restrict(V, TV, trace_mesh)
+    if trace_mesh is None: trace_mesh = TV.mesh()
 
-        
+    # Init/extract entity map
+    assert get_entity_map(mesh, trace_mesh)
+    # We can get it
+    mapping = trace_mesh.parent_entity_map[mesh.id()][fdim]  # Map cell of TV to cells of V
+
     mesh.init(fdim, fdim+1)
     f2c = mesh.topology()(fdim, fdim+1)  # Facets of V to cell of V
 
@@ -307,3 +279,27 @@ def trace_mat_two_restrict(V, TV, restriction, normal, trace_mesh=None):
                         mat.setValues([dof_T], col_indices, dof_values, PETSc.InsertMode.ADD_VALUES)
                         #print 'adding', dof_T, col_indices, dof_values
     return mat
+
+
+def get_entity_map(mesh, trace_mesh):
+    '''
+    Make sure that trace mesh has with it the data for mapping cells of
+    TV to facets of V
+    '''
+    mesh_id = mesh.id()
+
+    # There is map but we might be missing entry for the mesh
+    if hasattr(trace_mesh, 'parent_entity_map'):
+        # Check if we have the map embedding into mesh
+        if mesh_id not in trace_mesh.parent_entity_map:
+            info('Missing map for mesh %d' % mesh_id)
+            parent_entity_map = build_embedding_map(trace_mesh, mesh)
+            trace_mesh.parent_entity_map[mesh_id] = parent_entity_map
+    # Compute from scratch and rememeber for future
+    else:
+        info('Computing embedding map for mesh %d' % mesh_id)
+
+        parent_entity_map = build_embedding_map(trace_mesh, mesh)
+        # If success we attach it to the mesh (to prevent future recomputing)
+        trace_mesh.parent_entity_map = {mesh_id: parent_entity_map}
+    return True

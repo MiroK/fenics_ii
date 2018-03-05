@@ -7,8 +7,9 @@ class EmbeddedMesh(df.Mesh):
     '''
     Construct a mesh of marked entities in marking_function.
     The output is the mesh with cell function which inherited the markers. 
-    and an antribute `parent_entity_map` which is a map of new mesh vertices to 
-    the old ones, and new mesh cells to the old mesh entities.
+    and an antribute `parent_entity_map` which is dict with a map of new 
+    mesh vertices to the old ones, and new mesh cells to the old mesh entities.
+    Having several maps in the dict is useful for mortating.
     '''
     def __init__(self, marking_function, markers):
         base_mesh = marking_function.mesh()
@@ -79,7 +80,8 @@ class EmbeddedMesh(df.Mesh):
         editor.close()
 
         # The entity mapping attribute
-        self.parent_entity_map = {0: new_vertices, tdim: cell_map}
+        mesh_key = marking_function.mesh().id()
+        self.parent_entity_map = {mesh_key: {0: new_vertices, tdim: cell_map}}
 
         f = df.MeshFunction('size_t', self, tdim, 0)
         f_ = f.array()
@@ -90,7 +92,6 @@ class EmbeddedMesh(df.Mesh):
             f.set_all(markers[0])
 
         self.marking_function = f
-        self.parent_mesh = marking_function.mesh()
 
         
 class OuterNormal(df.Function):

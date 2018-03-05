@@ -44,10 +44,12 @@ def monitor_error(u, norms, memory, reduction=lambda x: x):
     GREEN = '\033[1;37;32m%s\033[0m'
     
     mesh_size0, error0 = None, None
+    counter = 0
     while True:
+        counter += 1
         uh = yield
         mesh_size = uh[0].function_space().mesh().hmin()
-        
+
         error = [norm(ui, uhi) for norm, ui, uhi in zip(norms, u, uh)]
         error = np.array(reduction(error))
 
@@ -58,7 +60,8 @@ def monitor_error(u, norms, memory, reduction=lambda x: x):
         else:
             rate = np.nan*np.ones_like(error)
             
-        msg = ' '.join(['h = %.4E' % mesh_size] +  # Resolution
+        msg = ' '.join(['{case %d}' % counter] +
+                       ['h = %.4E' % mesh_size] +  # Resolution
                        # Error
                        ['e_(u%d) = %.2E[%.2f]' % (i, e, r)  
                         for i, (e, r) in enumerate(zip(error, rate))] +
