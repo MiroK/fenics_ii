@@ -155,13 +155,24 @@ def trace_3d1d_matrix(V, TV, reduced_mesh):
     value_size = TV.ufl_element().value_size()
 
     # We use the map to get (1d cell -> [3d edge) -> 3d cell]
-    # ( )
-    mapping = reduced_mesh.parent_entity_map[mesh.id()][1]
-    # [ ]
-    mesh.init(1)
-    mesh.init(1, 3)
-    e2c = mesh.topology()(1, 3)
-    
+    if hasattr(reduced_mesh, 'parent_entity_map'):
+        # ( )
+        mapping = reduced_mesh.parent_entity_map[mesh.id()][1]
+        # [ ]
+        mesh.init(1)
+        mesh.init(1, 3)
+        e2c = mesh.topology()(1, 3)
+        # From 1d cell (by index)
+        get_cell3d = lambda c, d1d3=mapping, d3d3=e2c: d3d3(d1d3[c.index()])[0]
+    # Tree collision by midpoint
+    else:
+        tree = mesh.bounding_box_tree()
+        limit = mesh.num_cells()
+
+        get_cell3d = lambda c, tree=tree, bound=limit: (
+            lambda index: index if index<bound else None
+        )(tree.compute_first_entity_collision(c.midpoint()))
+  
     TV_coordinates = TV.tabulate_dof_coordinates().reshape((TV.dim(), -1))
     TV_dm = TV.dofmap()
     V_dm = V.dofmap()
@@ -181,7 +192,8 @@ def trace_3d1d_matrix(V, TV, reduced_mesh):
 
             # Let's get a 3d cell to use for getting the V values
             # CG assumption allows taking any
-            tet_cell = e2c(mapping[line_cell.index()])[0]
+            tet_cell = get_cell3d(line_cell)
+            if tet_cell is None: continue
             
             Vcell = Cell(mesh, tet_cell)
             vertex_coordinates = Vcell.get_vertex_coordinates()

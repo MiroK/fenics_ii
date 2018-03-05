@@ -26,6 +26,8 @@ def solve_problem(i, f):
     CompiledSubDomain('near(x[0], 0.5) && near(x[1], 0.5)').mark(gamma, 1)
     bmesh = EmbeddedMesh(gamma, 1)
 
+    # del bmesh.parent_entity_map
+
     V = FunctionSpace(mesh, 'CG', 1)
     Q = FunctionSpace(bmesh, 'CG', 1)
     W = (V, Q)
@@ -59,7 +61,7 @@ def solve_problem(i, f):
 # --------------------------------------------------------------------
 
 def setup_mms():
-    '''Simple MMS problem for UnitSquareMesh'''
+    '''Simple MMS...'''
     from common import as_expression
     import sympy as sp
     
