@@ -13,10 +13,11 @@ from xii import *
 
 EPS = 1E-6
 
-def solve_problem(i, (f1, f2, g), eps=EPS):
-    '''EMI like problem with mortaring'''
-    n = 4*2**i
-    # Stup domain
+def setup_domain(n):
+    '''
+    Inner is [0.25, 0.75]^2, inner is [0, 1]^2 \ [0.25, 0.75]^2 and 
+    \partial [0.25, 0.75]^2 is the interface
+    '''
     interior = CompiledSubDomain('std::max(fabs(x[0] - 0.5), fabs(x[1] - 0.5)) < 0.25')
     outer_mesh = UnitSquareMesh(n, n)
     
@@ -34,7 +35,15 @@ def solve_problem(i, (f1, f2, g), eps=EPS):
     DomainBoundary().mark(surfaces, 1)
     
     gamma_mesh = EmbeddedMesh(surfaces, 1)
-        
+
+    return outer_mesh, inner_mesh, gamma_mesh
+
+
+def solve_problem(i, (f1, f2, g), eps=EPS):
+    '''EMI like problem with mortaring'''
+    n = 4*2**i
+
+    outer_mesh, inner_mesh, gamma_mesh = setup_domain(n)
     # And now for the fun stuff
     V1 = FunctionSpace(outer_mesh, 'CG', 1)
     V2 = FunctionSpace(inner_mesh, 'CG', 1)
