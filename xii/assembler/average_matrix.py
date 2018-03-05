@@ -27,13 +27,18 @@ def avg_mat(V, TV, reduced_mesh, data):
     assert V.mesh().geometry().dim() == TV.mesh().geometry().dim()
 
     radius = data['radius']
-    quad_degree = data['quad_degree']
-    Rmat = average_matrix(V, TV, radius, quad_degree)
+    # 3d-1d trace
+    if radius is None:
+        Rmat = trace_3d1d_matrix(V, TV, reduced_mesh)
+    else:
+        quad_degree = data['quad_degree']
+        Rmat = average_matrix(V, TV, radius, quad_degree)
+        
     return PETScMatrix(Rmat)
                 
 
 def average_matrix(V, TV, radius, quad_degree):
-    '''The first cell connected to the facet gets to set the values of TV'''
+    '''Averaging matrix'''
     mesh = V.mesh()
     line_mesh = TV.mesh()
     # We are going to perform the integration with Gauss quadrature at
@@ -52,7 +57,8 @@ def average_matrix(V, TV, radius, quad_degree):
     # n. Then L(pi*s) = p + R*t_1*cos(pi*s) + R*t_2*sin(pi*s) can be seen to be
     # such that i) |x-p| = R and ii) x.n = 0 [i.e. this the suitable
     # parametrization]
-    # So clearly we can scale the weights as well as precompute
+    
+    # Clearly we can scale the weights as well as precompute
     # cos and sin terms.
     xq, wq = leggauss(quad_degree)
     wq *= 0.5
@@ -130,12 +136,77 @@ def average_matrix(V, TV, radius, quad_degree):
                     row = scalar_row + shift
                     column_values = np.array([data[col][shift] for col in column_indices])
                     mat.setValues([row], column_indices, column_values, PETSc.InsertMode.INSERT_VALUES)
+            # On to next avg point
+        # On to next cell
+    return PETScMatrix(mat)
 
-            # On to next point
+
+def trace_3d1d_matrix(V, TV, reduced_mesh):
+    '''Trace from 3d to 1d. Makes sense only for CG space'''
+    assert reduced_mesh.id() == TV.mesh().id()
+    assert V.ufl_element().family() == 'Lagrange'
+    
+    mesh = V.mesh()
+    line_mesh = TV.mesh()
+    
+    # The idea for point evaluation/computing dofs of TV is to minimize
+    # the number of evaluation. I mean a vector dof if done naively would
+    # have to evaluate at same x number of component times.
+    value_size = TV.ufl_element().value_size()
+
+    # We use the map to get (1d cell -> [3d edge) -> 3d cell]
+    # ( )
+    mapping = reduced_mesh.parent_entity_map[mesh.id()][1]
+    # [ ]
+    mesh.init(1)
+    mesh.init(1, 3)
+    e2c = mesh.topology()(1, 3)
+    
+    TV_coordinates = TV.tabulate_dof_coordinates().reshape((TV.dim(), -1))
+    TV_dm = TV.dofmap()
+    V_dm = V.dofmap()
+    # For non scalar we plan to make compoenents by shift
+    if value_size > 1:
+        TV_dm = TV.sub(0).dofmap()
+
+    Vel = V.element()               
+    basis_values = np.zeros(V.element().space_dimension()*value_size)
+    with petsc_serial_matrix(TV, V) as mat:
+
+        for line_cell in cells(line_mesh):
+            # Get the tangent => orthogonal tangent vectors
+            # The idea is now to minimize the point evaluation
+            scalar_dofs = TV_dm.cell_dofs(line_cell.index())
+            scalar_dofs_x = TV_coordinates[scalar_dofs]
+
+            # Let's get a 3d cell to use for getting the V values
+            # CG assumption allows taking any
+            tet_cell = e2c(mapping[line_cell.index()])[0]
+            
+            Vcell = Cell(mesh, tet_cell)
+            vertex_coordinates = Vcell.get_vertex_coordinates()
+            cell_orientation = 0
+            # Columns are determined by V cell! I guess the sparsity
+            # could be improved if for x_dofs of TV only x_dofs of V
+            # were considered
+            column_indices = np.array(V_dm.cell_dofs(tet_cell), dtype='int32')
+
+            for scalar_row, avg_point in zip(scalar_dofs, scalar_dofs_x):
+                # 3d at point
+                Vel.evaluate_basis_all(basis_values, avg_point, vertex_coordinates, cell_orientation)
+                # The thing now is that with data we can assign to several
+                # rows of the matrix. Shift determines the (x, y, ... ) or
+                # (xx, xy, yx, ...) component of Q
+                data = basis_values.reshape((-1, value_size)).T
+                for shift, column_values in enumerate(data):
+                    row = scalar_row + shift
+                    mat.setValues([row], column_indices, column_values, PETSc.InsertMode.INSERT_VALUES)
+            # On to next avg point
         # On to next cell
     return PETScMatrix(mat)
 
 # --------------------------------------------------------------------
+
 
 if __name__ == '__main__':
     from dolfin import *
@@ -148,13 +219,41 @@ if __name__ == '__main__':
 
     bmesh = EmbeddedMesh(f, 1)
 
+    # Trace
+    V = FunctionSpace(mesh, 'CG', 2)
+    TV = FunctionSpace(bmesh, 'DG', 1)
+    
+    f = interpolate(Expression('x[0]+x[1]+x[2]', degree=1), V)
+    Tf0 = interpolate(f, TV)
+
+    Trace = avg_mat(V, TV, bmesh, {'radius': None})
+    Tf = Function(TV)
+    Trace.mult(f.vector(), Tf.vector())
+    Tf0.vector().axpy(-1, Tf.vector())
+    print '??', Tf0.vector().norm('linf')
+
+    V = VectorFunctionSpace(mesh, 'CG', 2)
+    TV = VectorFunctionSpace(bmesh, 'DG', 1)
+    
+    f = interpolate(Expression(('x[0]+x[1]+x[2]',
+                                'x[0]-x[1]',
+                                'x[1]+x[2]'), degree=1), V)
+    Tf0 = interpolate(f, TV)
+
+    Trace = avg_mat(V, TV, bmesh, {'radius': None})
+    Tf = Function(TV)
+    Trace.mult(f.vector(), Tf.vector())
+    Tf0.vector().axpy(-1, Tf.vector())
+    print '??', Tf0.vector().norm('linf')
+
+    # PI
     radius = 0.01
     quad_degree = 10
-    # A = 0.4
-
+    data = {'radius': radius, 'quad_degree': quad_degree}
     # Simple scalar
     V = FunctionSpace(mesh, 'CG', 3)
     Q = FunctionSpace(bmesh, 'DG', 3)
+
 
     f = Expression('x[2]*((x[0]-0.5)*(x[0]-0.5) + (x[1]-0.5)*(x[1]-0.5))', degree=3)
     Pif = Expression('x[2]*A*A', A=radius, degree=1)
@@ -164,7 +263,7 @@ if __name__ == '__main__':
 
     Pi_f = Function(Q)
 
-    Pi = avg_mat(V, Q, radius, quad_degree)
+    Pi = avg_mat(V, Q, bmesh, data)
     Pi.mult(f.vector(), Pi_f.vector())
 
     Pi_f0.vector().axpy(-1, Pi_f.vector())
@@ -186,7 +285,7 @@ if __name__ == '__main__':
 
     Pi_f = Function(Q)
 
-    Pi = avg_mat(V, Q, radius, quad_degree)
+    Pi = avg_mat(V, Q, bmesh, data)
     Pi.mult(f.vector(), Pi_f.vector())
 
     Pi_f0.vector().axpy(-1, Pi_f.vector())

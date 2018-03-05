@@ -1,33 +1,75 @@
 # The system from d'Angelo & Quarteroni paper on tissue perfusion
+# With Omega a 3d domain and Gamma a 1d domain inside it we want
+#
+# A1(grad(u), grad(v))_3 + A0(u, v)_3 + (Pi u, Tv)_3 - beta(p, Tv)_1 = (f, Tv)_1
+# -beta(q, Pi u)_1      + a1(grad(p), grad(q))_1 + (a0+beta)(p, q)_1 = (f, q)_1
+#
+
 from dolfin import *
 from xii import *
 
-mesh = UnitCubeMesh(10, 10, 10)
-radius = 0.01
-quadrature_degree = 10
+
+def solve_problem(i, f):
+    '''Just showcase, no MMS (yet)'''
+    # I setup the constants arbitraily
+    Alpha1, Alpha0 = Constant(0.02), Constant(0.01)
+    alpha1, alpha0 = Constant(2), Constant(0.01)
+    beta = Constant(10)
+
+    n = 10*(2**i)
+
+    mesh = UnitCubeMesh(n, n, 2*n)
+    radius = 0.01           # Averaging radius for cyl. surface
+    quadrature_degree = 10  # Quadraure degree for that integration
+
+    gamma = EdgeFunction('size_t', mesh, 0)
+    CompiledSubDomain('near(x[0], 0.5) && near(x[1], 0.5)').mark(gamma, 1)
+    bmesh = EmbeddedMesh(gamma, 1)
+
+    V = FunctionSpace(mesh, 'CG', 1)
+    Q = FunctionSpace(bmesh, 'CG', 1)
+    W = (V, Q)
+
+    u, p = map(TrialFunction, W)
+    v, q = map(TestFunction, W)
+
+    Pi_u = Average(u, bmesh, radius, quadrature_degree)
+    T_v = Average(v, bmesh, radius=0)  # This is 3d-1d trace
+
+    dxGamma = Measure('dx', domain=bmesh)
+
+    a00 = Alpha1*inner(grad(u), grad(v))*dx + Alpha0*inner(u, v)*dx + beta*inner(Pi_u, T_v)*dxGamma
+    a01 = -beta*inner(p, T_v)*dxGamma
+    a10 = -beta*inner(Pi_u, q)*dxGamma
+    a11 = alpha1*inner(grad(p), grad(q))*dxGamma + (alpha0+beta)*inner(p, q)*dxGamma
+    
+    L0 = inner(f, T_v)*dxGamma
+    L1 = inner(f, q)*dxGamma
+
+    a = [[a00, a01], [a10, 0]]
+    L = [L0, L1]
+
+    # Assemble blocks
+    AA, bb = map(ii_assemble, (a, L))
+    # Turn into a (monolithic) PETScMatrix/Vector
+    AA, bb = map(ii_convert, (AA, bb))
+
+    return AA, bb, W
+
+# --------------------------------------------------------------------
+
+def setup_mms():
+    '''Simple MMS problem for UnitSquareMesh'''
+    from common import as_expression
+    import sympy as sp
+    
+    up = []
+    fg = Expression('sin(2*pi*x[2]*(pow(x[0], 2)+pow(x[1], 2)))', degree=4)
+    
+    return up, fg
 
 
-f = EdgeFunction('size_t', mesh, 0)
-CompiledSubDomain('near(x[0], 0.5) && near(x[1], 0.5)').mark(f, 1)
-bmesh = EmbeddedMesh(f, 1)
-
-V = FunctionSpace(mesh, 'CG', 1)
-Q = FunctionSpace(bmesh, 'CG', 1)
-W = (V, Q)
-
-u, p = map(TrialFunction, W)
-v, q = map(TestFunction, W)
-
-Pi_u = Average(u, bmesh, radius, quadrature_degree)
-Pi_v = Average(v, bmesh, radius, quadrature_degree)
-
-dxGamma = Measure('dx', domain=bmesh)
-
-
-a10 = inner(Pi_u, q)*dxGamma
-a01 = inner(p, Pi_v)*dxGamma
-
-print ii_assemble(a10)
-print ii_assemble(a01)
-
-
+def setup_error_monitor(true, history):
+    '''We measure error in H1 and L2 for simplicity'''
+    from common import monitor_error, H1_norm, L2_norm
+    return monitor_error(true, [], history)

@@ -57,18 +57,26 @@ def Average(v, line_mesh, radius, quadrature_degree=8):
     Annotate function for being a cylinder surface average around line 
     mesh. This means that 
 
-    (Average(v))(x) = |C_R(x)|\int_{C_R(x)} v(y) dy for every point 
+        (Average(v))(x) = |C_R(x)|\int_{C_R(x)} v(y) dy for every point 
 
     x on the line_mesh. C_R(x) is a center of radius R(x) centered at x
     with normal vector determined by tangent of the line_mesh segment @ 
-    x. This integral is computed numerically with given quad. degree
+    x. This integral is computed numerically with given quad. degree.
+
+    If radius == 0, this reduction is understood as 3d-1d trace. In this 
+    case the reduced function must be in some CG space!
     '''
     # Prevent Trace(grad(u)). But it could be interesting to have this
     assert is_terminal(v)
-    
     assert average_cell(v) == line_mesh.ufl_cell()
 
     # Some sanity check for the radius
+    if isinstance(radius, int) and radius == 0:
+        v_family = v.ufl_element().family() 
+        assert v_family == 'Lagrange', '3d1d trace undefined for %s' % v_family
+        df.info('Using 3d-1d trace!!!!')
+        radius = None  # Signal to avg_mat
+        
     if is_number(radius): assert radius > 0
 
     v.average_ = {'mesh': line_mesh, 'radius': radius, 'quad_degree': quadrature_degree}

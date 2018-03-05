@@ -15,14 +15,11 @@ def assemble(form):
     # dolfin can handle (hopefully)
     modules = (xii.assembler.trace_assembly,    # Codimension 1
                xii.assembler.average_assembly)
-    names = ('trace', 'avg')
     if isinstance(form, Form):
         arity = form_arity(form)
         # Try with our reduced assemblers
-        for name, module in zip(names, modules):
-            df.info('Trying %s' % name)
+        for module in modules:
             tensor = module.assemble_form(form, arity)
-            df.info('With result %s' % tensor)
             if tensor is not None:
                 return tensor
         # Fallback

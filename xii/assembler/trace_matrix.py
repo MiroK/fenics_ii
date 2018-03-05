@@ -43,9 +43,14 @@ def trace_mat(V, TV, trace_mesh, data):
 def trace_mat_no_restrict(V, TV, trace_mesh=None):
     '''The first cell connected to the facet gets to set the values of TV'''
     mesh = V.mesh()
-    fdim = mesh.topology().dim() - 1
-    
+
     if trace_mesh is None: trace_mesh = TV.mesh()
+
+    fdim = trace_mesh.topology().dim()
+
+    # For 3d - 1d
+    if mesh.topology().dim() == fdim + 2:
+        assert V.ufl_element().family() == 'Lagrange'
 
     # Init/extract the mapping
     assert get_entity_map(mesh, trace_mesh)
