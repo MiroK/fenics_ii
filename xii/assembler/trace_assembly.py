@@ -27,24 +27,20 @@ class TraceFormAssembler(ReducedFormAssembler):
         assert terminal.trace_['mesh'].id() == reduced_mesh.id()
         return True
 
-    def reduction_type(self, terminal):
-        '''
-        Extract reduction type of terminal; determines the algebraic
-        representation of the restriction
-        '''
-        return terminal.trace_['type']
-    
-    def get_normal(self, terminal):
-        '''Extract normal'''
-        return terminal.trace_['normal']
+    def reduction_matrix_data(self, terminal):
+        '''Dict of reduction data and optinal normal'''
+        rtype = terminal.trace_['type']
+        normal = terminal.trace_['normal'] if rtype else None
 
+        return {'restriction': rtype, 'normal': normal}
+    
     def reduced_space(self, V, reduced_mesh):
         '''Construct a reduced space for V on the mesh'''
         return trace_space(V, reduced_mesh)
 
-    def reduction_matrix(self, V, TV, rtype, normal, reduced_mesh):
+    def reduction_matrix(self, V, TV, reduced_mesh, data):
         '''Algebraic representation of the reduction'''
-        return trace_mat(V, TV, rtype, normal, reduced_mesh)
+        return trace_mat(V, TV, reduced_mesh, data)
 
 # Expose
     

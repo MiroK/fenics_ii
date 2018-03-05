@@ -8,7 +8,7 @@ from petsc4py import PETSc
 import numpy as np
 
 
-def trace_mat(V, TV, restriction='', normal=None, trace_mesh=None):
+def trace_mat(V, TV, trace_mesh, data):
     '''
     A mapping for computing traces of function in V in TV. If f in V 
     then g in TV has coefficients equal to dofs_{TV}(trace V)
@@ -22,13 +22,15 @@ def trace_mat(V, TV, restriction='', normal=None, trace_mesh=None):
     # FIXME: trace element checking
     if trace_mesh is not None:
         assert trace_mesh.id() ==  TV.mesh().id()
-    
+
+    restriction = data['restriction']
+    normal = data['normal']
     # Restriction is defined using the normal
     if restriction: assert normal is not None, 'R is %s' % restriction
 
     # Typically with CG spaces - any parent cell can set the valeus
     if not restriction:
-        Tmat = trace_mat_no_restrict(V, TV, trace_mesh=trace_mesh)
+        Tmat = trace_mat_no_restrict(V, TV, trace_mesh)
     else:
         if restriction in ('+', '-'):
             Tmat = trace_mat_one_restrict(V, TV, restriction, normal, trace_mesh)

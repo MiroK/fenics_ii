@@ -13,7 +13,8 @@ class EmbeddedMesh(df.Mesh):
     '''
     def __init__(self, marking_function, markers):
         base_mesh = marking_function.mesh()
-        # Prevent cell function (just not to duplicate functionality
+        # Prevent cell function (just not to duplicate functionality of
+        # submesh; well for now)
         assert base_mesh.topology().dim() > marking_function.dim()
 
         # Work in serial only (much like submesh)
@@ -142,7 +143,7 @@ def InnerNormal(mesh, orientation):
 def build_embedding_map(emesh, mesh, tol=1E-14):
     '''
     Operating with the assumption that the emsh consists of entities 
-    of mesh we fine here a map freom emesh vertices and cells to mesh
+    of mesh we fine here a map from emesh vertices and cells to mesh
     vertices and entities.
     '''
     assert emesh.topology().dim() < mesh.topology().dim()

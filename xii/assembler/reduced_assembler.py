@@ -28,10 +28,9 @@ class ReducedFormAssembler(object):
         '''Sanity check'''
         raise NotImplementedError
 
-    def reduction_type(self, terminal):
+    def reduction_matrix_data(self, terminal):
         '''
-        Extract reduction type of terminal; determines the algebraic
-        representation of the restriction
+        Operator specific data for reduction of the terminal
         '''
         raise NotImplementedError
     
@@ -43,7 +42,7 @@ class ReducedFormAssembler(object):
         '''Construct a reduced space for V on the mesh'''
         raise NotImplementedError
 
-    def reduction_matrix(self, V, TV, rtype, normal, reduced_mesh):
+    def reduction_matrix(self, V, TV, reduced_mesh, data):
         '''Algebraic representation of the reduction'''
         raise NotImplementedError
 
@@ -78,12 +77,7 @@ class ReducedFormAssembler(object):
             # We have some assumption on the candidate
             assert self.is_compatible(terminal, reduced_mesh)
 
-            rtype = self.reduction_type(terminal)
-            # For rtype which requires normal the normal should then be the same
-            if rtype:
-                normal = self.get_normal(terminal)
-            else:
-                normal = None
+            data = self.reduction_matrix_data(terminal)
                 
             integrand = ufl2uflcopy(integrand)
             # With sane inputs we can get the reduced element and setup the
@@ -95,7 +89,7 @@ class ReducedFormAssembler(object):
             # Setup the matrix to from space of the trace_terminal to the
             # intermediate space. FIXME: normal and trace_mesh
             #! mat construct
-            T = self.reduction_matrix(V, TV, rtype, normal, reduced_mesh)
+            T = self.reduction_matrix(V, TV, reduced_mesh, data)
 
             # T
             if is_test_function(terminal):

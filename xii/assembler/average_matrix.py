@@ -1,13 +1,13 @@
 from xii.linalg.matrix_utils import petsc_serial_matrix, is_number
-from xii.assembler.averaging_form import average_cell
+from xii.assembler.average_form import average_cell
 
 from numpy.polynomial.legendre import leggauss
-from dolfin import PETScMatrix
+from dolfin import PETScMatrix, cells, Point, Cell
 from petsc4py import PETSc
 import numpy as np
 
 
-def avg_mat(V, TV, radius, quad_degree):
+def avg_mat(V, TV, reduced_mesh, data):
     '''
     A mapping for computing the surface averages of function in V in the 
     space TV. Surface averaging is defined as 
@@ -15,6 +15,8 @@ def avg_mat(V, TV, radius, quad_degree):
     (Pi u)(x) = |C_R(x)|int_{C_R(x)} u(y) dy with C_R(x) the circle of 
     radius R(x) centered at x with a normal parallel with the edge tangent.
     '''
+    assert TV.mesh().id() == reduced_mesh.id()
+    
     # It is most natural to represent Pi u in a DG space
     assert TV.ufl_element().family() == 'Discontinuous Lagrange'
     
@@ -24,11 +26,13 @@ def avg_mat(V, TV, radius, quad_degree):
     assert average_cell(V) == TV.mesh().ufl_cell()
     assert V.mesh().geometry().dim() == TV.mesh().geometry().dim()
 
-    Rmat = averaging_matrix(V, TV, radius, quad_degree)
+    radius = data['radius']
+    quad_degree = data['quad_degree']
+    Rmat = average_matrix(V, TV, radius, quad_degree)
     return PETScMatrix(Rmat)
                 
 
-def averaging_matrix(V, TV, radius, quad_degree):
+def average_matrix(V, TV, radius, quad_degree):
     '''The first cell connected to the facet gets to set the values of TV'''
     mesh = V.mesh()
     line_mesh = TV.mesh()
@@ -52,8 +56,8 @@ def averaging_matrix(V, TV, radius, quad_degree):
     # cos and sin terms.
     xq, wq = leggauss(quad_degree)
     wq *= 0.5
-    cos_xq = np.cos(pi*xq).reshape((-1, 1))
-    sin_xq = np.sin(pi*xq).reshape((-1, 1))
+    cos_xq = np.cos(np.pi*xq).reshape((-1, 1))
+    sin_xq = np.sin(np.pi*xq).reshape((-1, 1))
 
     if is_number(radius):
          radius = lambda x, radius=radius: radius 
