@@ -39,7 +39,48 @@ def solve_problem(i, (f, g)):
 
     return a, L, W
 
+
+def setup_preconditioner(W, which):
+    '''
+    This is a block diagonal preconditioner based on 
+    
+        H1 x H-0.5 or (H1 \cap H0.5) x L2
+    '''
+    from block.algebraic.petsc import AMG
+    from block.algebraic.petsc import LumpedInvDiag
+    from hsmg import HsNorm
+    
+    V, Q = W
+
+    if which == 0:
+        print 'Using H1 x H-0.5 preconditioner'
+        # H1
+        u, v = TrialFunction(V), TestFunction(V)
+        b00 = inner(grad(u), grad(v))*dx + inner(u, v)*dx
+        # Inverted by BoomerAMG
+        B00 = AMG(ii_assemble(b00))
+        # The Q norm via spectral
+        B11 = HsNorm(Q, s=-0.5)**-1  # The norm is inverted exactly
+    else:
+        print 'Using (H1 \cap H0.5) x L2 preconditioner'
+        bdry = Q.mesh()
+        dxGamma = dx(domain=bdry)
+        # Cap space
+        u, v = TrialFunction(V), TestFunction(V)
+        Tu, Tv = Trace(u, bdry), Trace(v, bdry)
+        b00 = inner(grad(u), grad(v))*dx + inner(u, v)*dx + inner(Tu, Tv)*dxGamma
+        # Inverted by BoomrAMG
+        B00 = AMG(ii_convert(ii_assemble(b00)))
+
+        # We don't have to work so hard for multiplier
+        p, q = TrialFunction(Q), TestFunction(Q)
+        B11 = LumpedInvDiag(ii_assemble(inner(p, q)*dx))
+
+    return block_diag_mat([B00, B11])
+
+
 # --------------------------------------------------------------------
+
 
 def setup_mms():
     '''Simple MMS problem for UnitSquareMesh'''

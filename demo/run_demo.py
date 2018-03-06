@@ -6,8 +6,12 @@ from dolfin import solve, File, Timer, info
 import os
 
 
-def main(module_name, ncases, save_dir=''):
-    '''Run the test case in module with ncases'''
+def main(module_name, ncases, save_dir='', solver='direct', precond=0):
+    '''
+    Run the test case in module with ncases. Optionally store results
+    in savedir. For some modules there are multiple (which) choices of 
+    preconditioners.
+    '''
     RED = '\033[1;37;31m%s\033[0m'
     print RED % ('\tRunning %s' % module_name)
 
@@ -36,16 +40,37 @@ def main(module_name, ncases, save_dir=''):
         t = Timer('assembly'); t.start()
         AA, bb = map(ii_assemble, (a, L))
         info('\tAssembled blocks in %g s' % t.stop())
-        
-        # Turn into a (monolithic) PETScMatrix/Vector
-        t = Timer('conversion'); t.start()        
-        AA, bb = map(ii_convert, (AA, bb))
-        info('\tConversion to PETScMatrix/Vector took %g s' % t.stop())
+
+        if solver == 'direct':
+            # Turn into a (monolithic) PETScMatrix/Vector
+            t = Timer('conversion'); t.start()        
+            AA, bb = map(ii_convert, (AA, bb))
+            info('\tConversion to PETScMatrix/Vector took %g s' % t.stop())
             
-        wh = ii_Function(W)
-        solve(AA, wh.vector(), bb)
+            wh = ii_Function(W)
+            solve(AA, wh.vector(), bb)
+            niters = None  # Well 1
+        else:
+            from block.iterative import PETScMinRes
+
+            # Start from random initial guess
+            x = AA.create_vec(); x.randomize()
+            tolerance = 1E-8
+            relativeconv = True
+            
+            BB = module.setup_preconditioner(W, precond)
+            
+            AAinv = PETScMinRes(AA, precond=BB, initial_guess=x,
+                                tolerance=tolerance,
+                                relativeconv=relativeconv)
+            # Solve
+            x = AAinv*bb
+            niters = len(AAinv.residuals)-1
+            
+            wh = ii_Function(W, x)
+            
         # Convergence?
-        monitor.send(transform(i, wh))
+        monitor.send((transform(i, wh), niters))
         
     # Only send the final
     if save_dir:
@@ -69,6 +94,13 @@ if __name__ == '__main__':
     parser.add_argument('-save_dir', type=str, default='',
                         help='Path for directory storing results')
 
+    # Iterative solver?
+    parser.add_argument('-solver', type=str, default='direct', choices=['direct', 'iterative'],
+                        help='Use direct solver with params as in main')
+    # Choice of preconditioner
+    parser.add_argument('-precond', type=int, default=0,
+                        help='Which module preconditioner')
+
     args = parser.parse_args()
     assert args.ncases > 0
 
@@ -84,4 +116,7 @@ if __name__ == '__main__':
     else:
         modules = [module]
 
-    [main(module, range(args.ncases), args.save_dir) for module in modules]
+    for module in modules:
+        main(module, range(args.ncases), save_dir=args.save_dir,
+                                         solver=args.solver,
+                                         precond=args.precond)

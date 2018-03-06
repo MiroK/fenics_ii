@@ -42,12 +42,13 @@ def monitor_error(u, norms, memory, reduction=lambda x: x):
     Send in current solution to get the error size and convergence printed.
     '''
     GREEN = '\033[1;37;32m%s\033[0m'
+    BLUE = '\033[1;37;34m%s\033[0m'
     
     mesh_size0, error0 = None, None
     counter = 0
     while True:
         counter += 1
-        uh = yield
+        uh, niters = yield
         mesh_size = uh[0].function_space().mesh().hmin()
 
         error = [norm(ui, uhi) for norm, ui, uhi in zip(norms, u, uh)]
@@ -70,7 +71,10 @@ def monitor_error(u, norms, memory, reduction=lambda x: x):
                        # Total
                        ['|%d' % sum(ndofs)])
         # Screen
-        print GREEN % msg
+        if niters is None:
+            print GREEN % msg
+        else:
+            print GREEN % msg, BLUE % ('@niters %d' % niters)
         
         error0, mesh_size0 = error, mesh_size
         memory.append(np.r_[mesh_size, error])

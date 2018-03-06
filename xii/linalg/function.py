@@ -1,7 +1,6 @@
 from dolfin import Function, as_backend_type, PETScVector
 from petsc4py import PETSc
 
-from xii.linalg.matrix_utils import is_petsc_vec
 
 first = lambda iterable: next(iter(iterable))
 
@@ -12,20 +11,18 @@ class ii_Function(object):
         if components is None:
             self.functions = map(Function, W)
         else:
-            assert len(components) == W.num_sub_spaces()
+            assert len(components) == len(W)
+            # Functions them selves
+            if hasattr(first(components), 'function_space'):
+                assert [c.function_space() == Wi for c, Wi in zip(components, W)]
+                self.functions = [ci for ci in c]                
             # The components can be vectors in that case
-            if is_petsc_vec(first(components)):
-                # Then all of them must be
-                assert all(is_petsc_vec(c) for c in components)
+            else:
                 # Dim check
                 assert all(c.size() == Wi.dim() for c, Wi in zip(components, W))
                 # Create
                 self.functions = [Function(Wi, c) for c, Wi in zip(components, W)]
-            # Functions them selves
-            else:
-                assert [c.function_space() == Wi for c, Wi in zip(components, W)]
-                self.functions = [ci for ci in c]
-        
+
     def vectors(self):
         '''Coefficient vectors of the functions I hold'''
         return [f.vector() for f in self.functions]
