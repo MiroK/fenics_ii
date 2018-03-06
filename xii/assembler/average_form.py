@@ -72,9 +72,14 @@ def Average(v, line_mesh, radius, quadrature_degree=8):
 
     # Some sanity check for the radius
     if isinstance(radius, int) and radius == 0:
-        v_family = v.ufl_element().family() 
-        assert v_family == 'Lagrange', '3d1d trace undefined for %s' % v_family
+        v_family = v.ufl_element().family()
+        # If we have en embedded mesh this mean that we want trace on en
+        # edge and this make it well defined (only?) for CG
+        if hasattr(line_mesh, 'parent_entity_map'):
+            assert v_family == 'Lagrange', '3d1d trace undefined for %s' % v_family
+        # Otherise the hope is that we will eval in cell interior which
         df.info('Using 3d-1d trace!!!!')
+        
         radius = None  # Signal to avg_mat
         
     if is_number(radius): assert radius > 0
