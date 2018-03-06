@@ -51,30 +51,39 @@ def OverlapMesh(mesh1, mesh2, tol=1E-14):
     scale = max(emesh_x.max(axis=0) - emesh_x.min(axis=0))
     # Also build the map for vertices
     entity_map = {0: [None]*emesh.num_vertices(), tdim: [None]*emesh.num_cells()}
-    
+    vertex_map = entity_map[0]
+    cell_map = entity_map[tdim]
+
+    collided_cells = {}
     for cell in df.cells(emesh):
         # The idea is the there is exactly on the_cell which will be
         # found in every point-cell collision patches
         the_cell = set()
-        for vertex in cell.entities(0):
-            
-            vertex_x = emesh_x[vertex]
-            mcells = set(tree.compute_entity_collisions(df.Point(*vertex_x)))
-            # What is the id of vertex in the mesh
-            mcell_vertices = c2v(next(iter(mcells)))
-            the_vertex = min(mcell_vertices, key=lambda v: np.linalg.norm(vertex_x-mesh_x[v]))
-            error = np.linalg.norm(vertex_x - mesh_x[the_vertex])/scale
-            assert error < tol, 'Found a hanging node %16f' % error
 
-            entity_map[0][vertex] = the_vertex
+        for vertex in cell.entities(0):
+            # Try to be less efficient by computing each vertex collision
+            # only once
+            if vertex in collided_cells:
+                mcells = collided_cells[vertex]
+            else:
+                vertex_x = emesh_x[vertex]
+                mcells = tree.compute_entity_collisions(df.Point(*vertex_x))
+                # What is the id of vertex in the mesh
+                mcell_vertices = c2v(next(iter(mcells)))
+                the_vertex = min(mcell_vertices, key=lambda v: np.linalg.norm(vertex_x-mesh_x[v]))
+                error = np.linalg.norm(vertex_x - mesh_x[the_vertex])/scale
+                assert error < tol, 'Found a hanging node %16f' % error
+
+                vertex_map[vertex] = the_vertex
+                collided_cells[vertex] = mcells
             
             if not the_cell:
                 the_cell.update(mcells)
             else:
-                the_cell = the_cell & mcells
+                the_cell = the_cell & set(mcells)
         assert len(the_cell) == 1, the_cell
         # Insert
-        entity_map[tdim][cell.index()] = the_cell.pop()
+        cell_map[cell.index()] = the_cell.pop()
     # Sanity
     assert not any(v is None for v in entity_map[0])
     assert not any(v is None for v in entity_map[tdim])
@@ -96,7 +105,6 @@ if __name__ == '__main__':
     mesh1 = SubDomainMesh(subdomains, (1, 3))
     mesh2 = SubDomainMesh(subdomains, (2, 3))
     mesh12 = OverlapMesh(mesh1, mesh2)
-
 
     # FIXME: split the file!
     map1 = mesh12.parent_entity_map[mesh1.id()][2]
