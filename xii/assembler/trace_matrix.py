@@ -1,7 +1,7 @@
 from xii.linalg.matrix_utils import petsc_serial_matrix
 from xii.assembler.trace_assembly import trace_cell
 from xii.assembler.fem_eval import DegreeOfFreedom, FEBasisFunction
-from xii.meshing.mesh import build_embedding_map
+from xii.meshing.embedded_mesh import build_embedding_map
 
 from dolfin import Cell, info, PETScMatrix
 from petsc4py import PETSc
