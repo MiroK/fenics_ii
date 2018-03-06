@@ -37,13 +37,8 @@ def solve_problem(i, (f, g)):
 
     a = [[a00, a01], [a10, 0]]
     L = [L0, L1]
-
-    # Assemble blocks
-    AA, bb = map(ii_assemble, (a, L))
-    # Turn into a (monolithic) PETScMatrix/Vector
-    AA, bb = map(ii_convert, (AA, bb))
-
-    return AA, bb, W
+    
+    return a, L, W
 
 # --------------------------------------------------------------------
 

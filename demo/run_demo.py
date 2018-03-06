@@ -1,8 +1,8 @@
 # Driver for demos
 
 from runpy import run_module
-from xii import ii_Function
-from dolfin import solve, File
+from xii import ii_Function, ii_assemble, ii_convert
+from dolfin import solve, File, Timer, info
 import os
 
 
@@ -30,10 +30,21 @@ def main(module_name, ncases, save_dir=''):
         transform = lambda i, x: x
     
     for i in ncases:
-        AA, bb, W = module.solve_problem(i, rhs_data)
+        a, L, W = module.solve_problem(i, rhs_data)
 
+        # Assemble blocks
+        t = Timer('assembly'); t.start()
+        AA, bb = map(ii_assemble, (a, L))
+        info('\tAssembled blocks in %g s' % t.stop())
+        
+        # Turn into a (monolithic) PETScMatrix/Vector
+        t = Timer('conversion'); t.start()        
+        AA, bb = map(ii_convert, (AA, bb))
+        info('\tConversion to PETScMatrix/Vector took %g s' % t.stop())
+            
         wh = ii_Function(W)
         solve(AA, wh.vector(), bb)
+        # Convergence?
         monitor.send(transform(i, wh))
         
     # Only send the final

@@ -22,7 +22,7 @@ def solve_problem(i, f):
     radius = 0.01           # Averaging radius for cyl. surface
     quadrature_degree = 10  # Quadraure degree for that integration
 
-    gamma = EdgeFunction('size_t', mesh, 0)
+    gamma = MeshFunction('size_t', mesh, 1, 0)
     CompiledSubDomain('near(x[0], 0.5) && near(x[1], 0.5)').mark(gamma, 1)
     bmesh = EmbeddedMesh(gamma, 1)
 
@@ -51,12 +51,7 @@ def solve_problem(i, f):
     a = [[a00, a01], [a10, 0]]
     L = [L0, L1]
 
-    # Assemble blocks
-    AA, bb = map(ii_assemble, (a, L))
-    # Turn into a (monolithic) PETScMatrix/Vector
-    AA, bb = map(ii_convert, (AA, bb))
-
-    return AA, bb, W
+    return a, L, W
 
 # --------------------------------------------------------------------
 

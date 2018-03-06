@@ -70,13 +70,8 @@ def solve_problem(i, (f1, f2, g)):
 
     a = [[a00, a01, a02], [a10, a11, a12], [a20, a21, a22]]
     L = [L0, L1, L2]
-
-    # Assemble blocks
-    AA, bb = map(ii_assemble, (a, L))
-    # Turn into a (monolithic) PETScMatrix/Vector
-    AA, bb = map(ii_convert, (AA, bb))
-
-    return AA, bb, W
+    
+    return a, L, W
 
 # --------------------------------------------------------------------
 
@@ -87,8 +82,8 @@ def setup_mms():
     
     up = []
     fg = [Expression('x[0]+x[1]', degree=1),
-          Expression('x[0]*x[1]', degree=2),
-          Expression('sin(pi*(x[0]+x[1]))', degree=4)]
+          Expression('sin(pi*(x[0]+x[1]))', degree=4),
+          Expression('x[0]*x[1]', degree=2)]
     
     return up, fg
 
