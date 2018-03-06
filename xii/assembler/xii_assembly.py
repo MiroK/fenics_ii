@@ -1,4 +1,6 @@
-import xii.assembler.trace_assembly, xii.assembler.average_assembly
+import xii.assembler.trace_assembly
+import xii.assembler.average_assembly
+import xii.assembler.restriction_assembly
 from xii.linalg.matrix_utils import is_number
 from xii.assembler.ufl_utils import form_arity
 
@@ -13,8 +15,9 @@ def assemble(form):
     # In the base case we want to fall trough the custom assemblers
     # for trace/average/restriction problems until something that 
     # dolfin can handle (hopefully)
-    modules = (xii.assembler.trace_assembly,    # Codimension 1
-               xii.assembler.average_assembly)
+    modules = (xii.assembler.trace_assembly,        # Codimension 1
+               xii.assembler.average_assembly,      # Codimension 2
+               xii.assembler.restriction_assembly)  # 0
     if isinstance(form, Form):
         arity = form_arity(form)
         # Try with our reduced assemblers

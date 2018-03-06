@@ -11,7 +11,8 @@ import numpy as np
 def trace_mat(V, TV, trace_mesh, data):
     '''
     A mapping for computing traces of function in V in TV. If f in V 
-    then g in TV has coefficients equal to dofs_{TV}(trace V)
+    then g in TV has coefficients equal to dofs_{TV}(trace V). Trace is 
+    understood as D -> D-1.
     '''
     # Compatibility of spaces
     assert V.dolfin_element().value_rank() == TV.dolfin_element().value_rank()
@@ -47,10 +48,6 @@ def trace_mat_no_restrict(V, TV, trace_mesh=None):
     if trace_mesh is None: trace_mesh = TV.mesh()
 
     fdim = trace_mesh.topology().dim()
-
-    # For 3d - 1d
-    if mesh.topology().dim() == fdim + 2:
-        assert V.ufl_element().family() == 'Lagrange'
 
     # Init/extract the mapping
     assert get_entity_map(mesh, trace_mesh)

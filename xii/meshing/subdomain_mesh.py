@@ -41,7 +41,7 @@ def OverlapMesh(mesh1, mesh2, tol=1E-14):
     tree = mesh2.bounding_box_tree()
     # Localize first the vertex in mesh2
     mesh2.init(tdim)    # Then we want to find a cell in mesh2 which
-    mesh.init(tdim, 0)  # has the same vertices
+    mesh2.init(tdim, 0)  # has the same vertices
 
     c2v = mesh2.topology()(tdim, 0)
 

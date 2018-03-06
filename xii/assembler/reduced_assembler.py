@@ -59,7 +59,7 @@ class ReducedFormAssembler(object):
             if integral not in reduced_integrals:
                 components.append(xii.assembler.xii_assembly.assemble(Form([integral])))
                 continue
-            
+
             reduced_mesh = integral.ufl_domain().ufl_cargo()
 
             integrand = integral.integrand()
