@@ -9,7 +9,7 @@ from dolfin import *
 from xii import *
 
 
-def solve_problem(i, (f, g)):
+def setup_problem(i, (f, g), eps=None):
     '''Babuska on [0, 1]^2'''
     n = 4*2**i
     mesh = UnitSquareMesh(*(n, )*2)
@@ -40,7 +40,7 @@ def solve_problem(i, (f, g)):
     return a, L, W
 
 
-def setup_preconditioner(W, which):
+def setup_preconditioner(W, which, eps=None):
     '''
     This is a block diagonal preconditioner based on 
     
@@ -60,7 +60,7 @@ def setup_preconditioner(W, which):
         # Inverted by BoomerAMG
         B00 = AMG(ii_assemble(b00))
         # The Q norm via spectral
-        B11 = HsNorm(Q, s=-0.5)**-1  # The norm is inverted exactly
+        B11 = inverse(HsNorm(Q, s=-0.5))  # The norm is inverted exactly
     else:
         print 'Using (H1 \cap H0.5) x L2 preconditioner'
         bdry = Q.mesh()
@@ -82,7 +82,7 @@ def setup_preconditioner(W, which):
 # --------------------------------------------------------------------
 
 
-def setup_mms():
+def setup_mms(eps=None):
     '''Simple MMS problem for UnitSquareMesh'''
     from common import as_expression
     import sympy as sp

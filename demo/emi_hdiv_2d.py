@@ -11,7 +11,6 @@
 from dolfin import *
 from xii import *
 
-EPS = 1E-12
 
 def setup_domains(n):
     '''On [0, 1] we want to mark domain inside and outside wrt interface'''    
@@ -38,7 +37,7 @@ def setup_domains(n):
     return mesh, bmesh
 
 
-def solve_problem(i, (f1, f2, g), eps=EPS):
+def setup_problem(i, (f1, f2, g), eps):
     '''EMI like problem without mortaring'''
     n = 4*2**i
     mesh, bmesh = setup_domains(n)
@@ -107,11 +106,11 @@ def setup_transform(i, wh):
     return [sigma1_h, sigma2_h, u1_h, u2_h, p_h]
 
 
-def setup_preconditioner(W, which):
+def setup_preconditioner(W, which, eps):
     '''
     This is a block diagonal preconditioner based on 
     
-        Hdiv x L2 x H0.5 or 
+        Hdiv x L2 x (H0.5 \cap sqrt(eps)*L2) or ? 
     '''
     from block.algebraic.petsc import LU
     from block.algebraic.petsc import LumpedInvDiag
@@ -132,20 +131,20 @@ def setup_preconditioner(W, which):
     B11 = LumpedInvDiag(ii_assemble(b11))
 
     # The Q norm via spectral
-    B22 = HsNorm(Q, s=0.5)**-1  # The norm is inverted exactly
+    B22 = inverse(HsNorm(Q, s=0.5) + eps*HsNorm(Q, s=0.0))# The norm is inverted exactly
 
     return block_diag_mat([B00, B11, B22])
 
 
 # --------------------------------------------------------------------
 
-def setup_mms(eps_value=EPS):
+def setup_mms(eps):
     '''Simple MMS problem for UnitSquareMesh'''
     from common import as_expression
     import sympy as sp
     
     pi = sp.pi    
-    x, y, eps = sp.symbols('x[0] x[1] eps')
+    x, y, EPS = sp.symbols('x[0] x[1] EPS')
     
     sp_grad = lambda f: sp.Matrix([f.diff(x, 1), f.diff(y, 1)])
 
@@ -158,11 +157,11 @@ def setup_mms(eps_value=EPS):
     f1 = -u1.diff(x, 2) - u1.diff(y, 2) + u1
     f2 = -u2.diff(x, 2) - u2.diff(y, 2) + u2
 
-    g = eps*(u1 - u2) # + grad(u1).n1 # But the flux is 0
+    g = EPS*(u1 - u2) # + grad(u1).n1 # But the flux is 0
 
     up = map(as_expression, (sigma1, sigma2, u1, u2, u1 - u2))
     # The last gut is the u1 trace value but here is is 0
-    fg = map(as_expression, (f1, f2)) + [as_expression(g, eps=eps_value)]
+    fg = map(as_expression, (f1, f2)) + [as_expression(g, EPS=eps)]
     
     return up, fg
 

@@ -2,7 +2,7 @@ from xii.linalg.matrix_utils import petsc_serial_matrix
 from xii.assembler.restriction_assembly import restriction_cell
 from xii.assembler.fem_eval import DegreeOfFreedom, FEBasisFunction
 
-from dolfin import Cell, info, PETScMatrix
+from dolfin import Cell, PETScMatrix
 from petsc4py import PETSc
 import numpy as np
 

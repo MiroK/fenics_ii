@@ -6,7 +6,7 @@ from dolfin import solve, File, Timer
 import os
 
 
-def main(module_name, ncases, save_dir='', solver='direct', precond=0):
+def main(module_name, ncases, save_dir='', solver='direct', precond=0, eps=1.):
     '''
     Run the test case in module with ncases. Optionally store results
     in savedir. For some modules there are multiple (which) choices of 
@@ -18,7 +18,7 @@ def main(module_name, ncases, save_dir='', solver='direct', precond=0):
     module = __import__(module_name)  # no importlib in python2.7
 
     # Setup the MMS case
-    u_true, rhs_data = module.setup_mms()
+    u_true, rhs_data = module.setup_mms(eps)
 
     # Setup the convergence monitor
     memory = []
@@ -32,9 +32,12 @@ def main(module_name, ncases, save_dir='', solver='direct', precond=0):
         transform = module.setup_transform
     else:
         transform = lambda i, x: x
-    
+
+    print '='*79
+    print '\t\t\tProblem eps = %g' % eps
+    print '='*79
     for i in ncases:
-        a, L, W = module.solve_problem(i, rhs_data)
+        a, L, W = module.setup_problem(i, rhs_data, eps=eps)
 
         # Assemble blocks
         t = Timer('assembly'); t.start()
@@ -61,7 +64,7 @@ def main(module_name, ncases, save_dir='', solver='direct', precond=0):
             tolerance = 1E-8
             relativeconv = True
             
-            BB = module.setup_preconditioner(W, precond)
+            BB = module.setup_preconditioner(W, precond, eps=eps)
             
             AAinv = PETScMinRes(AA, precond=BB, initial_guess=x,
                                 tolerance=tolerance,
@@ -95,6 +98,9 @@ if __name__ == '__main__':
     # The demo file: runnning it defines setups*
     parser.add_argument('demo', nargs='?', default='all', type=str,
                         help='Which demo to run')
+    # Some problems are paramer dependent
+    parser.add_argument('-problem_eps', default=1.0, type=float,
+                        help='Paramter value for problem setup')
     # How many uniform refinements to make
     parser.add_argument('-ncases', type=int, default=1,
                         help='Run convergence study with # cases')
@@ -111,6 +117,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     assert args.ncases > 0
+    assert args.problem_eps > 0
 
     if args.save_dir:
         assert os.path.exists(args.save_dir)
@@ -127,4 +134,5 @@ if __name__ == '__main__':
     for module in modules:
         main(module, range(args.ncases), save_dir=args.save_dir,
                                          solver=args.solver,
-                                         precond=args.precond)
+                                         precond=args.precond,
+                                         eps=args.problem_eps)

@@ -9,7 +9,7 @@ from dolfin import *
 from xii import *
 
 
-def solve_problem(i, f):
+def setup_problem(i, f, eps=None):
     '''Just showcase, no MMS (yet)'''
     # I setup the constants arbitraily
     Alpha1, Alpha0 = Constant(0.02), Constant(0.01)
@@ -55,7 +55,7 @@ def solve_problem(i, f):
 
 # --------------------------------------------------------------------
 
-def setup_mms():
+def setup_mms(eps=None):
     '''Simple MMS...'''
     from common import as_expression
     import sympy as sp

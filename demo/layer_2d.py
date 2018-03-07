@@ -31,7 +31,7 @@ def setup_domain(n):
     return mesh1, mesh2, mesh12
 
     
-def solve_problem(i, (f1, f2, g)):
+def setup_problem(i, (f1, f2, g), eps=None):
     '''Just showcase, no MMS (yet)'''
     # I setup the constants arbitraily
     Alpha1, Alpha2 = Constant(5), Constant(1)
@@ -57,7 +57,7 @@ def solve_problem(i, (f1, f2, g)):
     a02 = inner(R_v1, p)*dxOmega
 
     a10 = 0
-    a11 = Alpha1*inner(grad(u2), grad(v2))*dx + inner(u2, v2)*dx
+    a11 = Alpha2*inner(grad(u2), grad(v2))*dx + inner(u2, v2)*dx
     a12 = -inner(R_v2, p)*dxOmega
 
     a20 = inner(R_u1, q)*dxOmega
@@ -75,7 +75,7 @@ def solve_problem(i, (f1, f2, g)):
 
 # --------------------------------------------------------------------
 
-def setup_mms():
+def setup_mms(eps=None):
     '''Simple MMS...'''
     from common import as_expression
     import sympy as sp

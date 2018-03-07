@@ -9,7 +9,7 @@ from dolfin import *
 from xii import *
 
 
-def solve_problem(i, (f, g)):
+def setup_problem(i, (f, g), eps=None):
     '''grad-div on [0, 1]^2'''
     n = 4*2**i
     mesh = UnitSquareMesh(*(n, )*2)
@@ -41,7 +41,7 @@ def solve_problem(i, (f, g)):
     return a, L, W
 
 
-def setup_preconditioner(W, which):
+def setup_preconditioner(W, which, eps=None):
     '''
     This is a block diagonal preconditioner based on Hdiv x H0.5'''
     from block.algebraic.petsc import LU
@@ -62,7 +62,7 @@ def setup_preconditioner(W, which):
 # --------------------------------------------------------------------
 
 
-def setup_mms():
+def setup_mms(eps=None):
     '''Simple MMS problem for UnitSquareMesh'''
     from common import as_expression
     import sympy as sp
