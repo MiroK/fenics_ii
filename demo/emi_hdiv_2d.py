@@ -11,7 +11,7 @@
 from dolfin import *
 from xii import *
 
-EPS = 1E-6
+EPS = 1E-12
 
 def setup_domains(n):
     '''On [0, 1] we want to mark domain inside and outside wrt interface'''    
@@ -105,6 +105,37 @@ def setup_transform(i, wh):
     u2_h = interpolate(u_h, V2)
 
     return [sigma1_h, sigma2_h, u1_h, u2_h, p_h]
+
+
+def setup_preconditioner(W, which):
+    '''
+    This is a block diagonal preconditioner based on 
+    
+        Hdiv x L2 x H0.5 or 
+    '''
+    from block.algebraic.petsc import LU
+    from block.algebraic.petsc import LumpedInvDiag
+    from hsmg import HsNorm
+    
+    S, V, Q = W
+
+    # Hdiv
+    sigma, tau = TrialFunction(S), TestFunction(S)
+    b00 = inner(div(sigma), div(tau))*dx + inner(sigma, tau)*dx
+    # Inverted exactly
+    B00 = LU(ii_assemble(b00))
+
+    # L2
+    u, v = TrialFunction(V), TestFunction(V)
+    b11 = inner(u, v)*dx
+    # Inverted by BoomerAMG
+    B11 = LumpedInvDiag(ii_assemble(b11))
+
+    # The Q norm via spectral
+    B22 = HsNorm(Q, s=0.5)**-1  # The norm is inverted exactly
+
+    return block_diag_mat([B00, B11, B22])
+
 
 # --------------------------------------------------------------------
 

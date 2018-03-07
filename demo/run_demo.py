@@ -2,7 +2,7 @@
 
 from runpy import run_module
 from xii import ii_Function, ii_assemble, ii_convert
-from dolfin import solve, File, Timer, info
+from dolfin import solve, File, Timer
 import os
 
 
@@ -39,16 +39,19 @@ def main(module_name, ncases, save_dir='', solver='direct', precond=0):
         # Assemble blocks
         t = Timer('assembly'); t.start()
         AA, bb = map(ii_assemble, (a, L))
-        info('\tAssembled blocks in %g s' % t.stop())
+        print '\tAssembled blocks in %g s' % t.stop()
 
         if solver == 'direct':
             # Turn into a (monolithic) PETScMatrix/Vector
             t = Timer('conversion'); t.start()        
-            AA, bb = map(ii_convert, (AA, bb))
-            info('\tConversion to PETScMatrix/Vector took %g s' % t.stop())
+            AAm, bbm = map(ii_convert, (AA, bb))
+            print '\tConversion to PETScMatrix/Vector took %g s' % t.stop()
             
             wh = ii_Function(W)
-            solve(AA, wh.vector(), bb)
+            t = Timer('solve'); t.start()
+            solve(AAm, wh.vector(), bbm)
+            print '\tSolver took %g s' % t.stop()
+            
             niters = None  # Well 1
         else:
             from block.iterative import PETScMinRes
@@ -64,13 +67,18 @@ def main(module_name, ncases, save_dir='', solver='direct', precond=0):
                                 tolerance=tolerance,
                                 relativeconv=relativeconv)
             # Solve
+            t = Timer('solve'); t.start()
             x = AAinv*bb
+            print '\tSolver took %g s' % t.stop()
+            
             niters = len(AAinv.residuals)-1
             
             wh = ii_Function(W, x)
+        # Let's check the final size of the residual
+        r_norm = (bb - AA*wh.block_vec()).norm()
             
         # Convergence?
-        monitor.send((transform(i, wh), niters))
+        monitor.send((transform(i, wh), niters, r_norm))
         
     # Only send the final
     if save_dir:
@@ -82,7 +90,7 @@ def main(module_name, ncases, save_dir='', solver='direct', precond=0):
 
 if __name__ == '__main__':
     import argparse
-    
+
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     # The demo file: runnning it defines setups*
     parser.add_argument('demo', nargs='?', default='all', type=str,

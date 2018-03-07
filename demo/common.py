@@ -48,7 +48,7 @@ def monitor_error(u, norms, memory, reduction=lambda x: x):
     counter = 0
     while True:
         counter += 1
-        uh, niters = yield
+        uh, niters, r_norm = yield
         mesh_size = uh[0].function_space().mesh().hmin()
 
         error = [norm(ui, uhi) for norm, ui, uhi in zip(norms, u, uh)]
@@ -69,12 +69,14 @@ def monitor_error(u, norms, memory, reduction=lambda x: x):
                        # Unknowns
                        ['#(%d)=%d' % p for p in enumerate(ndofs)] +
                        # Total
-                       ['|%d' % sum(ndofs)])
+                       ['#(all)=%d' % sum(ndofs)] +
+                       # Rnorm
+                       ['|r|_l2=%g' % r_norm])
         # Screen
         if niters is None:
             print GREEN % msg
         else:
-            print GREEN % msg, BLUE % ('@niters %d' % niters)
+            print GREEN % msg, BLUE % ('niters %d' % niters)
         
         error0, mesh_size0 = error, mesh_size
         memory.append(np.r_[mesh_size, error])

@@ -40,7 +40,27 @@ def solve_problem(i, (f, g)):
     
     return a, L, W
 
+
+def setup_preconditioner(W, which):
+    '''
+    This is a block diagonal preconditioner based on Hdiv x H0.5'''
+    from block.algebraic.petsc import LU
+    from hsmg import HsNorm
+    
+    S, Q = W
+
+    sigma, tau = TrialFunction(S), TestFunction(S)
+    # Hdiv
+    b00 = inner(div(sigma), div(tau))*dx + inner(sigma, tau)*dx
+    B00 = LU(ii_assemble(b00))  # Exact
+    # H0.5
+    B11 = HsNorm(Q, s=0.5)**-1  # The norm is inverted exactly
+
+    return block_diag_mat([B00, B11])
+
+
 # --------------------------------------------------------------------
+
 
 def setup_mms():
     '''Simple MMS problem for UnitSquareMesh'''

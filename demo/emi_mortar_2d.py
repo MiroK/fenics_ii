@@ -11,7 +11,7 @@
 from dolfin import *
 from xii import *
 
-EPS = 1E-6
+EPS = 1E12
 
 def setup_domain(n):
     '''
@@ -78,6 +78,35 @@ def solve_problem(i, (f1, f2, g), eps=EPS):
     L = [L0, L1, L2]
     
     return a, L, W
+
+
+def setup_preconditioner(W, which):
+    '''
+    This is a block diagonal preconditioner based on 
+    
+        H1 x H1 x H-0.5 or 
+    '''
+    from block.algebraic.petsc import AMG
+    from block.algebraic.petsc import LumpedInvDiag
+    from hsmg import HsNorm
+    
+    V1, V2, Q = W
+
+    # H1
+    u1, v1 = TrialFunction(V1), TestFunction(V1)
+    b00 = inner(grad(u1), grad(v1))*dx + inner(u1, v1)*dx
+    # Inverted by BoomerAMG
+    B00 = AMG(ii_assemble(b00))
+
+    u2, v2 = TrialFunction(V2), TestFunction(V2)
+    b11 = inner(grad(u2), grad(v2))*dx + inner(u2, v2)*dx
+    # Inverted by BoomerAMG
+    B11 = AMG(ii_assemble(b11))
+
+    # The Q norm via spectral
+    B22 = HsNorm(Q, s=-0.5)**-1  # The norm is inverted exactly
+
+    return block_diag_mat([B00, B11, B22])
 
 # --------------------------------------------------------------------
 

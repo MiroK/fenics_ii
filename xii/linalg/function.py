@@ -1,4 +1,5 @@
 from dolfin import Function, as_backend_type, PETScVector
+from block import block_vec
 from petsc4py import PETSc
 
 
@@ -35,6 +36,10 @@ class ii_Function(object):
         '''
         nest = [as_backend_type(v).vec() for v in self.vectors()]
         return PETScVector(PETSc.Vec().createNest(nest))
+
+    def block_vec(self):
+        '''A block vec that is the coefficients of the function'''
+        return block_vec(self.vectors())
 
     def __len__(self): return len(self.functions)
     
