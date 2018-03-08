@@ -95,7 +95,7 @@ def setup_mms(eps=None):
     return (sigma_exact, p_exact), (f_rhs, g_rhs)
 
 
-def setup_error_monitor(true, history):
+def setup_error_monitor(true, history, path=''):
     '''We measure error in Hcurl and L2 for simplicity'''
     from common import monitor_error, Hcurl_norm, L2_norm
-    return monitor_error(true, [Hcurl_norm, L2_norm], history)
+    return monitor_error(true, [Hcurl_norm, L2_norm], history, path=path)

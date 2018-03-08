@@ -37,12 +37,15 @@ def coroutine(func):
 
 
 @coroutine
-def monitor_error(u, norms, memory, reduction=lambda x: x):
+def monitor_error(u, norms, memory, reduction=lambda x: x, path=''):
     '''
     Send in current solution to get the error size and convergence printed.
     '''
     GREEN = '\033[1;37;32m%s\033[0m'
     BLUE = '\033[1;37;34m%s\033[0m'
+
+    if path:
+        with open(path, 'w') as f: f.write('#\n')
     
     mesh_size0, error0 = None, None
     counter = 0
@@ -62,26 +65,27 @@ def monitor_error(u, norms, memory, reduction=lambda x: x):
             rate = np.nan*np.ones_like(error)
             
         msg = ' '.join(['{case %d}' % counter] +
-                       ['h = %.4E' % mesh_size] +  # Resolution
+                       ['h=%.2E' % mesh_size] +  # Resolution
                        # Error
-                       ['e_(u%d) = %.2E[%.2f]' % (i, e, r)  
+                       ['e_(u%d)=%.2E[%.2f]' % (i, e, r)  
                         for i, (e, r) in enumerate(zip(error, rate))] +
                        # Unknowns
                        ['#(%d)=%d' % p for p in enumerate(ndofs)] +
                        # Total
                        ['#(all)=%d' % sum(ndofs)] +
                        # Rnorm
-                       ['|r|_l2=%g' % r_norm])
+                       ['|r|_l2=%g' % r_norm] +
+                       ['niters=%d' % niters])
         # Screen
-        if niters is None:
-            print GREEN % msg
-        else:
-            print GREEN % msg, BLUE % ('niters %d' % niters)
-        
+        print GREEN % msg
+        # Log
+        if path:
+            with open(path, 'a') as f: f.write(msg + '\n')
+
         error0, mesh_size0 = error, mesh_size
         memory.append(np.r_[mesh_size, error])
 
-
+        
 # Two arg norms
 H1_norm = lambda u, uh: errornorm(u, uh, 'H1', degree_rise=2)
 H10_norm = lambda u, uh: errornorm(u, uh, 'H10', degree_rise=2)

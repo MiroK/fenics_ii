@@ -166,7 +166,7 @@ def setup_mms(eps):
     return up, fg
 
 
-def setup_error_monitor(true, history):
+def setup_error_monitor(true, history, path=''):
     '''We measure error in Hdiv and L2 for simplicity'''
     from common import monitor_error, Hdiv_norm, L2_norm
     from math import sqrt
@@ -180,4 +180,5 @@ def setup_error_monitor(true, history):
     return monitor_error(true,
                          [Hdiv_norm, Hdiv_norm, L2_norm, L2_norm, L2_norm],
                          history,
-                         reduction)
+                         reduction
+                         path=path)

@@ -100,7 +100,7 @@ def setup_mms(eps=None):
     return up, fg
 
 
-def setup_error_monitor(true, history):
+def setup_error_monitor(true, history, path=''):
     '''We measure error in H1 and L2 for simplicity'''
     from common import monitor_error, H1_norm, L2_norm
-    return monitor_error(true, [H1_norm, L2_norm], history)
+    return monitor_error(true, [H1_norm, L2_norm], history, path=path)

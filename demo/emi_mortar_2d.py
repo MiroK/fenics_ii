@@ -94,7 +94,7 @@ def setup_preconditioner(W, which, eps):
 
     if which == 0:
         # H1
-        print '\tUsing H1 x H1 x (sqrt(1./eps)*L2 \cap H-0.5) preconditioner'
+        print '\tUsing H1 x H1 x (sqrt(1./%g)*L2 \cap H-0.5) preconditioner' % eps
         u1, v1 = TrialFunction(V1), TestFunction(V1)
         b00 = inner(grad(u1), grad(v1))*dx + inner(u1, v1)*dx
         # Inverted by BoomerAMG
@@ -108,7 +108,7 @@ def setup_preconditioner(W, which, eps):
         # The Q norm via spectral, the norm is inverted exactly
         B22 = inverse((HsNorm(Q, s=-0.5) + (eps**-1)*HsNorm(Q, s=0.0)))
     else:
-        print '\tUsing (H1 \cap H0.5) x (H1 \cap H0.5) x sqrt(eps)*L2 preconditioner'
+        print '\tUsing (H1 \cap H0.5) x (H1 \cap H0.5) x sqrt(%g)*L2 preconditioner' % eps
 
         iface = Q.mesh()
         dxGamma = dx(domain=iface)
@@ -129,7 +129,7 @@ def setup_preconditioner(W, which, eps):
         
         # The Q norm via spectral
         p, q = TrialFunction(Q), TestFunction(Q)
-        b22 = Constant(eps)*inner(p, q)*dxGamma
+        b22 = Constant(1./eps)*inner(p, q)*dxGamma
         B22 = LumpedInvDiag(ii_assemble(b22))
 
     return block_diag_mat([B00, B11, B22])
@@ -159,11 +159,11 @@ def setup_mms(eps):
     return up, f+[g]
 
 
-def setup_error_monitor(true, history):
+def setup_error_monitor(true, history, path=''):
     '''We measure error in H1 and L2 for simplicity'''
     from common import monitor_error, H1_norm, L2_norm
     # Note we produce u1, u2, and p error. It is more natural to have
     # broken H1 norm so reduce the first 2 errors to single number
     reduction = lambda e: None if e is None else [sqrt(e[0]**2 + e[1]**2), e[-1]]
     
-    return monitor_error(true, [H1_norm, H1_norm, L2_norm], history, reduction)
+    return monitor_error(true, [H1_norm, H1_norm, L2_norm], history, reduction, path=path)
