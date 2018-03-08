@@ -3,7 +3,7 @@
 from xii import (ii_Function, ii_assemble, ii_convert, ii_PETScOperator,
                  ii_PETScPreconditioner, as_petsc_nest)
 from runpy import run_module
-from dolfin import solve, File, Timer, PETScKrylovSolver
+from dolfin import solve, File, Timer, LUSolver
 from petsc4py import PETSc
 import os
 
@@ -64,7 +64,7 @@ def main(module_name, ncases, save_dir='', solver='direct', precond=0, eps=1., l
             print '\tConversion to PETScMatrix/Vector took %g s' % t.stop()
             
             t = Timer('solve'); t.start()
-            solve(AAm, wh.vector(), bbm)
+            LUSolver('umfpack').solve(AAm, wh.vector(), bbm)
             print '\tSolver took %g s' % t.stop()
             
             niters = 1
