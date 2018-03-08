@@ -87,6 +87,9 @@ def main(module_name, ncases, save_dir='', solver='direct', precond=0, eps=1., l
             # We attach the wrapped preconditioner defined by the module
             ksp.setPC(ii_PETScPreconditioner(BB, ksp))
 
+            # Want the iterations to start from random
+            wh.block_vec().randomize()
+            
             # Solve, note the past object must be PETSc.Vec
             t = Timer('solve'); t.start()            
             ksp.solve(as_petsc_nest(bb), wh.petsc_vec())
