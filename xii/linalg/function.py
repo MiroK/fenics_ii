@@ -6,6 +6,13 @@ from petsc4py import PETSc
 first = lambda iterable: next(iter(iterable))
 
 
+def as_petsc_nest(bvec):
+    '''Represent bvec as PETSc nested vector'''
+    assert isinstance(bvec, block_vec)
+    nest = [as_backend_type(v).vec() for v in bvec]
+    return PETSc.Vec().createNest(nest)
+
+
 class ii_Function(object):
     '''Really a list of functions where each is in some W[i]'''
     def __init__(self, W, components=None):
@@ -34,9 +41,12 @@ class ii_Function(object):
         the components. So change to component changes this and vice 
         versa
         '''
-        nest = [as_backend_type(v).vec() for v in self.vectors()]
-        return PETScVector(PETSc.Vec().createNest(nest))
+        return PETScVector(self.petsc_vec())
 
+    def petsc_vec(self):
+        '''PETSc Vec (not dolfin.PETSc!)'''
+        return as_petsc_nest(self.block_vec())
+        
     def block_vec(self):
         '''A block vec that is the coefficients of the function'''
         return block_vec(self.vectors())

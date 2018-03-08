@@ -1,8 +1,10 @@
 # Driver for demos
 
+from xii import (ii_Function, ii_assemble, ii_convert, ii_PETScOperator,
+                 ii_PETScPreconditioner, as_petsc_nest)
 from runpy import run_module
-from xii import ii_Function, ii_assemble, ii_convert
-from dolfin import solve, File, Timer
+from dolfin import solve, File, Timer, PETScKrylovSolver
+from petsc4py import PETSc
 import os
 
 
@@ -53,39 +55,45 @@ def main(module_name, ncases, save_dir='', solver='direct', precond=0, eps=1., l
         AA, bb = map(ii_assemble, (a, L))
         print '\tAssembled blocks in %g s' % t.stop()
 
+        wh = ii_Function(W)
+        
         if solver == 'direct':
             # Turn into a (monolithic) PETScMatrix/Vector
             t = Timer('conversion'); t.start()        
             AAm, bbm = map(ii_convert, (AA, bb))
             print '\tConversion to PETScMatrix/Vector took %g s' % t.stop()
             
-            wh = ii_Function(W)
             t = Timer('solve'); t.start()
             solve(AAm, wh.vector(), bbm)
             print '\tSolver took %g s' % t.stop()
             
             niters = 1
         else:
-            from block.iterative import PETScMinRes
-
-            # Start from random initial guess
-            x = AA.create_vec(); x.randomize()
-            tolerance = 1E-8
-            relativeconv = True
-            
+            # Here we define a Krylov solver using PETSc
             BB = module.setup_preconditioner(W, precond, eps=eps)
-            
-            AAinv = PETScMinRes(AA, precond=BB, initial_guess=x,
-                                tolerance=tolerance,
-                                relativeconv=relativeconv)
-            # Solve
-            t = Timer('solve'); t.start()
-            x = AAinv*bb
+            ## AA and BB as block_mat
+            ksp = PETSc.KSP().create()
+            ksp.setType('minres')
+            ksp.setOperators(ii_PETScOperator(AA))
+
+            def ksp_monitor(ksp, k, norm):
+                print 'iteration %d norm %g' % (k, norm)
+
+            ksp.setMonitor(ksp_monitor)
+
+            ksp.setNormType(PETSc.KSP.NormType.NORM_PRECONDITIONED)
+            ksp.setTolerances(rtol=1E-8, atol=None, divtol=None, max_it=200)
+            ksp.setConvergenceHistory()
+            # We attach the wrapped preconditioner defined by the module
+            ksp.setPC(ii_PETScPreconditioner(BB, ksp))
+
+            # Solve, note the past object must be PETSc.Vec
+            t = Timer('solve'); t.start()            
+            ksp.solve(as_petsc_nest(bb), wh.petsc_vec())
             print '\tSolver took %g s' % t.stop()
+
+            niters = ksp.getIterationNumber()
             
-            niters = len(AAinv.residuals)-1
-            
-            wh = ii_Function(W, x)
         # Let's check the final size of the residual
         r_norm = (bb - AA*wh.block_vec()).norm()
             
