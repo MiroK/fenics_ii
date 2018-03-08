@@ -3,6 +3,7 @@ from block.block_compose import block_mul, block_add, block_sub
 
 from xii.linalg.matrix_utils import is_petsc_mat, is_number
 from xii.linalg.convert import numpy_to_petsc
+from xii.linalg import block_utils
 
 from scipy.linalg import eigh
 import numpy as np
@@ -15,6 +16,10 @@ def inverse(bmat):
     '''
     if isinstance(bmat, InterpolationMatrix):
         return bmat**-1
+
+    if isinstance(bmat, block_utils.VectorizedOperator):
+        return block_utils.VectorizedOperator(inverse(bmat.bmat), bmat.W)
+    
     # Does it satisfy the definittion
     assert is_well_defined(bmat)
     # Try to see if sombody computes the eigenvalues
