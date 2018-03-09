@@ -5,17 +5,23 @@
 #
 # With bcs
 #
-#  u = u0              on |_|
-#  grad(u).n + p.n = 0 on top
+#  u = u0              on left
+#  grad(u).n + p.n = 0 on top and bottom (A)
+#  grad(u).n + p.n = h on right
 #
-# The latter bc is to avoid singular problem is u = u0 was presribed
+# The latter bcs are to avoid singular problem is u = u0 was presribed
 # on the entire boundary
+#
+# NOTE: The MMS here can be modified to use with Dirichlet on |_| and
+# (A) condition on the top. This then becomes a much harded probelm to
+# converged on - I suspect this is because the multiplier then is big
+# time discontinuous in the corners! Still, regardless of the stup 
 
 from dolfin import *
 from xii import *
 
 
-def setup_problem(i, (f, u0), eps=1.):
+def setup_problem(i, (f, h, u0), eps=1.):
     '''Just showcase, no MMS (yet)'''
     # I setup the constants arbitraily
     n = 16*(2**i)
@@ -23,15 +29,19 @@ def setup_problem(i, (f, u0), eps=1.):
     mesh = UnitSquareMesh(n, n)
 
     gamma = MeshFunction('size_t', mesh, mesh.topology().dim()-1, 0)
-    CompiledSubDomain('near(x[0]*(1-x[0]), 0) || near(x[1], 0)').mark(gamma, 1)
+    CompiledSubDomain('near(x[1], 1)').mark(gamma, 0)
+    CompiledSubDomain('near(x[0], 0)').mark(gamma, 1)
+    CompiledSubDomain('near(x[1], 0)').mark(gamma, 2)
+    CompiledSubDomain('near(x[0], 1)').mark(gamma, 3)
+
     bmesh = EmbeddedMesh(gamma, 1)
 
     normal = OuterNormal(bmesh, [0.5, 0.5])
 
     V = VectorFunctionSpace(mesh, 'CG', 2)
     Q = FunctionSpace(mesh, 'CG', 1)
-    # NOT CG1
-    M = VectorFunctionSpace(bmesh, 'DG', 0, 2)
+    # NOTE: CG1 here and fine mesh does not converge with umfpack
+    M = VectorFunctionSpace(bmesh, 'CG', 1, 2)
     W = (V, Q, M)
 
     u, p, lambda_ = map(TrialFunction, W)
@@ -54,7 +64,8 @@ def setup_problem(i, (f, u0), eps=1.):
     a22 = 0
 
     n = FacetNormal(mesh)
-    L0 = inner(f, v)*dx
+    # NOTE: here I use the fact that on top and bottom the stress is 0
+    L0 = inner(f, v)*dx + inner(h, v)*ds(domain=mesh, subdomain_data=gamma, subdomain_id=3)
     L1 = inner(Constant(0), q)*dx
     L2 = inner(u0, beta_)*dxGamma
 
@@ -111,34 +122,21 @@ def setup_mms(eps):
     # The multiplier is -Grad(u).n - p.n
     I = sp.eye(2)
     
-    lambda_ = (((X - p*I)*sp.Matrix([-1, 0])).subs(x, 0),
-               ((X - p*I)*sp.Matrix([0, -1])).subs(y, 0),
-               ((X - p*I)*sp.Matrix([1, 0])).subs(x, 1))
+    lambda_ = ((X - p*I)*sp.Matrix([-1, 0])).subs(x, 0)
+    #           ((X - p*I)*sp.Matrix([0, -1])).subs(y, 0),
+    #           ((X - p*I)*sp.Matrix([1, 0])).subs(x, 1))
 
+    h = -((X - p*I)*sp.Matrix([1, 0])).subs(x, 1)
     f = -sp_Div(sp_Grad(u)) + u - sp_grad(p)
     u0 = u
     
-    up = map(as_expression, (u, p))
-    fg = map(as_expression, (f, u0))
+    up = map(as_expression, (u, p, lambda_))
+    fg = map(as_expression, (f, h, u0))
     
-    return up + [map(as_expression, lambda_)], fg
+    return up, fg
 
 
 def setup_error_monitor(true, history, path=''):
     '''We measure error in H1 and L2, L2 for simplicity'''
     from common import monitor_error, H1_norm, L2_norm
-    # Now for the multiplier, since we really know the exact solution
-    # only on pieces of the mesh, we will do things manually
-    #
-    def foo(u, uh):
-        mesh = uh.function_space().mesh()
-        cell_f = MeshFunction('size_t', mesh, mesh.topology().dim(), 0)
-        # Mark pieces
-        CompiledSubDomain('near(x[1], 0)').mark(cell_f, 1)
-        CompiledSubDomain('near(x[0], 1)').mark(cell_f, 2)
-
-        dX = Measure('dx', domain=mesh, subdomain_data=cell_f)
-        error = sum(inner(uj-uh, uj-uh)*dX(j) for j, uj in enumerate(u))
-        return sqrt(assemble(error))
-
-    return monitor_error(true, [H1_norm, L2_norm, foo], history, path=path)
+    return monitor_error(true, [H1_norm, L2_norm, L2_norm], history, path=path)
