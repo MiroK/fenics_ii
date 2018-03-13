@@ -4,6 +4,7 @@ from xii import (ii_Function, ii_assemble, ii_convert, ii_PETScOperator,
                  ii_PETScPreconditioner, as_petsc_nest)
 from runpy import run_module
 from dolfin import solve, File, Timer, LUSolver
+import matplotlib.pyplot as plt
 from petsc4py import PETSc
 import os
 
@@ -32,7 +33,7 @@ def main(module_name, ncases, save_dir='', solver='direct', precond=0, eps=1., l
     else:
         path = ''
 
-    memory = []
+    memory, residuals  = [], []
     monitor = module.setup_error_monitor(u_true, memory, path=path)
 
     # Sometimes it is usedful to transform the solution before computing
@@ -96,6 +97,8 @@ def main(module_name, ncases, save_dir='', solver='direct', precond=0, eps=1., l
             print '\tSolver took %g s' % t.stop()
 
             niters = ksp.getIterationNumber()
+
+            residuals.append(ksp.getConvergenceHistory())
             
         # Let's check the final size of the residual
         r_norm = (bb - AA*wh.block_vec()).norm()
@@ -110,6 +113,11 @@ def main(module_name, ncases, save_dir='', solver='direct', precond=0, eps=1., l
             # Renaming to make it easier to save state in Visit/Pareview
             wh_i.rename('u', str(i))
             File('%s_%d.pvd' % (path, i)) << wh_i
+
+        plt.figure()
+        [plt.semilogy(res, label=str(i)) for i, res in enumerate(residuals, 1)]
+        plt.legend(loc='best')
+        plt.show()
 
 # --------------------------------------------------------------------
 
