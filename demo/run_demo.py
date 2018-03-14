@@ -9,7 +9,8 @@ from petsc4py import PETSc
 import os
 
 
-def main(module_name, ncases, save_dir='', solver='direct', precond=0, eps=1., log=0):
+def main(module_name, ncases,
+         save_dir='', solver='direct', precond=0, eps=1., log=0, plot=0):
     '''
     Run the test case in module with ncases. Optionally store results
     in savedir. For some modules there are multiple (which) choices of 
@@ -77,20 +78,28 @@ def main(module_name, ncases, save_dir='', solver='direct', precond=0, eps=1., l
             ksp.setType('minres')
             ksp.setOperators(ii_PETScOperator(AA))
 
-            def ksp_monitor(ksp, k, norm):
-                print 'iteration %d norm %g' % (k, norm)
+            class KSPMonitor(object):
+                def __init__(self):
+                    self.norm0 = None
+                    # NOTE for MinRes |x| is the precond. norm of x
+                    self.msg = 'k %d, |r_k|=%g, |r_k|/|r_0|=%g'
+                def __call__(self, ksp, k, norm):
+                    if self.norm0 is None:
+                        self.norm0 = norm    
+                    print self.msg % (k, norm, norm/self.norm0)
+            
+            ksp_monitor = KSPMonitor()
 
             ksp.setMonitor(ksp_monitor)
 
             ksp.setNormType(PETSc.KSP.NormType.NORM_PRECONDITIONED)
-            ksp.setTolerances(rtol=1E-8, atol=None, divtol=None, max_it=200)
+            ksp.setTolerances(rtol=1E-8, atol=None, divtol=None, max_it=300)
             ksp.setConvergenceHistory()
             # We attach the wrapped preconditioner defined by the module
             ksp.setPC(ii_PETScPreconditioner(BB, ksp))
 
             # Want the iterations to start from random
             wh.block_vec().randomize()
-            
             # Solve, note the past object must be PETSc.Vec
             t = Timer('solve'); t.start()            
             ksp.solve(as_petsc_nest(bb), wh.petsc_vec())
@@ -114,8 +123,10 @@ def main(module_name, ncases, save_dir='', solver='direct', precond=0, eps=1., l
             wh_i.rename('u', str(i))
             File('%s_%d.pvd' % (path, i)) << wh_i
 
+    # Plot relative residual norm
+    if plot:
         plt.figure()
-        [plt.semilogy(res, label=str(i)) for i, res in enumerate(residuals, 1)]
+        [plt.semilogy(res/res[0], label=str(i)) for i, res in enumerate(residuals, 1)]
         plt.legend(loc='best')
         plt.show()
 
@@ -140,6 +151,9 @@ if __name__ == '__main__':
     # Log the results
     parser.add_argument('-log', type=int, default=0,
                         help='0/1 for storing the results')
+    # Plot iters vs residual norm
+    parser.add_argument('-plot', type=int, default=0,
+                        help='0/1 for plotting iters vs. residual norm')
 
     # Iterative solver?
     parser.add_argument('-solver', type=str, default='direct', choices=['direct', 'iterative'],
@@ -170,4 +184,5 @@ if __name__ == '__main__':
                                              solver=args.solver,
                                              precond=args.precond,
                                              eps=e,
-                                             log=bool(args.log))
+                                             log=bool(args.log),
+                                             plot=bool(args.plot))

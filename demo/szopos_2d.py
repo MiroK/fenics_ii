@@ -1,6 +1,6 @@
 # On [0, 1]^2 I consider
 #
-# -Delta u + u - grad(p) = f
+# -eps*Delta u + u - grad(p) = f
 #  div(u)                = 0
 #
 # With bcs
@@ -12,7 +12,7 @@ from dolfin import *
 from xii import *
 
 
-def setup_problem(i, (f, p0), eps=1.):
+def setup_problem(i, (f, p0), eps):
     '''Just showcase, no MMS (yet)'''
     # I setup the constants arbitraily
     n = 16*(2**i)
@@ -28,7 +28,7 @@ def setup_problem(i, (f, p0), eps=1.):
 
     V = VectorFunctionSpace(mesh, 'CG', 2)
     Q = FunctionSpace(mesh, 'CG', 1)
-    M = FunctionSpace(bmesh, 'DG', 0)
+    M = FunctionSpace(bmesh, 'CG', 1)
     W = (V, Q, M)
 
     u, p, lambda_ = map(TrialFunction, W)
@@ -38,7 +38,7 @@ def setup_problem(i, (f, p0), eps=1.):
 
     dxGamma = Measure('dx', domain=bmesh)
 
-    a00 = inner(grad(u), grad(v))*dx + inner(u, v)*dx
+    a00 = Constant(eps)*inner(grad(u), grad(v))*dx + inner(u, v)*dx
     a01 = inner(p, div(v))*dx
     a02 = inner(T_v, lambda_*tangent)*dxGamma
     
@@ -69,13 +69,18 @@ def setup_preconditioner(W, which, eps):
     u, p, lambda_ = map(TrialFunction, W)
     v, q, beta_ = map(TestFunction, W)
 
-    b00 = inner(grad(u), grad(v))*dx + inner(u, v)*dx
+    b00 = Constant(eps)*inner(grad(u), grad(v))*dx + inner(u, v)*dx
     B00 = AMG(ii_assemble(b00))
 
-    b11 = inner(p, q)*dx
-    B11 = AMG(ii_assemble(b11))
+    b11a = Constant(1./eps)*inner(p, q)*dx
 
-    B22 = inverse(HsNorm(W[-1], s=-0.5))
+    b11b = inner(grad(p), grad(q))*dx
+    bcs = DirichletBC(W[1], Constant(0), 'on_boundary')
+    B11b, _ = assemble_system(b11b, inner(Constant(0), q)*dx, bcs)
+    
+    B11 = AMG(ii_assemble(b11a)) + AMG(B11b)
+
+    B22 = inverse((1./eps)*HsNorm(W[-1], s=-0.5))
 
     return block_diag_mat([B00, B11, B22])
 
@@ -87,7 +92,7 @@ def setup_mms(eps):
     import sympy as sp
     
     pi = sp.pi    
-    x, y = sp.symbols('x[0] x[1]')
+    x, y, EPS = sp.symbols('x[0] x[1] EPS')
     
     sp_grad = lambda f: sp.Matrix([f.diff(x, 1), f.diff(y, 1)])
 
@@ -100,7 +105,7 @@ def setup_mms(eps):
 
     u = sp.Matrix([sp.sin(pi*y)*sp.cos(pi*x), -sp.cos(pi*y)*sp.sin(pi*x)])
 
-    X = -sp_Grad(u)
+    X = -EPS*sp_Grad(u)
     # I think the multiplier is the tangential component of X.n
     # so now we circulate the boundaries       0
     #                                         1 3
@@ -111,18 +116,19 @@ def setup_mms(eps):
                -(X.subs(x, 1)*sp.Matrix([1, 0]))[1])
     
     p = sp.sin(pi*((x-0.5)**2 + (y-0.5)**2))
-    
-    f = -sp_Div(sp_Grad(u)) + u - sp_grad(p)
+    # EPS * 1./EPS
+    f = -EPS*sp_Div(sp_Grad(u)) + u - sp_grad(p)
     p0 = p
     
-    up = map(as_expression, (u, p))
-    fg = map(as_expression, (f, p0))
+    up = [as_expression(u, EPS=eps), as_expression(p, EPS=eps)]
+    fg = [as_expression(f, EPS=eps), as_expression(p0)]
     
-    return up + [map(as_expression, lambda_)], fg
+    return up + [[as_expression(l, EPS=eps) for l in lambda_]], fg
 
 
 def setup_error_monitor(true, history, path=''):
-    '''We measure error in H1 and L2, L2 for simplicity'''
+    '''We measure error in L2 and L2, L2 for simplicity'''
+    # L2 on velocity because eps -> 0 H1 does not make sense
     from common import monitor_error, H1_norm, L2_norm
     # Now for the multiplier, since we really know the exact solution
     # only on pieces of the mesh, we will do things manually
@@ -140,4 +146,4 @@ def setup_error_monitor(true, history, path=''):
         error = sum(inner(uj-uh, uj-uh)*dX(j) for j, uj in enumerate(u))
         return sqrt(assemble(error))
 
-    return monitor_error(true, [H1_norm, L2_norm, foo], history, path=path)
+    return monitor_error(true, [L2_norm, L2_norm, foo], history, path=path)
