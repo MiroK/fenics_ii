@@ -9,13 +9,15 @@ from petsc4py import PETSc
 import os
 
 
-def main(module_name, ncases,
-         save_dir='', solver='direct', precond=0, eps=1., log=0, plot=0):
+def main(module_name, ncases, params):
     '''
     Run the test case in module with ncases. Optionally store results
     in savedir. For some modules there are multiple (which) choices of 
     preconditioners.
     '''
+    # Unpack
+    globals().update(params)
+
     RED = '\033[1;37;31m%s\033[0m'
     print RED % ('\tRunning %s' % module_name)
 
@@ -178,11 +180,10 @@ if __name__ == '__main__':
     else:
         modules = [module]
 
+    params = {'save_dir': args.save_dir, 'solver': args.solver,
+              'precond': args.precond, 'log': bool(args.log), 'plot': bool(args.plot)}
     for module in modules:
         for e in args.problem_eps:
-            main(module, range(args.ncases), save_dir=args.save_dir,
-                                             solver=args.solver,
-                                             precond=args.precond,
-                                             eps=e,
-                                             log=bool(args.log),
-                                             plot=bool(args.plot))
+            params['eps'] = e
+            main(module, ncases=range(args.ncases), params=params)
+                                             
