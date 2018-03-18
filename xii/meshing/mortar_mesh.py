@@ -5,7 +5,7 @@ import networkx as nx
 import numpy as np
 
 
-def mortar_meshes(subdomains, markers, strict=True, tol=1E-14):
+def mortar_meshes(subdomains, markers, ifacet_iter=None, strict=True, tol=1E-14):
     '''
     Let subdomains a cell function. We assume that domains (cells) marked 
     with the given markers are adjecent and an interface can be defined 
@@ -27,8 +27,10 @@ def mortar_meshes(subdomains, markers, strict=True, tol=1E-14):
     # For each facet we want to know which 2 cells share it
     tagged_iface = defaultdict(dict)
 
+    if ifacet_iter is None: ifacet_iter = df.facets(mesh)
+    
     mesh.init(tdim-1, tdim)
-    for facet in df.facets(mesh):
+    for facet in ifacet_iter:
         cells = map(int, facet.entities(tdim))
         
         if len(cells) > 1:
@@ -156,29 +158,40 @@ def is_continuous(mesh):
 
 if __name__ == '__main__':
     from dolfin import *
-
-    n = 16
-    # Compare with building embedded map. NOTE: only possible for a
-    # single interface.
-    interior = CompiledSubDomain('std::max(fabs(x[0] - 0.5), fabs(x[1] - 0.5)) < 0.25')
-    outer_mesh = UnitSquareMesh(n, n)
     
-    subdomains = MeshFunction('size_t', outer_mesh, outer_mesh.topology().dim(), 0)
-    # Awkward marking
-    for cell in cells(outer_mesh):
-        x = cell.midpoint().array()            
-        subdomains[cell] = int(interior.inside(x, False))
-    assert sum(1 for _ in SubsetIterator(subdomains, 1)) > 0
-
-    submeshes, interface, colormap = mortar_meshes(subdomains, (0, 1))
+    gamma = CompiledSubDomain('near(std::max(fabs(x[0] - 0.5), fabs(x[1] - 0.5)), 0.25)')
+    interior = CompiledSubDomain('std::max(fabs(x[0] - 0.5), fabs(x[1] - 0.5)) < 0.25')    
 
     from xii.meshing.embedded_mesh import build_embedding_map
+
+    for n in (8, 16, 32, 64, 128):
+        # Compare with building embedded map. NOTE: only possible for a
+        # single interface.
+        outer_mesh = UnitSquareMesh(n, n)
+    
+        subdomains = MeshFunction('size_t', outer_mesh, outer_mesh.topology().dim(), 0)
+        # Awkward marking
+        for cell in cells(outer_mesh):
+            x = cell.midpoint().array()            
+            subdomains[cell] = int(interior.inside(x, False))
+        
+        foo = MeshFunction('size_t', outer_mesh, outer_mesh.topology().dim()-1, 0)
+        gamma.mark(foo, 1)
+
+        ifacet_iter = SubsetIterator(foo, 1)
+        
+        timer = Timer('x'); timer.start()
+        submeshes, interface, colormap = mortar_meshes(subdomains, (0, 1), ifacet_iter)
+        print '\t', timer.stop()
     x = interface.parent_entity_map
 
     maps = [build_embedding_map(interface, meshi) for meshi in submeshes]
     for i in range(len(maps)):
         assert interface.parent_entity_map[submeshes[i].id()][1] == maps[i][1]
 
+    exit()
+    
+    n = 16
     # 2d Construction
     outer_mesh = RectangleMesh(Point(-1, -1), Point(1, 1), n, n)
     fs = [CompiledSubDomain('std::max(fabs(x[0] - 0.25), fabs(x[1] - 0.25)) < 0.25'),
