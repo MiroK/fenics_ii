@@ -16,7 +16,7 @@ def main(module_name, ncases, params):
     preconditioners.
     '''
     # Unpack
-    globals().update(params)
+    for k, v in params.items(): exec(k + '=v', locals())
 
     RED = '\033[1;37;31m%s\033[0m'
     print RED % ('\tRunning %s' % module_name)

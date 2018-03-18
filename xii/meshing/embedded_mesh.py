@@ -64,7 +64,7 @@ class EmbeddedMesh(df.Mesh):
         editor = df.MeshEditor()
 
         if df.__version__ == '2017.2.0':
-            cell_type = {1: 'interval', 2: 'triangle'}[tdim]
+            cell_type = {1: 'interval', 2: 'triangle', 3: 'tetrahedron'}[tdim]
             editor.open(self, cell_type, tdim, gdim)            
         else:
             editor.open(self, tdim, gdim)
@@ -148,7 +148,6 @@ def build_embedding_map(emesh, mesh, tol=1E-14):
     '''
     assert emesh.topology().dim() < mesh.topology().dim()
     edim = emesh.topology().dim()
-    assert emesh.num_cells() < mesh.topology().size(edim)
     
     # Localization will require
     tree = mesh.bounding_box_tree()

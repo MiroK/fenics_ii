@@ -1,2 +1,3 @@
 from embedded_mesh import EmbeddedMesh, OuterNormal, InnerNormal
 from subdomain_mesh import SubDomainMesh, OverlapMesh
+from mortar_mesh import mortar_meshes
