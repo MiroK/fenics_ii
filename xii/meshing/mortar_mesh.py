@@ -27,12 +27,14 @@ def mortar_meshes(subdomains, markers, ifacet_iter=None, strict=True, tol=1E-14)
     # For each facet we want to know which 2 cells share it
     tagged_iface = defaultdict(dict)
 
-    if ifacet_iter is None: ifacet_iter = df.facets(mesh)
+    if ifacet_iter is None:
+        mesh.init(tdim-1)
+        ifacet_iter = df.facets(mesh)
     
     mesh.init(tdim-1, tdim)
     for facet in ifacet_iter:
         cells = map(int, facet.entities(tdim))
-        
+
         if len(cells) > 1:
             c0, c1 = cells
             tag0, tag1 = subdomains[c0], subdomains[c1]
@@ -47,7 +49,7 @@ def mortar_meshes(subdomains, markers, ifacet_iter=None, strict=True, tol=1E-14)
                     value = (c1, c0)
                 # A facet to 2 cells map for the facets of tagged pair
                 tagged_iface[key][facet.index()] = value
-                
+
     # order -> tagged keys
     color_to_tag_map = tagged_iface.keys()
     # Set to color which won't be encounred
@@ -57,7 +59,7 @@ def mortar_meshes(subdomains, markers, ifacet_iter=None, strict=True, tol=1E-14)
     # Mark facets corresponding to tagged pair by a color
     for color, tags in enumerate(color_to_tag_map):
         values[tagged_iface[tags].keys()] = color
-        
+
     # Finally create an interface mesh for all the colors
     interface_mesh = EmbeddedMesh(interface, range(len(color_to_tag_map)))
 

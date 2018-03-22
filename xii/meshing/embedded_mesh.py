@@ -26,6 +26,8 @@ class EmbeddedMesh(df.Mesh):
 
         if isinstance(markers, int): markers = [markers]
 
+        assert markers, markers
+
         base_mesh.init(tdim, 0)
         # Collect unique vertices based on their new-mesh indexing, the cells
         # of the embedded mesh are defined in terms of their embedded-numbering
@@ -79,6 +81,7 @@ class EmbeddedMesh(df.Mesh):
         for ci, c in enumerate(new_cells): editor.add_cell(ci, *c)
 
         editor.close()
+
 
         # The entity mapping attribute
         mesh_key = marking_function.mesh().id()
