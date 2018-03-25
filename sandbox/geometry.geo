@@ -1,84 +1,69 @@
-dx = 1;
-dy = 1.2;
-dz = 2;
-rad = 0.5;
+SetFactory("OpenCASCADE");
 
-size_out = 0.5;
-size_in = 0.125;
+base_x = 0;
+base_y = 0;
+base_z = 0;
 
-Point(1) = {0, 0, 0, 1};
-Point(2) = {dx, 0, 0, size_out};
-Point(3) = {0, dy, 0, size_out};
-Point(4) = {dx, dy, 0, size_out};
+dir_x = 0;
+dir_y = 0;
+dir_z = 1; 
 
-Point(5) = {rad, 0, 0, size_in};
-Point(6) = {0, rad, 0, size_in};
+rad = 0.2;
 
-Circle(1) = {6, 1, 5};
-Line(2) = {1, 6};
-Line(3) = {1, 5};
-Line(4) = {5, 2};
-Line(5) = {2, 4};
-Line(6) = {4, 3};
-Line(7) = {3, 6};
+dx = 2;
+dy = 2;
 
-Line Loop(1) = {2, 1, -3};
-Plane Surface(1) = {1};
-Line Loop(2) = {7, 1, 4, 5, 6};
+inner_size = 0.1;
+outer_size = 0.3;
 
-Plane Surface(2) = {2};
+// ------------------------------------------------------------------
 
-Extrude {0, 0, dz} {
-  Surface{1}; 
-}
+Cylinder(1) = {base_x, base_y, base_z, dir_x, dir_y, dir_z, rad};
+Box(2) = {base_x - dx/2, base_y - dy/2, base_z, dx, dy, dir_z};
 
-Extrude {0, 0, dz} {
-  Surface{2}; 
-}
+BooleanFragments {Volume{2}; Delete; }{Volume{1}; Delete; }
 
-Symmetry {1, 0, 0, 0} {
-  Duplicata { Volume{1}; }
-}
+Physical Volume(1) = {1};
+Physical Volume(2) = {2};
 
-Symmetry {1, 0, 0, 0} {
-  Duplicata { Volume{2}; }
-}
-
-Symmetry {0, 1, 0, 0} {
-  Duplicata { Volume{52}; }
-}
-
-Symmetry {0, 1, 0, 0} {
-  Duplicata { Volume{72}; }
-}
-
-Symmetry {0, 1, 0, 0} {
-  Duplicata { Volume{1}; }
-}
-
-Symmetry {0, 1, 0, 0} {
-  Duplicata { Volume{2}; }
-}
-
-// Cylinder volume
-Physical Volume(1) = {1, 52, 106, 155};
-// Outer volume
-Physical Volume(2) = {2, 72, 121, 170};
 // Shared surface
-Physical Surface(1) = {66, 120, 169, 19};
+Physical Surface(1) = {7};
 // Zmin of cylinder
-Physical Surface(2) = {1, 107, 53, 156};
+Physical Surface(2) = {9};
 // Zmax of cylinder
-Physical Surface(3) = {24, 57, 111, 160};
+Physical Surface(3) = {8};
+cyl_surfaces[] = {7, 8, 9};
+
 // Zmin of box
-Physical Surface(4) = {51, 79, 128, 177};
+Physical Surface(4) = {5};
 // Zmax of box
-Physical Surface(5) = {2, 73, 171, 122};
+Physical Surface(5) = {3};
 // Xmin of box
-Physical Surface(6) = {100, 149};
+Physical Surface(6) = {1};
 // Xmax of box
-Physical Surface(7) = {46, 198};
+Physical Surface(7) = {6};
 // Ymin of box
-Physical Surface(8) = {154, 203};
+Physical Surface(8) = {2};
 // Ymax of box
-Physical Surface(9) = {50, 105};
+Physical Surface(9) = {4};
+outer_surfaces[] = {1, 2, 3, 4, 5, 6};
+
+// Some better control of element size on cylinder
+Field[1] = MathEval;
+Field[1].F = Sprintf("%g", inner_size);
+
+Field[2] = Restrict;
+Field[2].IField = 1;
+Field[2].FacesList = {cyl_surfaces[]};
+
+// BBox
+Field[3] = MathEval;
+Field[3].F = Sprintf("%g", outer_size);
+
+Field[4] = Restrict;
+Field[4].IField = 3;
+Field[4].FacesList = {outer_surfaces[]};
+
+Field[5] = Min;
+Field[5].FieldsList = {2, 4};
+Background Field = 5;  
