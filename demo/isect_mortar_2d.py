@@ -106,7 +106,33 @@ def setup_preconditioner(W, which, eps):
     '''
     TODO
     '''
-    raise NotImplementedError
+    from block.algebraic.petsc import AMG
+    from block.algebraic.petsc import LumpedInvDiag
+    from hsmg import HsNorm
+    
+    V1, V2, Q = W
+
+    gamma_mesh = Q.mesh()
+    dxGamma = Measure('dx', domain=gamma_mesh)
+
+    u1, u2 = map(TrialFunction, (V1, V2))
+    v1, v2 = map(TestFunction, (V1, V2))
+        
+    Tu1, Tu2 = map(lambda x: Trace(x, gamma_mesh), (u1, u2))
+    Tv1, Tv2 = map(lambda x: Trace(x, gamma_mesh), (v1, v2))
+
+    b00 = Constant(eps)*inner(grad(u1), grad(v1))*dx + inner(u1, v1)*dx 
+    # Inverted by BoomerAMG
+    B00 = AMG(ii_assemble(b00))
+
+    b11 = inner(grad(u2), grad(v2))*dx + inner(u2, v2)*dx
+    # Inverted by BoomerAMG
+    B11 = AMG(ii_assemble(b11))
+
+    B22 = inverse(HsNorm(Q, s=-0.5))
+    #B22 = inverse(1./eps*HsNorm(Q, s=0.5))
+    
+    return block_diag_mat([B00, B11, B22])
 
 # --------------------------------------------------------------------
 
