@@ -28,7 +28,7 @@ def restriction_space(V, mesh):
 
 def Restriction(v, mmesh):
     '''
-    Annotate function for being a restriction onto mmesh which is must 
+    Annotated function for being a restriction onto mmesh which is must 
     be a SubDomainMesh
     '''
     # Prevent Restriction(grad(u)). But it could be interesting to have this

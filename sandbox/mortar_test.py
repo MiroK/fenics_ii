@@ -1,15 +1,17 @@
 from dolfin import *
 from xii import *
 
-mesh_file = 'geometry.h5'
+# mesh_file = 'geometry.h5'
 
-comm = mpi_comm_world()
-h5 = HDF5File(comm, mesh_file, 'r')
-mesh = Mesh()
-h5.read(mesh, 'mesh', False)
+# comm = mpi_comm_world()
+# h5 = HDF5File(comm, mesh_file, 'r')
+# mesh = Mesh()
+# h5.read(mesh, 'mesh', False)
 
-volumes = MeshFunction('size_t', mesh, mesh.topology().dim())
-h5.read(volumes, 'physical')
+# volumes = MeshFunction('size_t', mesh, mesh.topology().dim())
+# h5.read(volumes, 'physical')
+mesh = Mesh('geometry.xml')
+volumes = MeshFunction('size_t', mesh, 'geometry_physical_region.xml')
 
 one = EmbeddedMesh(volumes, 1)
 two = EmbeddedMesh(volumes, 2)

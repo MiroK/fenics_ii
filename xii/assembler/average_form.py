@@ -54,7 +54,7 @@ def average_space(V, mesh):
 
 def Average(v, line_mesh, radius, quadrature_degree=8):
     '''
-    Annotate function for being a cylinder surface average around line 
+    Annotated function for being a cylinder surface average around line 
     mesh. This means that 
 
         (Average(v))(x) = |C_R(x)|\int_{C_R(x)} v(y) dy for every point 

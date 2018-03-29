@@ -66,7 +66,7 @@ def main(module_name, ncases, params):
             t = Timer('conversion'); t.start()        
             AAm, bbm = map(ii_convert, (AA, bb))
             print '\tConversion to PETScMatrix/Vector took %g s' % t.stop()
-            
+
             t = Timer('solve'); t.start()
             LUSolver('umfpack').solve(AAm, wh.vector(), bbm)
             print '\tSolver took %g s' % t.stop()

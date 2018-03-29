@@ -54,7 +54,7 @@ def trace_space(V, mesh):
 
 def Trace(v, mmesh, restriction='', normal=None):
     '''
-    Annotate function for being a restriction onto manifold of codimension
+    Annotated function for being a restriction onto manifold of codimension
     one
     '''
     # Prevent Trace(grad(u)). But it could be interesting to have this

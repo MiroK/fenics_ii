@@ -94,3 +94,5 @@ Hdiv_norm = lambda u, uh: errornorm(u, uh, 'Hdiv', degree_rise=2)
 Hdiv0_norm = lambda u, uh: errornorm(u, uh, 'Hdiv0', degree_rise=2)
 Hcurl_norm = lambda u, uh: errornorm(u, uh, 'Hcurl', degree_rise=2)
 Hcurl0_norm = lambda u, uh: errornorm(u, uh, 'Hcurl0', degree_rise=2)
+
+linf_norm = lambda u, uh: np.linalg.norm(u - uh.vector().array())
