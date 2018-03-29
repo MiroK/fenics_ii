@@ -19,8 +19,8 @@ def setup_problem(i, (x0, f, g), eps=None):
     Du, Dv = PointTrace(u, x0), PointTrace(v, x0)
 
     a00 = inner(grad(u), grad(v))*dx + inner(u, v)*dx
-    a01 = inner(Dv, p)*dx
-    a10 = inner(Du, q)*dx
+    a01 = inner(Dv, p)*dx  # Note here we use that |mesh| is 1. Otherwise
+    a10 = inner(Du, q)*dx  # the integrand has to be scaled down by volume
 
     L0 = inner(f, v)*dx
     L1 = inner(Constant(g), q)*dx
@@ -32,11 +32,7 @@ def setup_problem(i, (x0, f, g), eps=None):
 
 
 def setup_preconditioner(W, which, eps=None):
-    '''
-    This is a block diagonal preconditioner based on 
-    
-        H1 x H-0.5 or (H1 \cap H0.5) x L2
-    '''
+    '''This is a block diagonal preconditioner based on H1 x R^1 norm'''
     from block.algebraic.petsc import AMG
     from hsmg import HsNorm
     
@@ -47,7 +43,7 @@ def setup_preconditioner(W, which, eps=None):
     b00 = inner(grad(u), grad(v))*dx + inner(u, v)*dx
     # Inverted by BoomerAMG
     B00 = AMG(ii_assemble(b00))
-    
+    # Easy 
     B11 = 1
 
     return block_diag_mat([B00, B11])
