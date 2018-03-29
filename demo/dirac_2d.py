@@ -61,11 +61,13 @@ def setup_mms(eps=None):
     
     x, y  = sp.symbols('x[0], x[1]')
     u = sp.cos(sp.pi*x*(1-x)*y*(1-y))
-    p = np.array([0.])
 
     f = -u.diff(x, 2) - u.diff(y, 2) + u
     x0 = (0.33, 0.66)
+    # The desired point value is that of u in the point
     g = u.subs({x: x0[0], y: x0[1]})
+    # This means that no stress is needed to enforce it :)
+    p = np.array([0.])
 
     up = [as_expression(u), p]
     fg = [x0, as_expression(f), g]

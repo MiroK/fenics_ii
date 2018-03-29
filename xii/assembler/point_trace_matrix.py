@@ -7,7 +7,8 @@ import numpy as np
 
 def point_trace_mat(V, TV, trace_mesh, data):
     '''
-    TODO
+    Let u in V; u = ck phi_k then u(x0) \in TV = ck phi_k(x0). So this 
+    is a 1 by dim(V) matrix where the column values are phi_k(x0).
     '''
     # The signature is for compatibility of API
     # Compatibility of spaces
@@ -23,7 +24,8 @@ def point_trace_mat(V, TV, trace_mesh, data):
 
 def point_trace_matrix(V, TV, x0):
     '''
-    TODO
+    Let u in V; u = ck phi_k then u(x0) \in TV = ck phi_k(x0). So this 
+    is a 1 by dim(V) matrix where the column values are phi_k(x0).
     '''
     mesh = V.mesh()
     tree = mesh.bounding_box_tree()

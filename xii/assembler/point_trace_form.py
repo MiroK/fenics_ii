@@ -11,16 +11,14 @@ def point_trace_cell(o):
 
 
 def point_trace_space(V, mesh):
-    '''
-    Construct a space where foo acting like a point trace of V to mesh 
-    should live'''
+    '''Space from point trace values live - these are just R^n'''
     # Fow now only allow scalars
     assert V.ufl_element().value_shape() == ()
     return df.FunctionSpace(mesh, 'R', 0)
 
 
 def PointTrace(v, mmesh):
-    '''Annotate function for being a point trace at point'''
+    '''Annotatef v copy for being a point trace at point'''
     # Prevent Restriction(grad(u)). But it could be interesting to have this
     assert is_terminal(v)
     # Don't allow point because then it's difficult to check len
