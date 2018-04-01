@@ -51,15 +51,14 @@ def convert(bmat, algorithm='numpy'):
 
         assert all(is_petsc_mat(block) or is_number(block)
                    for block in bmat.blocks.flatten())
-        # Do this via scipy sparse bmat
-        if algorithm == 'numpy':
-            # Convert to numpy
-            array = block_mat_to_numpy(bmat)
-            # Constuct from numpy
-            return numpy_to_petsc(array)
-        # Manual (maybe faster, let's see)
-        else:
-            return block_mat_to_petsc(bmat)
+        # Opt out of monolithic
+        if not algorithm: return bmat
+        
+        # Monolithic via numpy (fast)
+        # Convert to numpy
+        array = block_mat_to_numpy(bmat)
+        # Constuct from numpy
+        return numpy_to_petsc(array)
 
     # Try with a composite
     return collapse(bmat)
