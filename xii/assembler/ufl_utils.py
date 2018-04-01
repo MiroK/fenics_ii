@@ -1,7 +1,7 @@
 from dolfin.functions.function import Argument
 from ufl.core.terminal import Terminal
 from itertools import ifilter
-
+import dolfin as df
 
 
 def topological_dim(thing):
@@ -121,3 +121,16 @@ def form_arity(form):
     return len(form.arguments())
 
 # FIXME: fun problem is it linear?
+
+def reconstruct(f):
+    '''Make a copy of terminal object'''
+    assert is_terminal(f)
+
+    if is_trial_function(f):
+        return df.TrialFunction(f.function_space())
+
+    if is_test_function(f):
+        return df.TestFunction(f.function_space())
+    
+    # Others?
+    return f

@@ -20,7 +20,7 @@ def assemble(form):
                xii.assembler.average_assembly,      # Codimension 2
                xii.assembler.restriction_assembly,  # Codimension 0
                xii.assembler.point_trace_assembly)  # Dimensiom 0
-
+    
     if isinstance(form, Form):
         arity = form_arity(form)
         # Try with our reduced assemblers

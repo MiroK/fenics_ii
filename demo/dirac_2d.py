@@ -34,7 +34,6 @@ def setup_problem(i, (x0, f, g), eps=None):
 def setup_preconditioner(W, which, eps=None):
     '''This is a block diagonal preconditioner based on H1 x R^1 norm'''
     from block.algebraic.petsc import AMG
-    from hsmg import HsNorm
     
     V, Q = W
 

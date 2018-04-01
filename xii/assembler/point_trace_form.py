@@ -24,7 +24,7 @@ def PointTrace(v, mmesh):
     # Don't allow point because then it's difficult to check len
     assert isinstance(mmesh, (list, tuple, np.ndarray))
     # A copy!
-    v = (df.TrialFunction if v.number() == 1 else df.TestFunction)(v.function_space())
+    v = reconstruct(v)
     v.dirac_ = {'point': mmesh}
 
     return v

@@ -90,7 +90,7 @@ class ReducedFormAssembler(object):
             # intermediate space. FIXME: normal and trace_mesh
             #! mat construct
             T = self.reduction_matrix(V, TV, reduced_mesh, data)
-
+            
             # T
             if is_test_function(terminal):
                 replacement = df.TestFunction(TV)

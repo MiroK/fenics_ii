@@ -68,7 +68,7 @@ def Trace(v, mmesh, restriction='', normal=None):
                            'jump',  # right
                            'avg')
     # A copy!
-    v = (df.TrialFunction if v.number() == 1 else df.TestFunction)(v.function_space())
+    v = reconstruct(v)
     v.trace_ = {'type': restriction, 'mesh': mmesh, 'normal': normal}
 
     return v

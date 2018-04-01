@@ -84,7 +84,7 @@ def Average(v, line_mesh, radius, quadrature_degree=8):
         
     if is_number(radius): assert radius > 0
     # A copy!
-    v = (df.TrialFunction if v.number() == 1 else df.TestFunction)(v.function_space())
+    v = reconstruct(v)
     v.average_ = {'mesh': line_mesh, 'radius': radius, 'quad_degree': quadrature_degree}
 
     return v
