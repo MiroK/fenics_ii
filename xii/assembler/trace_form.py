@@ -90,7 +90,7 @@ def Trace(v, mmesh, restriction='', normal=None):
 # each arg above was created by Trace
 def is_trace_integrand(expr, tdim):
     '''Some of the arguments need restriction'''
-    return any((topological_dim(arg)-1)  == tdim and isinstance(arg, Argument)
+    return any((topological_dim(arg)-1)  == tdim
                for arg in traverse_unique_terminals(expr))
 
 

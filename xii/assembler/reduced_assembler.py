@@ -65,8 +65,8 @@ class ReducedFormAssembler(object):
             integrand = integral.integrand()
             # Split arguments in those that need to be and those that are
             # already restricted.
-            terminals = set(t for t in traverse_unique_terminals(integrand)
-                            if is_trial_function(t) or is_test_function(t))
+            terminals = set(traverse_unique_terminals(integrand))
+
             # FIXME: is it enough info (in general) to decide
             terminals_to_restrict = self.restriction_filter(terminals, reduced_mesh)
             # You said this is a trace ingral!
@@ -90,7 +90,7 @@ class ReducedFormAssembler(object):
             # intermediate space. FIXME: normal and trace_mesh
             #! mat construct
             T = self.reduction_matrix(V, TV, reduced_mesh, data)
-            
+
             # T
             if is_test_function(terminal):
                 replacement = df.TestFunction(TV)
@@ -117,6 +117,16 @@ class ReducedFormAssembler(object):
 
                 A = xii.assembler.xii_assembly.assemble(trace_form)
                 components.append(A*T)
+
+            # Okay, then this guy might be a function
+            if isinstance(terminal, df.Function):
+                replacement = df.Function(TV)
+                # Replacement is not just a placeholder
+                T.mult(terminal.vector(), replacement.vector())
+                # Substitute
+                integrand = replace(integrand, terminal, replacement, attributes=self.attributes)
+                trace_form = Form([integral.reconstruct(integrand=integrand)])
+                components.append(xii.assembler.xii_assembly.assemble(trace_form))
 
         # The whole form is then the sum of integrals
         return reduce(operator.add, components)
