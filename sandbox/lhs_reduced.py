@@ -77,14 +77,17 @@ b = AL_mult*dp_prev.vector()
 assert b.size() == X.dim()
 
 import numpy as np
-dp_prev.vector().set_local(np.random.rand(dp_prev.vector().local_size()))
-dp_prev.vector().apply('insert')
 
 L_mult = inner(Trace(dp_prev, interface), n_Gamma_p) * mu * dxGamma
-x = ii_assemble(L_mult)
-
 AL_mult = ii_assemble(inner(Trace(dp, interface), n_Gamma_p) * mu * dxGamma)
-y = AL_mult*dp_prev.vector()
 
-print (ii_convert(x) - ii_convert(y)).norm('linf')
+for i in range(3):
+    dp_prev.vector().set_local(np.random.rand(dp_prev.vector().local_size()))
+    dp_prev.vector().apply('insert')
+
+    x = ii_assemble(L_mult)
+
+    y = AL_mult*dp_prev.vector()
+
+    assert (ii_convert(x) - ii_convert(y)).norm('linf') < DOLFIN_EPS
 
