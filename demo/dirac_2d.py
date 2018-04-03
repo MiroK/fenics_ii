@@ -9,8 +9,8 @@ def setup_problem(i, (x0, f, g), eps=None):
     mesh = UnitSquareMesh(*(n, )*2)
     volume = sum(c.volume() for c in cells(mesh))
 
-    V = FunctionSpace(mesh, 'CG', 1)
-    Q = FunctionSpace(mesh, 'R', 0)
+    V = VectorFunctionSpace(mesh, 'CG', 1)
+    Q = VectorFunctionSpace(mesh, 'R', 0)
     W = [V, Q]
 
     u, p = map(TrialFunction, W)
@@ -19,9 +19,11 @@ def setup_problem(i, (x0, f, g), eps=None):
     Du, Dv = PointTrace(u, x0), PointTrace(v, x0)
 
     a00 = inner(grad(u), grad(v))*dx + inner(u, v)*dx
-    a01 = inner(Dv, p)*dx  # Note here we use that |mesh| is 1. Otherwise
-    a10 = inner(Du, q)*dx  # the integrand has to be scaled down by volume
-
+    # Note here we use that |mesh| is 1. Otherwise the integrand has to
+    # be scaled down by volume
+    a01 = inner(Dv, p)*dx
+    a10 = inner(Du, q)*dx
+    
     L0 = inner(f, v)*dx
     L1 = inner(Constant(g), q)*dx
 
@@ -44,8 +46,9 @@ def setup_preconditioner(W, which, eps=None):
     B00 = AMG(ii_assemble(b00))
     # Easy 
     B11 = 1
-
-    return block_diag_mat([B00, B11])
+    B22 = 1
+    
+    return block_diag_mat([B00, B11, B22])
 
 # --------------------------------------------------------------------
 
@@ -60,12 +63,12 @@ def setup_mms(eps=None):
     f = -u.diff(x, 2) - u.diff(y, 2) + u
     x0 = (0.33, 0.66)
     # The desired point value is that of u in the point
-    g = u.subs({x: x0[0], y: x0[1]})
+    g = (float(u.subs({x: x0[0], y: x0[1]})), )*2
     # This means that no stress is needed to enforce it :)
-    p = np.array([0.])
+    p = np.array([0., 0.])
 
-    up = [as_expression(u), p]
-    fg = [x0, as_expression(f), g]
+    up = [as_expression((u, u)), p]
+    fg = [x0, as_expression((f, f)), g]
 
     return up, fg
 

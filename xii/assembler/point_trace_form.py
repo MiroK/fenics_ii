@@ -12,15 +12,27 @@ def point_trace_cell(o):
 
 def point_trace_space(V, mesh):
     '''Space from point trace values live - these are just R^n'''
-    # Fow now only allow scalars
-    assert V.ufl_element().value_shape() == ()
-    return df.FunctionSpace(mesh, 'R', 0)
-
+    shape = V.ufl_element().value_shape()
+    # Scalars
+    if shape == ():
+        return df.FunctionSpace(mesh, 'R', 0)
+    # Elsewhere only allow vectors
+    if len(shape) == 1:
+        assert isinstance(V.ufl_element(), ufl.VectorElement)
+        return df.VectorFunctionSpace(mesh, 'R', 0, shape[0])
+    # Or tensors
+    if len(shape) == 2:
+        assert isinstance(V.ufl_element(), ufl.TensorElement)
+        return df.TensorFunctionSpace(mesh, 'R', 0, shape)
+    
 
 def PointTrace(v, mmesh):
     '''Annotatef v copy for being a point trace at point'''
     # Prevent Restriction(grad(u)). But it could be interesting to have this
     assert is_terminal(v)
+    # FIXME: the point trace mat logic works only for spacec with point eval
+    # dofs
+    assert v.ufl_element().family() in ('Lagrange', 'Discontinuous Lagrange')
     # Don't allow point because then it's difficult to check len
     assert isinstance(mmesh, (list, tuple, np.ndarray))
     # A copy!

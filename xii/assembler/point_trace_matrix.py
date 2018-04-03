@@ -13,6 +13,7 @@ def point_trace_mat(V, TV, trace_mesh, data):
     # The signature is for compatibility of API
     # Compatibility of spaces
     assert TV.ufl_element().family() == 'Real'
+    assert V.ufl_element().value_shape() == TV.ufl_element().value_shape()
     assert V.mesh().id() == TV.mesh().id() == trace_mesh.id()
 
     x0 = data['point']
@@ -31,22 +32,37 @@ def point_trace_matrix(V, TV, x0):
     tree = mesh.bounding_box_tree()
     cell = tree.compute_first_entity_collision(Point(*x0))
     assert cell < mesh.num_cells()
-    # Rows
-    dofs = V.dofmap().cell_dofs(cell)
-    Vel = V.element()
-    value_size = V.ufl_element().value_size()
-    assert value_size == 1
-    basis_values = np.zeros(V.element().space_dimension()*value_size)
 
+    # Cell for restriction
     Vcell = Cell(mesh, cell)
     vertex_coordinates = Vcell.get_vertex_coordinates()
     cell_orientation = Vcell.orientation()
     x0 = np.fromiter(x0, dtype=float)
+
+    # Columns - get all components at once
+    all_dofs = V.dofmap().cell_dofs(cell).tolist()
+    Vel = V.element()
+    value_size = V.ufl_element().value_size()
+    basis_values = np.zeros(V.element().space_dimension()*value_size)
+
     Vel.evaluate_basis_all(basis_values, x0, vertex_coordinates, cell_orientation)
 
     with petsc_serial_matrix(TV, V) as mat:
-        for row in range(TV.dim()):
-            mat.setValues(row, dofs, basis_values, PETSc.InsertMode.INSERT_VALUES)
+
+        # Scalar gets all
+        if value_size == 1:
+            component_dofs = lambda component: V.dofmap().cell_dofs(cell)
+        # Slices
+        else:
+            component_dofs = lambda component: V.sub(component).dofmap().cell_dofs(cell)
+        
+        for row in map(int, TV.dofmap().cell_dofs(cell)):  # R^n components
+            sub_dofs = component_dofs(row)
+            sub_dofs_local = [all_dofs.index(dof) for dof in sub_dofs]
+            print row, sub_dofs, sub_dofs_local, basis_values[sub_dofs_local]
+            
+            mat.setValues([row], sub_dofs, basis_values[sub_dofs_local],
+                          PETSc.InsertMode.INSERT_VALUES)
     return mat
 
 # --------------------------------------------------------------------
@@ -56,11 +72,9 @@ if __name__ == '__main__':
     from xii import *
     
     mesh = UnitSquareMesh(32, 32)
-    V = FunctionSpace(mesh, 'CG', 1)
-    Q = FunctionSpace(mesh, 'R', 0)
+    V = VectorFunctionSpace(mesh, 'CG', 1)
+    Q = VectorFunctionSpace(mesh, 'R', 0)
     W = [V, Q]
-
-    x0 = (0.33, 0.123)
 
     u, p = map(TrialFunction, W)
     v, q = map(TestFunction, W)
@@ -71,10 +85,10 @@ if __name__ == '__main__':
     a01 = inner(Dv, p)*dx
     a10 = inner(Du, q)*dx
 
-    x = ii_assemble(a01)
+    x = ii_convert(ii_assemble(a01))
     
-    #f = Function(V)
-    #f.vector().set_local(x)
-    #f.vector().apply('insert')
+    f = Function(V)
+    f.vector().set_local(x.array())
+    f.vector().apply('insert')
 
-    #print f(*x0)
+    print f(*x0)
