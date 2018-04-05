@@ -3,18 +3,18 @@
 from xii import (ii_Function, ii_assemble, ii_convert, ii_PETScOperator,
                  ii_PETScPreconditioner, as_petsc_nest)
 from runpy import run_module
-from dolfin import solve, File, Timer, LUSolver
+from dolfin import solve, File, Timer, LUSolver, interpolate
 import matplotlib.pyplot as plt
-from petsc4py import PETSc
+
 import os
 
-
-def main(module_name, ncases, params):
+def main(module_name, ncases, params, petsc_params):
     '''
     Run the test case in module with ncases. Optionally store results
     in savedir. For some modules there are multiple (which) choices of 
     preconditioners.
     '''
+    
     # Unpack
     for k, v in params.items(): exec(k + '=v', locals())
 
@@ -80,26 +80,19 @@ def main(module_name, ncases, params):
             ksp.setType('minres')
             ksp.setOperators(ii_PETScOperator(AA))
 
-            class KSPMonitor(object):
-                def __init__(self):
-                    self.norm0 = None
-                    # NOTE for MinRes |x| is the precond. norm of x
-                    self.msg = 'k %d, |r_k|=%g, |r_k|/|r_0|=%g'
-                def __call__(self, ksp, k, norm):
-                    if self.norm0 is None:
-                        self.norm0 = norm    
-                    print self.msg % (k, norm, norm/self.norm0)
-            
-            ksp_monitor = KSPMonitor()
-
-            ksp.setMonitor(ksp_monitor)
-
             ksp.setNormType(PETSc.KSP.NormType.NORM_PRECONDITIONED)
-            ksp.setTolerances(rtol=1E-8, atol=None, divtol=None, max_it=300)
+            # ksp.setTolerances(rtol=1E-6, atol=None, divtol=None, max_it=300)
             ksp.setConvergenceHistory()
             # We attach the wrapped preconditioner defined by the module
             ksp.setPC(ii_PETScPreconditioner(BB, ksp))
-
+            
+            opts = PETSc.Options()
+            for key, value in petsc_params.iteritems():
+                opts.setValue(key, None if value == 'none' else value)
+            ksp.setFromOptions()
+            
+            print ksp.getTolerances()
+            
             # Want the iterations to start from random
             wh.block_vec().randomize()
             # Solve, note the past object must be PETSc.Vec
@@ -122,7 +115,9 @@ def main(module_name, ncases, params):
         path = os.path.join(save_dir, module_name)
         for i, wh_i in enumerate(wh):
             # Renaming to make it easier to save state in Visit/Pareview
+            wh_i.vector().axpy(1, interpolate(u_true[i], wh_i.function_space()).vector())
             wh_i.rename('u', str(i))
+            
             File('%s_%d.pvd' % (path, i)) << wh_i
 
     # Plot relative residual norm
@@ -135,7 +130,12 @@ def main(module_name, ncases, params):
 # --------------------------------------------------------------------
 
 if __name__ == '__main__':
-    import argparse
+    import argparse, sys, petsc4py
+    # Make petsc4py work with command line. This allows configuring
+    # ksp (petsc krylov solver) as e.g.
+    #      -ksp_rtol 1E-8 -ksp_atol none -ksp_monitor_true_residual none
+    petsc4py.init(sys.argv)
+    from petsc4py import PETSc
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     # The demo file: runnning it defines setups*
@@ -164,7 +164,11 @@ if __name__ == '__main__':
     parser.add_argument('-precond', type=int, default=0,
                         help='Which module preconditioner')
 
-    args = parser.parse_args()
+    args, petsc_args = parser.parse_known_args()
+
+    if petsc_args:
+        petsc_args = dict((k, v) for k, v in zip(petsc_args[::2], petsc_args[1::2]))
+    
     assert args.ncases > 0
     assert all(e > 0 for e in args.problem_eps)
 
@@ -185,5 +189,4 @@ if __name__ == '__main__':
     for module in modules:
         for e in args.problem_eps:
             params['eps'] = e
-            main(module, ncases=range(args.ncases), params=params)
-                                             
+            main(module, ncases=range(args.ncases), params=params, petsc_params=petsc_args)
