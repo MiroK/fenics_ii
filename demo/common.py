@@ -20,7 +20,14 @@ def expr_body(expr, **kwargs):
         return expr
     # Vectors, Matrices as iterables of expressions
     else:
-        return [expr_body(e, **kwargs) for e in expr]
+        foo = tuple(expr_body(e, **kwargs) for e in expr)
+        # sp.Matrix flattens so we need to reshape back
+        if isinstance(expr, sp.Matrix):
+            if expr.is_square:
+                matrix = np.array(foo).reshape(expr.shape)
+                foo = tuple(tuple(row) for row in matrix)
+
+        return foo
 
 
 def as_expression(expr, degree=4, **kwargs):
