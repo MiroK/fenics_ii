@@ -1,0 +1,11 @@
+* A 3d-2d-1d coupled problem
+
+  We consider a 3d domain containing a manifold which contains a curve. 
+  On each of the domains there is a Poisson problem and there is a couplding
+  between the unknowns, such that 3d and 2d solutions agree on the manifold 
+  while there is jump between 2d and 1d solutions on a curve. This jump 
+  then drives the dynamics of the problem.
+
+  Running `python solving.py` creates the meshes and solves the problem.
+  Note that the curve is by default random and that this requires /networkx/.
+  If everything works the result should look something like this
