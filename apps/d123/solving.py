@@ -88,8 +88,8 @@ if __name__ == '__main__':
 
     # Setup the mesh_generator for the random curve
     import meshing
-    # Using 1/4 of the default mesh sizes, the inner box is [-1, 1] and
-    # thee random curve will be made using 20 vertices
+    # Using 1/4 of the default mesh sizes, the inner box is [-1/2, 1/2]^3
+    # and thee random curve will be made using 40 vertices
     mesh_generator = lambda :meshing.load(scale=2./8,
                                           inner_size=0.5,
                                           curve_gen=lambda mesh: meshing.fun(mesh, 40))
