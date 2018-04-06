@@ -121,6 +121,32 @@ def setup_problem(i, data, eps=1.):
     
     return a, L, W
 
+def setup_preconditioner(W, which, eps):
+    # This is best on H1 x H1 x L2 spaces where the Discacciati proces
+    # well posedness
+    from block.algebraic.petsc import AMG
+    # The following settings seem not so bad for GMRES
+    #
+    # -ksp_rtol 1E-6
+    # -ksp_monitor_true_residual none
+    # -ksp_type gmres
+    # -ksp_gmres_restart 30
+    # -ksp_gmres_modifiedgramschmidt 1
+    
+    u1, p, p1 = map(TrialFunction, W)
+    v1, q, q1 = map(TestFunction, W)
+
+    b00 = inner(grad(u1), grad(v1))*dx + inner(u1, v1)*dx
+    B00 = AMG(ii_assemble(b00))
+
+    b11 = inner(grad(p), grad(q))*dx + inner(p, q)*dx
+    B11 = AMG(ii_assemble(b11))
+
+    b22 = inner(p1, q1)*dx
+    B22 = AMG(ii_assemble(b22))
+    
+    return block_diag_mat([B00, B11, B22])
+
 # --------------------------------------------------------------------
 
 def setup_mms(eps):

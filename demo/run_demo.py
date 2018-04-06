@@ -77,7 +77,14 @@ def main(module_name, ncases, params, petsc_params):
             BB = module.setup_preconditioner(W, precond, eps=eps)
             ## AA and BB as block_mat
             ksp = PETSc.KSP().create()
-            ksp.setType('minres')
+
+            # Default is minres
+            if '-ksp_type' not in petsc_params: petsc_params['-ksp_type'] = 'minres'
+            
+            opts = PETSc.Options()
+            for key, value in petsc_params.iteritems():
+                opts.setValue(key, None if value == 'none' else value)
+
             ksp.setOperators(ii_PETScOperator(AA))
 
             ksp.setNormType(PETSc.KSP.NormType.NORM_PRECONDITIONED)
@@ -86,9 +93,6 @@ def main(module_name, ncases, params, petsc_params):
             # We attach the wrapped preconditioner defined by the module
             ksp.setPC(ii_PETScPreconditioner(BB, ksp))
             
-            opts = PETSc.Options()
-            for key, value in petsc_params.iteritems():
-                opts.setValue(key, None if value == 'none' else value)
             ksp.setFromOptions()
             
             print ksp.getTolerances()
