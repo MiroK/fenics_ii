@@ -1,4 +1,5 @@
 from collections import defaultdict
+from itertools import chain
 import dolfin as df
 import numpy as np
 
@@ -13,8 +14,7 @@ class EmbeddedMesh(df.Mesh):
     '''
     def __init__(self, marking_function, markers):
         base_mesh = marking_function.mesh()
-        # Prevent cell function (just not to duplicate functionality of
-        # submesh; well for now)
+        
         assert base_mesh.topology().dim() >= marking_function.dim()
 
         # Work in serial only (much like submesh)
@@ -28,6 +28,44 @@ class EmbeddedMesh(df.Mesh):
 
         assert markers, markers
 
+        # We reuse a lot of Submesh capabilities if marking by cell_f
+        if base_mesh.topology().dim() == marking_function.dim():
+            # Submesh works only with one marker so we conform
+            color_array = marking_function.array()
+            color_cells = dict((m, np.where(color_array == m)[0]) for m in markers)
+
+            # So everybody is marked as 1
+            one_cell_f = df.MeshFunction('size_t', base_mesh, tdim, 0)
+            for cells in color_cells.itervalues(): one_cell_f.array()[cells] = 1
+            
+            # The Embedded mesh now steals a lot from submesh
+            submesh = df.SubMesh(base_mesh, one_cell_f, 1)
+
+            df.Mesh.__init__(self, submesh)
+
+            # The entity mapping attribute
+            mesh_key = marking_function.mesh().id()
+            self.parent_entity_map = {mesh_key: {0: submesh.data().array('parent_vertex_indices', 0),
+                                                 tdim: submesh.data().array('parent_cell_indices', tdim)}}
+
+            # Finally it remains to preserve the markers
+            f = df.MeshFunction('size_t', self, tdim, 0)
+            if len(markers) > 1:
+                # We turn the old cells to set for faster lookup
+                color_cells = {k: set(v) for k, v in color_cells.iteritems()}
+                # And then use the new -> old mapping to color
+                for new_cell, old_cell in enumerate(self.parent_entity_map[mesh_key][tdim]):
+                    for color, cells in color_cells.iteritems():
+                        if old_cell in cells:
+                            f[new_cell] = color
+                            break
+            else:
+                f.set_all(markers[0])
+
+            self.marking_function = f
+            return None  # https://stackoverflow.com/questions/2491819/how-to-return-a-value-from-init-in-python
+
+        # Otherwise the mesh needs to by build from scratch
         base_mesh.init(tdim, 0)
         # Collect unique vertices based on their new-mesh indexing, the cells
         # of the embedded mesh are defined in terms of their embedded-numbering
@@ -81,7 +119,6 @@ class EmbeddedMesh(df.Mesh):
         for ci, c in enumerate(new_cells): editor.add_cell(ci, *c)
 
         editor.close()
-
 
         # The entity mapping attribute
         mesh_key = marking_function.mesh().id()
@@ -274,3 +311,29 @@ if __name__ == '__main__':
             assert np.linalg.norm(n(x) - np.array([0, 0, -1])) < 1E-10
         else:
             assert np.linalg.norm(n(x) - np.array([0, 0, 1])) < 1E-10
+
+    # EmbeddedMesh with cell_f
+    mesh = df.BoxMesh(df.Point(*(-1, )*3), df.Point(*(1, )*3), 10, 10, 10)
+    cell_f = df.MeshFunction('size_t', mesh, mesh.topology().dim(), 0)
+    for cell in df.cells(mesh):
+        x, y, z = cell.midpoint().array()
+        if x > 0:
+            cell_f[cell] = 1 if y > 0 else 2
+        else:
+            cell_f[cell] = 3 if y > 0 else 4
+
+    df.File('t.pvd') << cell_f
+            
+    mesh = EmbeddedMesh(cell_f, (1, 3))
+    df.File('bar.pvd') << mesh
+    df.File('foo.pvd') << mesh.marking_function
+    
+    for cell in df.SubsetIterator(mesh.marking_function, 1):
+        x, y, z = cell.midpoint().array()
+        assert x > 0 and y > 0
+
+    for cell in df.SubsetIterator(mesh.marking_function, 3):
+        x, y, z = cell.midpoint().array()
+        assert x < 0 and y > 0
+
+        

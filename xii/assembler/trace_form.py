@@ -96,8 +96,7 @@ def is_trace_integrand(expr, tdim):
 
 def is_trace_integral(integral):
     '''Volume integral over an embedded cell'''
-    return all((integral.integral_type() == 'cell',  # 0
-                topological_dim(integral) == (geometric_dim(integral)-1),
+    return all((integral.integral_type() == 'cell',
                 is_trace_integrand(integral.integrand(), topological_dim(integral))))
 
 

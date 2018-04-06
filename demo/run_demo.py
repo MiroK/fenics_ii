@@ -115,7 +115,6 @@ def main(module_name, ncases, params, petsc_params):
         path = os.path.join(save_dir, module_name)
         for i, wh_i in enumerate(wh):
             # Renaming to make it easier to save state in Visit/Pareview
-            wh_i.vector().axpy(1, interpolate(u_true[i], wh_i.function_space()).vector())
             wh_i.rename('u', str(i))
             
             File('%s_%d.pvd' % (path, i)) << wh_i

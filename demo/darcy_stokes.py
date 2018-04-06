@@ -46,12 +46,12 @@ def setup_domain(n):
         subdomains[cell] = int(interior.inside(x, False))
     assert sum(1 for _ in SubsetIterator(subdomains, 1)) > 0
 
-    darcy_domain = SubMesh(outer_mesh, subdomains, 1)
-    stokes_domain = SubMesh(outer_mesh, subdomains, 0)
+    stokes_domain = EmbeddedMesh(subdomains, 0)
+    darcy_domain = EmbeddedMesh(subdomains, 1)
+
     # Interior boundary
     surfaces = MeshFunction('size_t', darcy_domain, darcy_domain.topology().dim()-1, 0)
     DomainBoundary().mark(surfaces, 1)
-    
     iface_domain = EmbeddedMesh(surfaces, 1)
 
     # Mark the outiside for Stokes
