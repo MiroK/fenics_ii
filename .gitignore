@@ -1,11 +1,14 @@
 *.swp
 *.swp
-*py~
+*~
+*~
 
 *.pyc
 
 *.pvd
 *.vtu
+*.xml
+*.h5
 
 *png
 
