@@ -2,10 +2,20 @@
 
 This is a stationary version of 3d-1d coupled problem inspired by our 
 [paper](https://arxiv.org/abs/1803.04896). The coupling is realized using 
-a surface avarageing operator over cylindrical surface that is the interface 
-between the bulk domain and the vasculature. The vasculature is a random 
-curve starting on the surface and then disappearing into the interior 
-of a [-1, 1]^3 cube. Below is a plot of the 3d and 1d fields obtained by 
-running `python has_muliplier.py` (uses 80 random points to make the curve)
+a surface avaraging operator over cylindrical surface that is the interface 
+between the bulk domain and the vasculature. To avoid introducing the operator 
+into the diagonal block of the 3d problem (based on the radius and mesh coarseness 
+the operator negatively effects the sparsity) a multiplier is introduced for 
+the coupling. This comes at the prize of an extra 1d unknown.
+
+In the scirpt, the vasculature is a random curve starting on the surface and 
+then disappearing into the interior of a [-1, 1]^3 cube. Below is a plot of 
+the 3d and 1d fields obtained by running `python has_muliplier.py` (uses 80 
+random points to make the curve)
 
 [[https://github.com/MiroK/fenics_ii/blob/master/apps/enumath/plot_has.png]]
+
+Alternative, `not_has_multiplier.py` solves the problem without the multiplier.
+The endresult (note that the curve is different then before) looks as follows
+
+[[https://github.com/MiroK/fenics_ii/blob/master/apps/enumath/plot_nothas.png]]

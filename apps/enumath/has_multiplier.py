@@ -57,13 +57,6 @@ def setup_problem(radius, mesh_gen):
 
     AA, bb = map(ii_assemble, (a, L))
 
-    # Let's do bcs
-    bcs_V = [DirichletBC(V, g, 'on_boundary')] 
-    bcs = [[], bcs_V, []]
-    bcs = block_bc(bcs, symmetric=True)
-    
-    AA = ii_convert(AA, algorithm='')  # Blocks are now matrices
-
     # Return the block system
     return AA, bb, W, p_const
 
