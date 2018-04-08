@@ -131,7 +131,6 @@ if __name__ == '__main__':
 
         opts = PETSc.Options()
         for key, value in zip(petsc_args[::2], petsc_args[1::2]):
-            print key, value
             opts.setValue(key, None if value == 'none' else value)
 
         ksp.setOperators(ii_PETScOperator(AA))
