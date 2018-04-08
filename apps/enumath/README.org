@@ -1,0 +1,8 @@
+* A 3d-1d coupled problem
+
+This is a stationary version of 3d-1d coupled problem inspired by our 
+[[https://arxiv.org/abs/1803.04896]paper]. The coupling is realized using 
+a surface avarageing operator over cylindrical surface that is the interface 
+between the bulk domain and the vasculature. The vasculature is a random 
+curve starting on the surface and then disappearing into the interior 
+of a [-1, 1]^3 cube.

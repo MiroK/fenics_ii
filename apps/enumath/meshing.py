@@ -155,7 +155,7 @@ def fun(mesh3d, npoints):
 
     df.File('x.pvd') << edge_f
         
-    return edge_f, first
+    return edge_f, X[first]
     
 # --------------------------------------------------------------------
 
