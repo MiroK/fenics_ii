@@ -56,10 +56,6 @@ def trace_space(V, mesh):
         fs = df.FunctionSpace(mesh, elm(family, mesh.ufl_cell(), degree))
     return fs
 
-
-    return df.FunctionSpace(mesh, elm(family, mesh.ufl_cell(), degree))
-
-
 def Trace(v, mmesh, restriction='', normal=None):
     '''
     Annotated function for being a restriction onto manifold of codimension
