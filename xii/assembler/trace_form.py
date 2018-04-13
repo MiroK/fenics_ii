@@ -43,6 +43,12 @@ def trace_space(V, mesh):
     # So let's check first for elements where scalar = FiniteElm
     # vector == VectorElm etc
     rank = len(elm.value_shape())
+    if elmtype_map[rank] == type(elm):
+        elm = type(elm)  # I.e. vector element stays verctor element
+    else:
+        elm = elmtype_map[rank]
+    # NOTE: Check out Witze Bonn's work on this and fill more
+
     if rank == 1:
         fs = df.FunctionSpace(mesh, elm(family, mesh.ufl_cell(), degree,
             dim=V.ufl_element().value_shape()[0]))
