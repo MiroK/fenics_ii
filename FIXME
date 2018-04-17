@@ -7,3 +7,6 @@ restrict
 
 3d-2d-1d?
 trace avg restrict of expression
+
+!! ii_Function and block_utils stuff for non-block? - see precond-1d3d/coupled
+for the effect of this thing missing

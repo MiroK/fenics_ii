@@ -10,25 +10,12 @@ from xii import *
 
 # volumes = MeshFunction('size_t', mesh, mesh.topology().dim())
 # h5.read(volumes, 'physical')
-mesh = Mesh('geometry.xml')
-volumes = MeshFunction('size_t', mesh, 'geometry_physical_region.xml')
+mesh = Mesh('geometry_old.xml')
+surfaces = MeshFunction('size_t', mesh, 'geometry_old_facet_region.xml')
 
-one = EmbeddedMesh(volumes, 1)
-two = EmbeddedMesh(volumes, 2)
+one = EmbeddedMesh(surfaces, 1)
+two = EmbeddedMesh(surfaces, 4)
 
-File('one.pvd') << one
-File('two.pvd') << two
+File('iface0_old.pvd') << one
+File('ifacae1_old.pvd') << two
 
-a, b, _ = mortar_meshes(volumes, (1, 2))
-
-File('iface.pvd') << b
-
-#f = FacetFunction('size_t', mesh, 0)
-#DomainBoundary().mark(f, 1)
-
-#File('x.pvd') << f
-
-x = map(tuple, mesh.coordinates().tolist())
-y = set(x)
-
-print len(x), len(y)

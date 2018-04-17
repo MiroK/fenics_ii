@@ -51,6 +51,8 @@ def convert(bmat, algorithm='numpy'):
 
         assert all(is_petsc_mat(block) or is_number(block)
                    for block in bmat.blocks.flatten())
+
+        bmat = set_lg_map(bmat)
         # Opt out of monolithic
         if not algorithm: return bmat
         
@@ -325,6 +327,30 @@ def bmat_sizes(bmat):
         return (tuple(row_sizes), tuple(col_sizes))
 
     raise ValueError('Cannot bmat_sizes of %r, %s' % (type(bmat), bmat))
+
+
+def set_lg_map(mat):
+    '''Set local-to-global-map on the matrix'''
+    # NOTE; serial only - so we own everything but still sometimes we need
+    # to tell that to petsc
+    if is_number(mat): return mat
+    
+    assert is_petsc_mat(mat) or isinstance(mat, block_mat), (type(mat))
+
+    if isinstance(mat, block_mat):
+        blocks = np.array(map(set_lg_map, mat.blocks.flatten())).reshape(mat.blocks.shape)
+        return block_mat(blocks)
+
+    comm = mpi_comm_world().tompi4py()
+    # Work with matrix
+    rowmap, colmap = range(mat.size(0)), range(mat.size(1))
+
+    row_lgmap = PETSc.LGMap().create(rowmap, comm=comm)
+    col_lgmap = PETSc.LGMap().create(colmap, comm=comm)
+
+    as_petsc(mat).setLGMap(row_lgmap, col_lgmap)
+
+    return mat
 
 
 # -------------------------------------------------------------------
