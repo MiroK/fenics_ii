@@ -19,7 +19,7 @@ def trace_cell(o):
     # Another cell
     cell_name = {'tetrahedron': 'triangle',
                  'triangle': 'interval'}[o.cellname()]
-    
+
     return ufl.Cell(cell_name, o.geometric_dimension())
 
 
@@ -49,8 +49,12 @@ def trace_space(V, mesh):
         elm = elmtype_map[rank]
     # NOTE: Check out Witze Bonn's work on this and fill more
 
-    return df.FunctionSpace(mesh, elm(family, mesh.ufl_cell(), degree))
-
+    if rank == 1:
+        fs = df.FunctionSpace(mesh, elm(family, mesh.ufl_cell(), degree,
+            dim=V.ufl_element().value_shape()[0]))
+    else:
+        fs = df.FunctionSpace(mesh, elm(family, mesh.ufl_cell(), degree))
+    return fs
 
 def Trace(v, mmesh, restriction='', normal=None):
     '''
@@ -59,12 +63,12 @@ def Trace(v, mmesh, restriction='', normal=None):
     '''
     # Prevent Trace(grad(u)). But it could be interesting to have this
     assert is_terminal(v)
-    
+
     assert trace_cell(v) == mmesh.ufl_cell()
     # Not sure if it is really needed but will allow 5 types of traces
     assert restriction in ('',      # This makes sense for continuous foos
                            '+',     # For the remaining normal has to be
-                           '-',     # present to get the orientation 
+                           '-',     # present to get the orientation
                            'jump',  # right
                            'avg')
     # A copy!
@@ -75,7 +79,7 @@ def Trace(v, mmesh, restriction='', normal=None):
 
 # Consider now assembly of form, form is really a sum of integrals
 # and here we want to assembly only the trace integrals. A trace integral
-# is one where 
+# is one where
 #
 # 0) the measure is the trace measure
 #
