@@ -51,8 +51,7 @@ def convert(bmat, algorithm='numpy'):
 
         assert all(is_petsc_mat(block) or is_number(block)
                    for block in bmat.blocks.flatten())
-
-        bmat = set_lg_map(bmat)
+        
         # Opt out of monolithic
         if not algorithm: return bmat
         
@@ -332,9 +331,10 @@ def bmat_sizes(bmat):
 def set_lg_map(mat):
     '''Set local-to-global-map on the matrix'''
     # NOTE; serial only - so we own everything but still sometimes we need
-    # to tell that to petsc
+    # to tell that to petsc (especiialy when bcs are to be applied)
+
     if is_number(mat): return mat
-    
+
     assert is_petsc_mat(mat) or isinstance(mat, block_mat), (type(mat))
 
     if isinstance(mat, block_mat):

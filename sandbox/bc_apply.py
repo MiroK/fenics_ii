@@ -110,6 +110,11 @@ a = [
 ]
 
 AA = ii_convert(ii_assemble(a), "")
+# NOTE: some conversion (typically with transpose) will leave
+# the matrix in a wrong state from PETSc point of view (why?)
+# From the experience the typical fix is setting the local-to-global
+# map for the matrix. So we do it here just in case
+set_lg_map(AA)
 
 bcs = [
     [
