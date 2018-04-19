@@ -85,10 +85,18 @@ def collapse(bmat):
     elif isinstance(bmat, block_transpose):
         return collapse_tr(bmat)
     # Some things in cbc.block know their matrix representation
-    # E.g. InvLumpDiag...
-    elif hasattr(bmat, 'A'):
-        assert is_petsc_mat(bmat.A)
-        return bmat.A
+    # This is typically diagonals like InvLumpDiag etc
+    elif hasattr(bmat, 'v'):
+        # So now we make that diagonal matrix
+        diagonal = bmat.v
+
+        n = diagonal.size
+        mat = PETSc.Mat().createAIJ(size=[[n, n], [n, n]], nnz=1)
+        mat.assemblyBegin()
+        mat.setDiagonal(diagonal)
+        mat.assemblyEnd()
+
+        return PETScMatrix(mat)
 
     raise ValueError('Do not know how to collapse %r' % type(bmat))
 

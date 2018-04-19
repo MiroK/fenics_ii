@@ -4,6 +4,7 @@ import xii.assembler.restriction_assembly
 import xii.assembler.point_trace_assembly
 from xii.linalg.matrix_utils import is_number
 from xii.assembler.ufl_utils import form_arity
+from xii.linalg.list_utils import shape_list, reshape_list, flatten_list
 
 from block import block_vec, block_mat
 from ufl.form import Form
@@ -34,9 +35,8 @@ def assemble(form):
     # We might get number
     if is_number(form): return form
 
+    shape = shape_list(form)
     # Recurse
-    if isinstance(form, list): form = np.array(form, dtype='object')
-
-    blocks = np.array(map(assemble, form.flatten())).reshape(form.shape)
+    blocks = reshape_list(map(assemble, flatten_list(form)), shape)
     
-    return (block_vec if blocks.ndim == 1 else block_mat)(blocks)
+    return (block_vec if len(shape) == 1 else block_mat)(blocks)

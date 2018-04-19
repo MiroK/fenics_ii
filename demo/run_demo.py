@@ -70,7 +70,7 @@ def main(module_name, ncases, params, petsc_params):
             t = Timer('solve'); t.start()
             LUSolver('umfpack').solve(AAm, wh.vector(), bbm)
             print '\tSolver took %g s' % t.stop()
-            
+
             niters = 1
         else:
             # Here we define a Krylov solver using PETSc
