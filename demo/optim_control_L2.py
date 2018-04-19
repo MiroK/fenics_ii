@@ -10,12 +10,12 @@ from xii import *
 
 
 def setup_problem(i, f, eps=None):
-    '''Babuska on [0, 1]^2'''
+    '''Optim problem on [0, 1]^2'''
     n = 4*2**i
     mesh = UnitSquareMesh(*(n, )*2)
     bmesh = BoundaryMesh(mesh, 'exterior')
 
-    Q = FunctionSpace(mesh, 'DG', 1)
+    Q = FunctionSpace(mesh, 'CG', 1)
     V = FunctionSpace(mesh, 'CG', 1)
     B = FunctionSpace(mesh, 'CG', 1)
     W = [Q, V, B]
