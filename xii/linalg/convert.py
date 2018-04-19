@@ -97,6 +97,9 @@ def collapse(bmat):
         mat.assemblyEnd()
 
         return PETScMatrix(mat)
+    # Some operators actually have matrix repre (HsMG)
+    elif hasattr(bmat, 'matrix'):
+        return bmat.matrix
 
     raise ValueError('Do not know how to collapse %r' % type(bmat))
 
