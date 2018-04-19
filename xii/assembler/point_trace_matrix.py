@@ -88,7 +88,7 @@ if __name__ == '__main__':
     x = ii_convert(ii_assemble(a01))
     
     f = Function(V)
-    f.vector().set_local(x.array())
+    f.vector().set_local(x.get_local())
     f.vector().apply('insert')
 
     print f(*x0)
