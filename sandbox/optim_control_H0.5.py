@@ -24,7 +24,7 @@ def solve_problem(ncells, eps, solver_params):
     mesh = UnitSquareMesh(*(ncells, )*2)
     bmesh = BoundaryMesh(mesh, 'exterior')
 
-    Q = FunctionSpace(mesh, 'CG', 1)
+    Q = FunctionSpace(mesh, 'DG', 0)
     V = FunctionSpace(mesh, 'CG', 1)
     B = FunctionSpace(mesh, 'CG', 1)
     W = [Q, V, B]
@@ -76,21 +76,37 @@ def solve_problem(ncells, eps, solver_params):
         LUSolver('umfpack').solve(AAm, wh.vector(), bbm)
         return wh, -1
 
-    # Preconditioner like in the L2 case but with L2 bdry replaced
-    b00 = Constant(eps)*inner(p, q)*dx
-    B00 = LumpedInvDiag(ii_assemble(b00))
 
-    # H2 norm with H1 elements
-    H1 = ii_assemble(inner(grad(v), grad(u))*dx + inner(v, u)*dx)
-    # From dual to nodal
-    R = LumpedInvDiag(ii_assemble(inner(u, v)*dx))
-    # The whole matrix to be inverted is then (second term is H2 approx)
-    B11 = collapse(A11 + eps*H1*R*H1)
-    # And the inverse
-    B11 = AMG(B11, parameters={'pc_hypre_boomeramg_cycle_type': 'W'})
+    # Magne like precond
+    if False:
+        # Preconditioner like in the L2 case but with L2 bdry replaced
+        b00 = Constant(eps)*inner(p, q)*dx
+        B00 = LumpedInvDiag(ii_assemble(b00))
 
-    b22 = Constant(1./eps)*inner(lmbda, beta)*dx
-    B22 = LumpedInvDiag(ii_assemble(b22))
+        H1 = ii_assemble(inner(grad(v), grad(u))*dx + inner(v, u)*dx)
+        # From dual to nodal
+        R = LumpedInvDiag(ii_assemble(inner(u, v)*dx))
+        # The whole matrix to be inverted is then (second term is H2 approx)
+        B11 = collapse(A11 + eps*H1*R*H1)
+        # And the inverse
+        B11 = AMG(B11, parameters={'pc_hypre_boomeramg_cycle_type': 'W'})
+
+        b22 = Constant(1./eps)*inner(lmbda, beta)*dx
+        B22 = LumpedInvDiag(ii_assemble(b22))
+    # A bit like SZ
+    else:
+        b00 = Constant(eps)*inner(p, q)*dx
+        B00 = LumpedInvDiag(ii_assemble(b00))
+
+        # L2 \cap eps H1
+        H1 = assemble(Constant(eps)*(inner(grad(v), grad(u))*dx + inner(v, u)*dx))
+        B11 = AMG(collapse(A11 + H1))
+
+        # (1./eps)*L2 \cap 1./sqrt(eps)H1
+        a = Constant(1./eps)*inner(beta, lmbda)*dx + \
+            Constant(1./sqrt(eps))*(inner(grad(beta), grad(lmbda))*dx + inner(beta, lmbda)*dx)
+        B22 = AMG(assemble(a))
+
     
     BB = block_diag_mat([B00, B11, B22])
 
