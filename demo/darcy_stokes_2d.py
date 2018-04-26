@@ -70,9 +70,10 @@ def setup_problem(i, data, eps=1.):
     # And now for the fun stuff
     V1 = VectorFunctionSpace(stokes_domain, 'CG', 2)
     Q1 = FunctionSpace(stokes_domain, 'CG', 1)
-    V2 = FunctionSpace(darcy_domain, 'RT', 1)
-    Q2 = FunctionSpace(darcy_domain, 'DG', 0)
-    M = FunctionSpace(iface_domain, 'DG', 0)
+    V2 = FunctionSpace(darcy_domain, 'RT', 2)
+    Q2 = FunctionSpace(darcy_domain, 'DG', 1)
+    # In the orignal paper there's DG but this sems fine too
+    M = FunctionSpace(iface_domain, 'CG', 1) 
     W = [V1, Q1, V2, Q2, M]
 
     u1, p1, u2, p2, lambda_ = map(TrialFunction, W)
@@ -119,11 +120,11 @@ def setup_problem(i, data, eps=1.):
     L[0] = inner(data['expr_f1'], v1)*dx + \
            inner(v1, dot(data['expr_stokes_stress'], n_outer))*dsOuter + \
            inner(dot(Tv1, tau1), dot(data['expr_u1'] + dot(data['expr_stokes_stress'], n1), tau1))*dxGamma
-    L[1] = inner(Constant(0), p1)*dx
+    L[1] = inner(Constant(0), q1)*dx
     L[2] = inner(data['expr_f'], dot(Tv2, n2))*dxGamma
     L[3] = inner(-data['expr_f2'], q2)*dx
     L[4] = inner(dot(data['expr_u1'], n1) + dot(data['expr_u2'], n2), beta_)*dxGamma
-    
+
     return a, L, W
 
 
@@ -134,12 +135,12 @@ def setup_preconditioner(W, which, eps):
 
     u1, p1, u2, p2, lambda_ = map(TrialFunction, W)
     v1, q1, v2, q2, beta_ = map(TestFunction, W)
-
+    # This is not spectacular
     b00 = inner(grad(u1), grad(v1))*dx + inner(u1, v1)*dx
     B00 = AMG(ii_assemble(b00))
 
     b11 = inner(p1, q1)*dx
-    B11 = AMG(ii_assemble(b11))
+    B11 = LumpedInvDiag(ii_assemble(b11))
 
     b22 = inner(div(u2), div(v2))*dx + inner(u2, v2)*dx
     B22 = LU(ii_assemble(b22))
