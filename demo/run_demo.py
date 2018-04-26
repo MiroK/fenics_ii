@@ -113,7 +113,7 @@ def main(module_name, ncases, params, petsc_params):
         r_norm = (bb - AA*wh.block_vec()).norm()
             
         # Convergence?
-        monitor.send((transform(i, wh), niters, r_norm))
+        monitor.send((transform(i, wh), W, niters, r_norm))
         
     # Only send the final
     if save_dir:

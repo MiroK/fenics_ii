@@ -58,13 +58,23 @@ def monitor_error(u, norms, memory, reduction=lambda x: x, path=''):
     counter = 0
     while True:
         counter += 1
-        uh, niters, r_norm = yield
-        mesh_size = uh[0].function_space().mesh().hmin()
+        uh, W, niters, r_norm = yield
 
-        error = [norm(ui, uhi) for norm, ui, uhi in zip(norms, u, uh)]
+        # Here I assume that the higher dim mesh foos come first.
+        # This then better be a mesh for som LinearComnimation guys
+        mesh = None
+        for uhi in uh:
+            if hasattr(uhi, 'function_space'):
+                mesh = uhi.function_space().mesh()
+                break
+        assert mesh is not None
+        mesh_size = mesh.hmin()
+        
+        error = [norm(ui, uhi) if hasattr(uhi, 'function_space') else norm(ui, uhi, mesh)
+                 for norm, ui, uhi in zip(norms, u, uh)]
         error = np.array(reduction(error))
 
-        ndofs = [uh_i.function_space().dim() for uh_i in uh]
+        ndofs = [Wi.dim() for Wi in W]
 
         if error0 is not None:
             rate = np.log(error/error0)/np.log(mesh_size/mesh_size0)
@@ -94,12 +104,12 @@ def monitor_error(u, norms, memory, reduction=lambda x: x, path=''):
 
         
 # Two arg norms
-H1_norm = lambda u, uh: errornorm(u, uh, 'H1', degree_rise=2)
-H10_norm = lambda u, uh: errornorm(u, uh, 'H10', degree_rise=2)
-L2_norm = lambda u, uh: errornorm(u, uh, 'L2', degree_rise=2)
-Hdiv_norm = lambda u, uh: errornorm(u, uh, 'Hdiv', degree_rise=2)
-Hdiv0_norm = lambda u, uh: errornorm(u, uh, 'Hdiv0', degree_rise=2)
-Hcurl_norm = lambda u, uh: errornorm(u, uh, 'Hcurl', degree_rise=2)
-Hcurl0_norm = lambda u, uh: errornorm(u, uh, 'Hcurl0', degree_rise=2)
+H1_norm = lambda u, uh, m=None: errornorm(u, uh, 'H1', degree_rise=2, mesh=m)
+H10_norm = lambda u, uh, m=None: errornorm(u, uh, 'H10', degree_rise=2, mesh=m)
+L2_norm = lambda u, uh, m=None: errornorm(u, uh, 'L2', degree_rise=2, mesh=m)
+Hdiv_norm = lambda u, uh, m=None: errornorm(u, uh, 'Hdiv', degree_rise=2, mesh=m)
+Hdiv0_norm = lambda u, uh, m=None: errornorm(u, uh, 'Hdiv0', degree_rise=2, mesh=m)
+Hcurl_norm = lambda u, uh, m=None: errornorm(u, uh, 'Hcurl', degree_rise=2, mesh=m)
+Hcurl0_norm = lambda u, uh, m=None: errornorm(u, uh, 'Hcurl0', degree_rise=2, mesh=m)
 
 linf_norm = lambda u, uh: np.linalg.norm(u - uh.vector().get_local())

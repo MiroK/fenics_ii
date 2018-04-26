@@ -180,5 +180,5 @@ def setup_error_monitor(true, history, path=''):
     return monitor_error(true,
                          [Hdiv_norm, Hdiv_norm, L2_norm, L2_norm, L2_norm],
                          history,
-                         reduction
+                         reduction,
                          path=path)
