@@ -53,14 +53,17 @@ def main(module_name, ncases, params, petsc_params):
     print '='*79
     for i in ncases:
         a, L, W = module.setup_problem(i, rhs_data, eps=eps)
-
+        
         # Assemble blocks
         t = Timer('assembly'); t.start()
         AA, bb = map(ii_assemble, (a, L))
         print '\tAssembled blocks in %g s' % t.stop()
 
+        # Check the symmetry
         wh = ii_Function(W)
-        
+
+        assert (AA*wh.block_vec() - (AA.T)*wh.block_vec()).norm() < 1E-10
+
         if solver == 'direct':
             # Turn into a (monolithic) PETScMatrix/Vector
             t = Timer('conversion'); t.start()        
@@ -72,7 +75,8 @@ def main(module_name, ncases, params, petsc_params):
             print '\tSolver took %g s' % t.stop()
 
             niters = 1
-        else:
+
+        if solver == 'iterative':
             # Here we define a Krylov solver using PETSc
             BB = module.setup_preconditioner(W, precond, eps=eps)
             ## AA and BB as block_mat
@@ -172,7 +176,9 @@ if __name__ == '__main__':
 
     if petsc_args:
         petsc_args = dict((k, v) for k, v in zip(petsc_args[::2], petsc_args[1::2]))
-    
+    else:
+        petsc_args = {}
+        
     assert args.ncases > 0
     assert all(e > 0 for e in args.problem_eps)
 

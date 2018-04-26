@@ -19,6 +19,7 @@ def block_diag_mat(diagonal):
 
 def ii_PETScOperator(bmat):
     '''Return an object with mult method which acts like bmat*'''
+    # NOTE: we assume that this is a symmetric operator
     assert isinstance(bmat, block_mat)
 
     row_sizes, col_sizes = bmat_sizes(bmat)
@@ -37,6 +38,9 @@ def ii_PETScOperator(bmat):
             y_bvec = self.A*x_bvec
             # Convert back
             y.axpy(1., as_petsc_nest(y_bvec))
+
+        def multTranspose(self, mat, x, y):
+            self.mult(mat, x, y)
     
     mat = PETSc.Mat().createPython([[sum(row_sizes), ]*2, [sum(col_sizes), ]*2])
     mat.setPythonContext(Foo(bmat))
@@ -48,7 +52,7 @@ def ii_PETScOperator(bmat):
 def ii_PETScPreconditioner(bmat, ksp):
     '''Create from bmat a preconditioner for KSP'''
     assert isinstance(bmat, block_mat)
-
+    # NOTE: we assume that this is a symmetric operator
     class Foo(object):
         def __init__(self, A):
             self.A = A
@@ -64,6 +68,9 @@ def ii_PETScPreconditioner(bmat, ksp):
             y_bvec = self.A*x_bvec
             # Convert back
             y.axpy(1., as_petsc_nest(y_bvec))
+
+        def applyTranspose(self, mat, x, y):
+            self.apply(mat, x, y)
 
     pc = ksp.pc
     pc.setType(PETSc.PC.Type.PYTHON)
