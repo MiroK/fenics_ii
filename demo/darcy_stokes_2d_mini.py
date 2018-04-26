@@ -68,16 +68,17 @@ def setup_problem(i, data, eps=1.):
 
     stokes_domain, darcy_domain, iface_domain = setup_domain(n)
     # And now for the fun stuff
-    V1 = VectorFunctionSpace(stokes_domain, 'CG', 2)
+    V1 = VectorFunctionSpace(stokes_domain, 'CG', 1)
+    Vb = VectorFunctionSpace(stokes_domain, 'Bubble', 3)
     Q1 = FunctionSpace(stokes_domain, 'CG', 1)
-    V2 = FunctionSpace(darcy_domain, 'RT', 2)
-    Q2 = FunctionSpace(darcy_domain, 'DG', 1)
-    # In the orignal paper there's DG but CG sems fine too
-    M = FunctionSpace(iface_domain, 'DG', 1) 
-    W = [V1, Q1, V2, Q2, M]
+    V2 = FunctionSpace(darcy_domain, 'RT', 1)
+    Q2 = FunctionSpace(darcy_domain, 'DG', 0)
+    # With CG1 in M the preconditioner digs
+    M = FunctionSpace(iface_domain, 'DG', 0) 
+    W = [V1, Vb, Q1, V2, Q2, M]
 
-    u1, p1, u2, p2, lambda_ = map(TrialFunction, W)
-    v1, q1, v2, q2, beta_ = map(TestFunction, W)
+    u1, ub, p1, u2, p2, lambda_ = map(TrialFunction, W)
+    v1, vb, q1, v2, q2, beta_ = map(TestFunction, W)
     
     dxGamma = Measure('dx', domain=iface_domain)
     # We will need traces of the functions on the boundary
@@ -91,23 +92,36 @@ def setup_problem(i, data, eps=1.):
                      (1, 0)))*n1
 
     a = [[0]*len(W) for i in range(len(W))]
-    
+    # V - Vb
     a[0][0] = Constant(2)*inner(sym(grad(u1)), sym(grad(v1)))*dx +\
               inner(u1, v1)*dx +\
               inner(dot(Tu1, tau1), dot(Tv1, tau1))*dxGamma
-    a[0][1] = -inner(p1, div(v1))*dx
-    a[0][4] = inner(lambda_, dot(Tv1, n1))*dxGamma
 
-    a[1][0] = -inner(q1, div(u1))*dx
+    a[1][1] = Constant(2)*inner(sym(grad(ub)), sym(grad(vb)))*dx +\
+              inner(ub, vb)*dx
 
-    a[2][2] = inner(u2, v2)*dx
-    a[2][3] = -inner(p2, div(v2))*dx
-    a[2][4] = inner(lambda_, dot(Tv2, n2))*dxGamma
-
-    a[3][2] = -inner(q2, div(u2))*dx
-
-    a[4][0] = inner(beta_, dot(Tu1, n1))*dxGamma 
-    a[4][2] = inner(beta_, dot(Tu2, n2))*dxGamma
+    a[0][1] = Constant(2)*inner(sym(grad(ub)), sym(grad(v1)))*dx +\
+              inner(ub, v1)*dx
+    
+    a[1][0] = Constant(2)*inner(sym(grad(u1)), sym(grad(vb)))*dx +\
+              inner(u1, vb)*dx
+    # V and Vb - Q
+    a[0][2] = -inner(p1, div(v1))*dx
+    a[1][2] = -inner(p1, div(vb))*dx
+    # Q - V and Vb
+    a[2][0] = -inner(q1, div(u1))*dx
+    a[2][1] = -inner(q1, div(ub))*dx
+    # Coupling to Darcy
+    a[0][5] = inner(lambda_, dot(Tv1, n1))*dxGamma
+    # Darcy
+    a[3][3] = inner(u2, v2)*dx
+    a[3][4] = -inner(p2, div(v2))*dx
+    a[4][3] = -inner(q2, div(u2))*dx
+    # Coupling to Stokes
+    a[3][5] = inner(lambda_, dot(Tv2, n2))*dxGamma
+    # Couplings
+    a[5][0] = inner(beta_, dot(Tu1, n1))*dxGamma 
+    a[5][3] = inner(beta_, dot(Tu2, n2))*dxGamma
 
     ####
     n_outer = FacetNormal(stokes_domain)
@@ -120,10 +134,11 @@ def setup_problem(i, data, eps=1.):
     L[0] = inner(data['expr_f1'], v1)*dx + \
            inner(v1, dot(data['expr_stokes_stress'], n_outer))*dsOuter + \
            inner(dot(Tv1, tau1), dot(data['expr_u1'] + dot(data['expr_stokes_stress'], n1), tau1))*dxGamma
-    L[1] = inner(Constant(0), q1)*dx
-    L[2] = inner(data['expr_f'], dot(Tv2, n2))*dxGamma
-    L[3] = inner(-data['expr_f2'], q2)*dx
-    L[4] = inner(dot(data['expr_u1'], n1) + dot(data['expr_u2'], n2), beta_)*dxGamma
+    L[1] = inner(data['expr_f1'], vb)*dx  # Bubble contributes nothing to ds, dxG
+    L[2] = inner(Constant(0), q1)*dx
+    L[3] = inner(data['expr_f'], dot(Tv2, n2))*dxGamma
+    L[4] = inner(-data['expr_f2'], q2)*dx
+    L[5] = inner(dot(data['expr_u1'], n1) + dot(data['expr_u2'], n2), beta_)*dxGamma
 
     return a, L, W
 
@@ -133,11 +148,14 @@ def setup_preconditioner(W, which, eps):
     from block.algebraic.petsc import LumpedInvDiag, LU
     from hsmg import HsNorm
 
-    u1, p1, u2, p2, lambda_ = map(TrialFunction, W)
-    v1, q1, v2, q2, beta_ = map(TestFunction, W)
+    u1, ub, p1, u2, p2, lambda_ = map(TrialFunction, W)
+    v1, vb, q1, v2, q2, beta_ = map(TestFunction, W)
     # This is not spectacular
     b00 = inner(grad(u1), grad(v1))*dx + inner(u1, v1)*dx
     B00 = AMG(ii_assemble(b00))
+
+    bbb = inner(grad(ub), grad(vb))*dx + inner(ub, vb)*dx
+    Bbb = LumpedInvDiag(ii_assemble(bbb))
 
     b11 = inner(p1, q1)*dx
     B11 = LumpedInvDiag(ii_assemble(b11))
@@ -150,7 +168,7 @@ def setup_preconditioner(W, which, eps):
 
     B44 = inverse(HsNorm(W[-1], s=0.5))
     
-    return block_diag_mat([B00, B11, B22, B33, B44])
+    return block_diag_mat([B00, Bbb, B11, B22, B33, B44])
 
 # --------------------------------------------------------------------
 
@@ -223,3 +241,8 @@ def setup_error_monitor(true, history, path=''):
     return monitor_error(true,
                          [H1_norm, L2_norm, Hdiv_norm, L2_norm, L2_norm],
                          history, path=path)
+
+def setup_transform(i, wh):
+    '''Combine velocity with bubbles'''
+    # NOTE: we don't look at the bubble contribution
+    return [wh[i] for i in (0, 2, 3, 4, 5)]
