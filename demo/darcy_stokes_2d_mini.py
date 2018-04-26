@@ -158,7 +158,7 @@ def setup_preconditioner(W, which, eps):
     Bbb = LumpedInvDiag(ii_assemble(bbb))
 
     b11 = inner(p1, q1)*dx
-    B11 = LumpedInvDiag(ii_assemble(b11))
+    B11 = AMG(ii_assemble(b11))
 
     b22 = inner(div(u2), div(v2))*dx + inner(u2, v2)*dx
     B22 = LU(ii_assemble(b22))

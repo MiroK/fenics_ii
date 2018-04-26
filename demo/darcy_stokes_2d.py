@@ -73,7 +73,7 @@ def setup_problem(i, data, eps=1.):
     V2 = FunctionSpace(darcy_domain, 'RT', 2)
     Q2 = FunctionSpace(darcy_domain, 'DG', 1)
     # In the orignal paper there's DG but CG sems fine too
-    M = FunctionSpace(iface_domain, 'DG', 1) 
+    M = FunctionSpace(iface_domain, 'CG', 1) 
     W = [V1, Q1, V2, Q2, M]
 
     u1, p1, u2, p2, lambda_ = map(TrialFunction, W)
