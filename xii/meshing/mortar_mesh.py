@@ -1,7 +1,6 @@
 from collections import defaultdict
 from xii.meshing.embedded_mesh import EmbeddedMesh
 import dolfin as df
-import networkx as nx
 import numpy as np
 
 
@@ -134,6 +133,7 @@ def is_continuous(mesh):
     there exists a continuous path of mesh (other) cells between 
     the two cells
     '''
+    import networkx as nx
     assert mesh.topology().dim() < mesh.geometry().dim()
     # This mounts to the graph of the mesh having only one connected
     # component
