@@ -3,7 +3,7 @@ from block.object_pool import vec_pool
 from xii.linalg.convert import bmat_sizes, get_dims
 from xii.linalg.function import as_petsc_nest
 from block import block_mat, block_vec
-from dolfin import PETScVector, as_backend_type, Function
+from dolfin import PETScVector, as_backend_type, Function, Vector, GenericVector
 from petsc4py import PETSc
 import numpy as np
 
@@ -51,7 +51,7 @@ def ii_PETScOperator(bmat):
 
 def ii_PETScPreconditioner(bmat, ksp):
     '''Create from bmat a preconditioner for KSP'''
-    assert isinstance(bmat, block_mat)
+    assert isinstance(bmat, block_base)
     # NOTE: we assume that this is a symmetric operator
     class Foo(object):
         def __init__(self, A):
@@ -144,3 +144,114 @@ class VectorizedOperator(block_base):
     @vec_pool
     def create_vec(self, dim):
         return self.__create_vec__(dim)
+
+
+def is_increasing(seq):
+    if not seq:
+        return False
+    if len(seq) == 1:
+        return True
+    return seq[0] < seq[1] and is_increasing(seq[1:])
+
+
+class ReductionOperator(block_base):
+    '''
+    This operator reduces block vector into a block vector with 
+    at most the same number of blocks. The size of the blocks is specified
+    by offsets. Eg (1, 2, 3, 4) is the idenity for vector with 4 block
+    [with components [0:1], [1:2], [2:3], [3:4]], whole (2, 3, 4) would 
+    produce a 3 vector from [0:2], [2:3], [3:4]
+    '''
+    def __init__(self, offsets, W):
+        assert len(W) == offsets[-1]
+        assert is_increasing(offsets)
+        self.offsets = [0] + offsets
+
+        self.index_sets = []
+        for f, l in zip(self.offsets[:-1], self.offsets[1:]):
+            if (l - f) == 1:
+                self.index_sets.append([])
+            else:
+                index_set = []
+                prev = 0
+                for Wi in W[f:l]:
+                    this = Wi.dofmap().dofs() + prev
+                    index_set.append(PETSc.IS().createGeneral(this.tolist()))
+                    prev = len(this)
+                self.index_sets.append(index_set)
+
+    def matvec(self, b):
+        '''Reduce'''
+        assert len(b) == self.offsets[-1]
+
+        reduced = []
+        for f, l in zip(self.offsets[:-1], self.offsets[1:]):
+            if (l - f) == 1:
+                reduced.append(b[f])
+            else:
+                reduced.append(PETScVector(as_petsc_nest(block_vec(b.blocks[f:l]))))
+        return block_vec(reduced) if len(reduced) > 1 else reduced[0]
+
+    def transpmult(self, b):
+        '''Unpack'''
+        if isinstance(b, (Vector, GenericVector)):
+            b = [b]
+        else:
+            b = b.blocks
+        n = len(b)
+        assert n == len(self.index_sets), self.index_sets
+
+        unpacked = []
+        for bi, iset in zip(b, self.index_sets):
+            if len(iset) == 0:
+                unpacked.append(bi)
+            else:
+                x_petsc = as_backend_type(bi).vec()
+
+                subvecs = map(lambda indices, x=x_petsc: PETScVector(x.getSubVector(indices)),
+                              iset)
+
+                unpacked.extend(subvecs)
+        return block_vec(unpacked)
+
+# --------------------------------------------------------------------
+
+if __name__ == '__main__':
+    from dolfin import *
+    from block import block_transpose
+    from xii import ii_convert, ii_assemble
+    import numpy as np
+
+    mesh = UnitSquareMesh(16, 16)
+    
+    V = VectorFunctionSpace(mesh, 'CG', 1)
+    Vb = VectorFunctionSpace(mesh, 'Bubble', 3)
+
+    u, v = TrialFunction(V), TestFunction(V)
+    ub, vb = TrialFunction(Vb), TestFunction(Vb)
+
+    b = [[0, 0], [0, 0]]
+    b[0][0] = inner(grad(u), grad(v))*dx + inner(u, v)*dx
+    b[0][1] = inner(grad(ub), grad(v))*dx + inner(ub, v)*dx
+    b[1][0] = inner(grad(u), grad(vb))*dx + inner(u, vb)*dx
+    b[1][1] = inner(grad(ub), grad(vb))*dx + inner(ub, vb)*dx
+
+    BB = ii_assemble(b)
+    
+    x = Function(V).vector(); x.set_local(np.random.rand(x.local_size()))
+    y = Function(Vb).vector(); y.set_local(np.random.rand(y.local_size()))
+    bb = block_vec([x, y])
+
+    z_block = BB*bb
+    
+    # Make into a monolithic matrix
+    BB_m =ii_convert(BB)
+    
+    R = ReductionOperator([2], W=[V, Vb])
+
+    z = (R.T)*BB_m*(R*bb)
+
+    print (z - z_block).norm()
+
+    y  = BB_m*(R*bb)
+    print np.linalg.norm(np.hstack([bi.get_local() for bi in z_block])-y.get_local())

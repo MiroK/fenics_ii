@@ -19,7 +19,7 @@ def main(module_name, ncases, params, petsc_params):
     for k, v in params.items(): exec(k + '=v', locals())
 
     RED = '\033[1;37;31m%s\033[0m'
-    print RED % ('\tRunning %s' % module_name)
+    print RED % ('\tRunning %s with %d preconditioner' % (module_name, precond))
 
     module = __import__(module_name)  # no importlib in python2.7
 
@@ -79,6 +79,7 @@ def main(module_name, ncases, params, petsc_params):
         if solver == 'iterative':
             # Here we define a Krylov solver using PETSc
             BB = module.setup_preconditioner(W, precond, eps=eps)
+
             ## AA and BB as block_mat
             ksp = PETSc.KSP().create()
 
@@ -115,7 +116,6 @@ def main(module_name, ncases, params, petsc_params):
             
         # Let's check the final size of the residual
         r_norm = (bb - AA*wh.block_vec()).norm()
-            
         # Convergence?
         monitor.send((transform(i, wh), W, niters, r_norm))
         

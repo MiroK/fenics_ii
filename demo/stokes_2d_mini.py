@@ -82,25 +82,50 @@ def setup_problem(i, (f, h, u0), eps=1.):
 def setup_preconditioner(W, which, eps):
     '''The preconditioner'''
     from block.algebraic.petsc import AMG, LumpedInvDiag
+    from block import block_transpose
     from hsmg import HsNorm
     
     u, ub, p, lambda_ = map(TrialFunction, W)
     v, vb, q, beta_ = map(TestFunction, W)
 
-    b00 = inner(grad(u), grad(v))*dx + inner(u, v)*dx
-    B00 = AMG(ii_assemble(b00))
+    # A block diagonal preconditioner
+    if which == 0:
+        b00 = inner(grad(u), grad(v))*dx + inner(u, v)*dx
+        B00 = AMG(ii_assemble(b00))
 
-    b11 = inner(grad(ub), grad(vb))*dx + inner(ub, vb)*dx
-    B11 = LumpedInvDiag(ii_assemble(b11))
+        b11 = inner(grad(ub), grad(vb))*dx + inner(ub, vb)*dx
+        B11 = LumpedInvDiag(ii_assemble(b11))
 
-    b22 = inner(p, q)*dx
-    B22 = AMG(ii_assemble(b22))
+        b22 = inner(p, q)*dx
+        B22 = AMG(ii_assemble(b22))
+
+        M = W[-1]
+        Mi = M.sub(0).collapse()
+        B33 = inverse(VectorizedOperator(HsNorm(Mi, s=-0.5), M))
+
+        return block_diag_mat([B00, B11, B22, B33])
+
+    # Preconditioner monolithic in Stokes velocity
+    b = [[0, 0], [0, 0]]
+    b[0][0] = inner(grad(u), grad(v))*dx + inner(u, v)*dx
+    #b[0][1] = inner(grad(ub), grad(v))*dx + inner(ub, v)*dx
+    #b[1][0] = inner(grad(u), grad(vb))*dx + inner(u, vb)*dx
+    b[1][1] = inner(grad(ub), grad(vb))*dx + inner(ub, vb)*dx
+    # Make into a monolithic matrix
+    B00 = AMG(ii_convert(ii_assemble(b)))
+
+    b11 = inner(p, q)*dx
+    B11 = AMG(ii_assemble(b11))
 
     M = W[-1]
     Mi = M.sub(0).collapse()
-    B33 = inverse(VectorizedOperator(HsNorm(Mi, s=-0.5), M))
+    B22 = inverse(VectorizedOperator(HsNorm(Mi, s=-0.5), M))
+    # So this is a 3x3 matrix 
+    BB = block_diag_mat([B00, B11, B22])
+    # But the preconditioner has to be 4x4
+    R = ReductionOperator([2, 3, 4], W)
 
-    return block_diag_mat([B00, B11, B22, B33])
+    return (R.T)*BB*R
 
 # --------------------------------------------------------------------
 
