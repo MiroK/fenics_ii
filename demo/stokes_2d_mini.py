@@ -108,8 +108,8 @@ def setup_preconditioner(W, which, eps):
     # Preconditioner monolithic in Stokes velocity
     b = [[0, 0], [0, 0]]
     b[0][0] = inner(grad(u), grad(v))*dx + inner(u, v)*dx
-    #b[0][1] = inner(grad(ub), grad(v))*dx + inner(ub, v)*dx
-    #b[1][0] = inner(grad(u), grad(vb))*dx + inner(u, vb)*dx
+    b[0][1] = inner(grad(ub), grad(v))*dx + inner(ub, v)*dx
+    b[1][0] = inner(grad(u), grad(vb))*dx + inner(u, vb)*dx
     b[1][1] = inner(grad(ub), grad(vb))*dx + inner(ub, vb)*dx
     # Make into a monolithic matrix
     B00 = AMG(ii_convert(ii_assemble(b)))

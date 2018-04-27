@@ -150,12 +150,37 @@ def setup_preconditioner(W, which, eps):
 
     u1, ub, p1, u2, p2, lambda_ = map(TrialFunction, W)
     v1, vb, q1, v2, q2, beta_ = map(TestFunction, W)
-    # This is not spectacular
-    b00 = inner(grad(u1), grad(v1))*dx + inner(u1, v1)*dx
-    B00 = AMG(ii_assemble(b00))
 
-    bbb = inner(grad(ub), grad(vb))*dx + inner(ub, vb)*dx
-    Bbb = LumpedInvDiag(ii_assemble(bbb))
+    # Neither is super spectacular
+    # Completely block diagonal preconditioner with H1 on the bubble space
+    if which == 0:
+        b00 = inner(grad(u1), grad(v1))*dx + inner(u1, v1)*dx
+        B00 = AMG(ii_assemble(b00))
+
+        bbb = inner(grad(ub), grad(vb))*dx + inner(ub, vb)*dx
+        Bbb = LumpedInvDiag(ii_assemble(bbb))
+
+        b11 = inner(p1, q1)*dx
+        B11 = AMG(ii_assemble(b11))
+
+        b22 = inner(div(u2), div(v2))*dx + inner(u2, v2)*dx
+        B22 = LU(ii_assemble(b22))
+
+        b33 = inner(p2, q2)*dx
+        B33 = LumpedInvDiag(ii_assemble(b33))
+
+        B44 = inverse(HsNorm(W[-1], s=0.5))
+    
+        return block_diag_mat([B00, Bbb, B11, B22, B33, B44])
+
+    # Monolithic for MINI velocity
+    b = [[0, 0], [0, 0]]
+    b[0][0] = inner(grad(u1), grad(v1))*dx + inner(u1, v1)*dx
+    b[0][1] = inner(grad(ub), grad(v1))*dx + inner(ub, v1)*dx
+    b[1][0] = inner(grad(u1), grad(vb))*dx + inner(u1, vb)*dx
+    b[1][1] = inner(grad(ub), grad(vb))*dx + inner(ub, vb)*dx
+    # Make into a monolithic matrix
+    B00 = AMG(ii_convert(ii_assemble(b)))
 
     b11 = inner(p1, q1)*dx
     B11 = AMG(ii_assemble(b11))
@@ -167,8 +192,13 @@ def setup_preconditioner(W, which, eps):
     B33 = LumpedInvDiag(ii_assemble(b33))
 
     B44 = inverse(HsNorm(W[-1], s=0.5))
-    
-    return block_diag_mat([B00, Bbb, B11, B22, B33, B44])
+    # So this is a 5x5 matrix 
+    BB = block_diag_mat([B00, B11, B22, B33, B44])
+    # But the preconditioner has to be 6x6; reduce 6 to 6 by comcat
+    # first two, rest stays same
+    R = ReductionOperator([2, 3, 4, 5, 6], W)
+
+    return (R.T)*BB*R
 
 # --------------------------------------------------------------------
 
