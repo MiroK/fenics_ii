@@ -24,8 +24,9 @@ class AverageFormAssembler(ReducedFormAssembler):
         '''Dict of reduction data and optinal normal'''
         radius = terminal.average_['radius']
         quad_degree = terminal.average_['quad_degree']
+        surface = terminal.average_['surface']
 
-        return {'radius': radius, 'quad_degree': quad_degree}
+        return {'radius': radius, 'quad_degree': quad_degree, 'surface': surface}
 
     def reduced_space(self, V, reduced_mesh):
         '''Construct a reduced space for V on the mesh'''

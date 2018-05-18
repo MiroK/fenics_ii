@@ -52,16 +52,18 @@ def average_space(V, mesh):
     return df.FunctionSpace(mesh, elm(family, mesh.ufl_cell(), degree))
 
 
-def Average(v, line_mesh, radius, quadrature_degree=8):
+def Average(v, line_mesh, radius, quadrature_degree=8, surface='cylinder'):
     '''
-    Annotated function for being a cylinder surface average around line 
-    mesh. This means that 
+    Annotated function for being surface average around line mesh. 
+    For surface == 'cylinder' this means that 
 
         (Average(v))(x) = |C_R(x)|\int_{C_R(x)} v(y) dy for every point 
 
     x on the line_mesh. C_R(x) is a center of radius R(x) centered at x
     with normal vector determined by tangent of the line_mesh segment @ 
-    x. This integral is computed numerically with given quad. degree.
+    x. For surface == 'sphere' we integrate over a surface of a ball 
+    at x with radius. This integral is computed numerically with given quad.
+    degree.
 
     If radius == 0, this reduction is understood as 3d-1d trace. In this 
     case the reduced function must be in some CG space!
@@ -85,7 +87,8 @@ def Average(v, line_mesh, radius, quadrature_degree=8):
     if is_number(radius): assert radius > 0
     # A copy!
     v = reconstruct(v)
-    v.average_ = {'mesh': line_mesh, 'radius': radius, 'quad_degree': quadrature_degree}
+    v.average_ = {'mesh': line_mesh, 'radius': radius, 'quad_degree': quadrature_degree,
+                  'surface': surface}
 
     return v
 

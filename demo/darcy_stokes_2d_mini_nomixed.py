@@ -67,10 +67,11 @@ def setup_problem(i, data, eps=1.):
     n = 16*2**i
 
     stokes_domain, darcy_domain, iface_domain = setup_domain(n)
-    # And now for the fun stuff
+    # NOTE: this does not work with fenics 2017.2.0
     MiniElm = VectorElement('Lagrange', triangle, 1) + \
               VectorElement('Bubble', triangle, 3)
     V1 = FunctionSpace(stokes_domain, MiniElm)
+    
     Q1 = FunctionSpace(stokes_domain, 'CG', 1)
     V2 = FunctionSpace(darcy_domain, 'RT', 1)
     Q2 = FunctionSpace(darcy_domain, 'DG', 0)
