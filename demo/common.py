@@ -1,7 +1,32 @@
 from dolfin import Expression, errornorm
 from sympy.printing import ccode
+from itertools import takewhile
 import sympy as sp
 import numpy as np
+import re
+
+
+number = re.compile(r'[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?')
+
+first = lambda iterable: next(iter(iterable))
+    
+def parse_eps(eps):
+    '''Parse the eps param list '''
+    groups = []
+    i = 0
+    while i < len(eps):
+        e = eps[i]
+        if '[' in e:
+            group = [x for x in takewhile(lambda s: ']' not in s, eps[i:])]
+            # Don't forget the one that broke stuff
+            group.append(eps[i+len(group)])
+            i += len(group)
+            # Parse it
+            groups.append(parse_eps([first(number.findall(s)) for s in group]))
+        else:
+            groups.append(float(first(number.findall(e))))
+            i += 1
+    return groups
 
 
 def expr_body(expr, **kwargs):

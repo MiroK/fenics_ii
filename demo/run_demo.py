@@ -49,7 +49,7 @@ def main(module_name, ncases, params, petsc_params):
         transform = lambda i, x: x
 
     print '='*79
-    print '\t\t\tProblem eps = %g' % eps
+    print '\t\t\tProblem eps = %s' % (' '.join(map(str, eps)))
     print '='*79
     for i in ncases:
         a, L, W = module.setup_problem(i, rhs_data, eps=eps)
@@ -139,6 +139,7 @@ def main(module_name, ncases, params, petsc_params):
 
 if __name__ == '__main__':
     import argparse, sys, petsc4py
+    from common import parse_eps
     # Make petsc4py work with command line. This allows configuring
     # ksp (petsc krylov solver) as e.g.
     #      -ksp_rtol 1E-8 -ksp_atol none -ksp_monitor_true_residual none
@@ -150,7 +151,10 @@ if __name__ == '__main__':
     parser.add_argument('demo', nargs='?', default='all', type=str,
                         help='Which demo to run')
     # Some problems are paramer dependent
-    parser.add_argument('-problem_eps', default=[1.0], type=float, nargs='+',
+    # NOTE: [] denote the parameter groups, that is [1, 2, 3] [3, 4, 4] will be
+    # understood as two cases where the parameters groups are respectively
+    # [1, 2, 3] and [3, 4, 4]
+    parser.add_argument('-problem_eps', type=str, nargs='+',
                         help='Parameter value for problem setup')
     # How many uniform refinements to make
     parser.add_argument('-ncases', type=int, default=1,
@@ -193,10 +197,11 @@ if __name__ == '__main__':
         modules = [os.path.splitext(f)[0] for f in os.listdir('.') if f.endswith('_2d.py')]
     else:
         modules = [module]
-
+        
     params = {'save_dir': args.save_dir, 'solver': args.solver,
               'precond': args.precond, 'log': bool(args.log), 'plot': bool(args.plot)}
+    
     for module in modules:
-        for e in args.problem_eps:
-            params['eps'] = e
+        for eps in parse_eps(args.problem_eps):
+            params['eps'] = eps
             main(module, ncases=range(args.ncases), params=params, petsc_params=petsc_args)

@@ -13,6 +13,8 @@ from xii import *
 
 def setup_problem(i, (f, g), eps=None):
     '''Elasticity on [0, 1]^2'''
+    assert len(eps) == 2
+    
     n = 4*2**i
     mesh = UnitSquareMesh(*(n, )*2)
     bmesh = BoundaryMesh(mesh, 'exterior')
@@ -36,8 +38,8 @@ def setup_problem(i, (f, g), eps=None):
     # The line integral
     dx_ = Measure('dx', domain=bmesh)
 
-    mu = Constant(eps)
-    lmbda = Constant(2*eps)  # This is just some choice. Must be respected in MMS!
+    mu = Constant(eps[0])
+    lmbda = Constant(eps[1])  # This is just some choice. Must be respected in MMS!
 
     a = [[0]*len(W) for _ in range(len(W))]
     a[0][0] = 2*mu*inner(sym(grad(u)), sym(grad(v)))*dx
@@ -113,8 +115,10 @@ def setup_mms(eps=None):
     V = VectorFunctionSpace(mesh, 'CG', 1)
     u = Function(V)
 
-    mu = Constant(eps)
-    lmbda = Constant(2*eps)  # This is just some choice. Must be respected in MMS!
+    # Define as function to allow ufly substition
+    S = FunctionSpace(mesh, 'DG', 0)
+    mu = Function(S)
+    lmbda = Function(S)
 
     sigma = lambda u: 2*mu*sym(grad(u)) + lmbda*div(u)*Identity(2)
 
@@ -123,20 +127,21 @@ def setup_mms(eps=None):
     p = lmbda*div(u)  # Solid pressure
 
     # What we want to substitute
-    x, y  = sp.symbols('x, y')
+    x, y, mu_, lambda_  = sp.symbols('x y mu lmbda')
     # I chose u purposely such that sigma(u).n is zero on the boundary
     u_ = sp.Matrix([0.01*sp.cos(sp.pi*x*(1-x)*y*(1-y)),
                     -0.01*sp.cos(2*sp.pi*x*(1-x)*y*(1-y))])
-    lmbda_ = sp.Matrix([0, 0])
+    x_ = sp.Matrix([0, 0])
 
+    subs = {u: u_, mu: mu_, lmbda: lambda_}  # Function are replaced by symbols
     # As expressions
-    up = (ulfy.Expression(u_, degree=4),
-          ulfy.Expression(p, subs={u: u_, mu: mu(0), lmbda: lmbda(0)}, degree=4),
-          ulfy.Expression(lmbda_, degree=1))
+    up = (ulfy.Expression(u_, degree=5),
+          ulfy.Expression(p, subs=subs, degree=4, mu=eps[0], lmbda=eps[1]),
+          ulfy.Expression(x_, degree=1))
     # Note lmbda_ being a constant is compiled into constant so errornorm
     # will complaing about the Expressions's degree being too low
-    fg = (ulfy.Expression(f, subs={u: u_, mu: mu(0), lmbda: lmbda(0)}, degree=4),
-          ulfy.Expression(u_, degree=4))
+    fg = (ulfy.Expression(f, subs=subs, degree=4, mu=eps[0], lmbda=eps[1]),
+          ulfy.Expression(u_, degree=4, mu=eps[0], lmbda=eps[1]))  # mu, lmbda are are given value
 
     return up, fg
 
