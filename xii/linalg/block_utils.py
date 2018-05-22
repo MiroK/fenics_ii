@@ -1,7 +1,11 @@
 from block.block_base import block_base
 from block.object_pool import vec_pool
+from block import block_transpose
+
 from xii.linalg.convert import bmat_sizes, get_dims
 from xii.linalg.function import as_petsc_nest
+from xii.linalg.matrix_utils import as_petsc
+
 from block import block_mat, block_vec
 from dolfin import PETScVector, as_backend_type, Function, Vector, GenericVector
 from petsc4py import PETSc
@@ -19,29 +23,68 @@ def block_diag_mat(diagonal):
 
 def ii_PETScOperator(bmat):
     '''Return an object with mult method which acts like bmat*'''
-    # NOTE: we assume that this is a symmetric operator
-    assert isinstance(bmat, block_mat)
 
-    row_sizes, col_sizes = bmat_sizes(bmat)
-    
+    if isinstance(bmat, block_base):
+        row_sizes, col_sizes = bmat_sizes(bmat)
+        is_block = True
+    else:
+        row_sizes, cols_sizes = (bmat.size(0), ), (bmat.size(1), )
+        is_block = False
+
     class Foo(object):
         def __init__(self, A):
             self.A = A
-    
-        def mult(self, mat, x, y):
-            '''y = A*x'''
-            y *= 0
-            # Now x shall be comming as a nested vector
-            # Convert
-            x_bvec = block_vec(map(PETScVector, x.getNestSubVecs()))
-            # Apply
-            y_bvec = self.A*x_bvec
-            # Convert back
-            y.axpy(1., as_petsc_nest(y_bvec))
 
-        def multTranspose(self, mat, x, y):
-            self.mult(mat, x, y)
-    
+        if is_block:
+            def mult(self, mat, x, y):
+                '''y = A*x'''
+                y *= 0
+                # Now x shall be comming as a nested vector
+                # Convert
+                x_bvec = block_vec(map(PETScVector, x.getNestSubVecs()))
+                # Apply
+                y_bvec = self.A*x_bvec
+                # Convert back
+                y.axpy(1., as_petsc_nest(y_bvec))
+
+            def multTranspose(self, mat, x, y):
+                '''y = A.T*x'''
+                AT = block_transpose(self.A)
+            
+                y *= 0
+                # Now x shall be comming as a nested vector
+                # Convert
+                x_bvec = block_vec(map(PETScVector, x.getNestSubVecs()))
+                # Apply
+                y_bvec = AT*x_bvec
+                # Convert back
+                y.axpy(1., as_petsc_nest(y_bvec))
+        # No block
+        else:
+            def mult(self, mat, x, y):
+                '''y = A*x'''
+                y *= 0
+                # Now x shall be comming as a nested vector
+                # Convert
+                x_bvec = PETScVector(x)
+                # Apply
+                y_bvec = self.A*x_bvec
+                # Convert back
+                y.axpy(1., as_petsc(y_bvec))
+
+            def multTranspose(self, mat, x, y):
+                '''y = A.T*x'''
+                AT = block_transpose(self.A)
+            
+                y *= 0
+                # Now x shall be comming as a nested vector
+                # Convert
+                x_bvec = PETScVector(x)
+                # Apply
+                y_bvec = AT*x_bvec
+                # Convert back
+                y.axpy(1., as_petsc(y_bvec))
+
     mat = PETSc.Mat().createPython([[sum(row_sizes), ]*2, [sum(col_sizes), ]*2])
     mat.setPythonContext(Foo(bmat))
     mat.setUp()
@@ -51,26 +94,72 @@ def ii_PETScOperator(bmat):
 
 def ii_PETScPreconditioner(bmat, ksp):
     '''Create from bmat a preconditioner for KSP'''
-    assert isinstance(bmat, block_base)
+    if isinstance(bmat, block_base):
+        row_sizes, col_sizes = bmat_sizes(bmat)
+        is_block = True
+    else:
+        row_sizes, cols_sizes = (bmat.size(0), ), (bmat.size(1), )
+        is_block = False
+
     # NOTE: we assume that this is a symmetric operator
     class Foo(object):
         def __init__(self, A):
             self.A = A
-    
-        def apply(self, mat, x, y):
-            '''y = A*x'''
-            # Now x shall be comming as a nested vector
-            y *= 0
-            # Now x shall be comming as a nested vector
-            # Convert
-            x_bvec = block_vec(map(PETScVector, x.getNestSubVecs()))
-            # Apply
-            y_bvec = self.A*x_bvec
-            # Convert back
-            y.axpy(1., as_petsc_nest(y_bvec))
 
-        def applyTranspose(self, mat, x, y):
-            self.apply(mat, x, y)
+        if is_block:
+            def apply(self, mat, x, y):
+                '''y = A*x'''
+                # Now x shall be comming as a nested vector
+                y *= 0
+                # Now x shall be comming as a nested vector
+                # Convert
+                x_bvec = block_vec(map(PETScVector, x.getNestSubVecs()))
+                # Apply
+                y_bvec = self.A*x_bvec
+                # Convert back
+                y.axpy(1., as_petsc_nest(y_bvec))
+            
+            def applyTranspose(self, mat, x, y):
+                '''y = A.T*x'''
+                AT = block_transpose(self.A)
+                
+                # Now x shall be comming as a nested vector
+                y *= 0
+                # Now x shall be comming as a nested vector
+                # Convert
+                x_bvec = block_vec(map(PETScVector, x.getNestSubVecs()))
+                # Apply
+                y_bvec = AT*x_bvec
+                # Convert back
+                y.axpy(1., as_petsc_nest(y_bvec))
+        # no block; FIXME: would be so much simpler with type dispatch
+        # Ie block_vec knows what to do + wrap x.getNestSubVecs
+        else:
+            def apply(self, mat, x, y):
+                '''y = A*x'''
+                # Now x shall be comming as a nested vector
+                y *= 0
+                # Now x shall be comming as a nested vector
+                # Convert
+                x_bvec = PETScVector(x)
+                # Apply
+                y_bvec = self.A*x_bvec
+                # Convert back
+                y.axpy(1., as_petsc(y_bvec))
+
+            def applyTranspose(self, mat, x, y):
+                '''y = A.T*x'''
+                AT = block_transpose(self.A)
+                
+                # Now x shall be comming as a nested vector
+                y *= 0
+                # Now x shall be comming as a nested vector
+                # Convert
+                x_bvec = PETScVector(x)
+                # Apply
+                y_bvec = AT*x_bvec
+                # Convert back
+                y.axpy(1., as_petsc(y_bvec))
 
     pc = ksp.pc
     pc.setType(PETSc.PC.Type.PYTHON)

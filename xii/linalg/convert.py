@@ -302,6 +302,9 @@ def get_dims(thing):
     elif hasattr(thing, 'A'):
         assert is_petsc_mat(thing.A)
         return get_dims(thing.A)
+    # Almost last resort
+    elif hasattr(thing, 'create_vec'):
+        return (thing.create_vec(0).size(), thing.create_vec(1).size())
 
     raise ValueError('Cannot get_dims of %r, %s' % (type(thing), thing))
 
