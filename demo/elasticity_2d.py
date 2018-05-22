@@ -51,17 +51,43 @@ def setup_preconditioner(W, which, eps=None):
     
         H1 x H-0.5 or (H1 \cap H0.5) x L2
     '''
-    from block.algebraic.petsc import AMG
-    from block.algebraic.petsc import LumpedInvDiag
+    from xii.linalg.matrix_utils import as_petsc
+    from numpy import hstack
+    from petsc4py import PETSc
     from hsmg import HsNorm
     
     V, Q = W
-
+    
     # H1
     u, v = TrialFunction(V), TestFunction(V)
-    b00 = inner(grad(u), grad(v))*dx + inner(u, v)*dx
-    # Inverted by BoomerAMG
-    B00 = AMG(ii_assemble(b00))
+    b00 = inner(grad(u), grad(v))*dx + inner(u, v)*dx    
+    A = as_backend_type(assemble(b00))
+
+    # Attach rigid deformations to A
+    # Functions
+    Z = [interpolate(Constant((1, 0)), V),
+         interpolate(Constant((0, 1)), V),
+         interpolate(Expression(('x[1]', '-x[0]'), degree=1), V)]
+    # The basis
+    Z = VectorSpaceBasis([z.vector() for z in Z])
+    Z.orthonormalize()
+    A.set_nullspace(Z)
+    A.set_near_nullspace(Z)
+
+    A = as_petsc(A)
+    # Setup the preconditioner in petsc
+    pc = PETSc.PC().create()
+    pc.setType(PETSc.PC.Type.HYPRE)
+    pc.setOperators(A)
+    # Other options
+    opts = PETSc.Options()
+    opts.setValue('pc_hypre_boomeramg_cycle_type', 'V')
+    opts.setValue('pc_hypre_boomeramg_relax_type_all',  'symmetric-SOR/Jacobi')
+    opts.setValue('pc_hypre_boomeramg_coarsen_type', 'Falgout')  
+    pc.setFromOptions()         
+
+    # Wrap for cbc.block
+    B00 = BlockPC(pc)
     # The Q norm via spectral
     Qi = Q.sub(0).collapse()
     B11 = inverse(VectorizedOperator(HsNorm(Qi, s=-0.5), Q))

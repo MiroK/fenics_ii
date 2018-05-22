@@ -298,11 +298,7 @@ def get_dims(thing):
         dims = get_dims(thing.A)
         return (dims[1], dims[0])
     # Some things in cbc.block know their matrix representation
-    # E.g. InvLumpDiag...
-    elif hasattr(thing, 'A'):
-        assert is_petsc_mat(thing.A)
-        return get_dims(thing.A)
-    # Almost last resort
+    # E.g. InvLumpDiag...Almost last resort
     elif hasattr(thing, 'create_vec'):
         return (thing.create_vec(0).size(), thing.create_vec(1).size())
 

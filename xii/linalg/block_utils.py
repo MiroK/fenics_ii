@@ -64,12 +64,8 @@ def ii_PETScOperator(bmat):
             def mult(self, mat, x, y):
                 '''y = A*x'''
                 y *= 0
-                # Now x shall be comming as a nested vector
-                # Convert
                 x_bvec = PETScVector(x)
-                # Apply
                 y_bvec = self.A*x_bvec
-                # Convert back
                 y.axpy(1., as_petsc(y_bvec))
 
             def multTranspose(self, mat, x, y):
@@ -77,12 +73,8 @@ def ii_PETScOperator(bmat):
                 AT = block_transpose(self.A)
             
                 y *= 0
-                # Now x shall be comming as a nested vector
-                # Convert
                 x_bvec = PETScVector(x)
-                # Apply
                 y_bvec = AT*x_bvec
-                # Convert back
                 y.axpy(1., as_petsc(y_bvec))
 
     mat = PETSc.Mat().createPython([[sum(row_sizes), ]*2, [sum(col_sizes), ]*2])
@@ -137,28 +129,18 @@ def ii_PETScPreconditioner(bmat, ksp):
         else:
             def apply(self, mat, x, y):
                 '''y = A*x'''
-                # Now x shall be comming as a nested vector
                 y *= 0
-                # Now x shall be comming as a nested vector
-                # Convert
                 x_bvec = PETScVector(x)
-                # Apply
                 y_bvec = self.A*x_bvec
-                # Convert back
                 y.axpy(1., as_petsc(y_bvec))
 
             def applyTranspose(self, mat, x, y):
                 '''y = A.T*x'''
                 AT = block_transpose(self.A)
                 
-                # Now x shall be comming as a nested vector
                 y *= 0
-                # Now x shall be comming as a nested vector
-                # Convert
                 x_bvec = PETScVector(x)
-                # Apply
                 y_bvec = AT*x_bvec
-                # Convert back
                 y.axpy(1., as_petsc(y_bvec))
 
     pc = ksp.pc
@@ -234,7 +216,7 @@ class VectorizedOperator(block_base):
     def create_vec(self, dim):
         return self.__create_vec__(dim)
 
-
+    
 def is_increasing(seq):
     if not seq:
         return False
@@ -302,6 +284,26 @@ class ReductionOperator(block_base):
 
                 unpacked.extend(subvecs)
         return block_vec(unpacked)
+
+
+class BlockPC(block_base):
+    '''Wrap petsc preconditioner for cbc.block'''
+    def __init__(self, pc):
+        self.pc = pc
+        self.A = pc.getOperators()[0]
+
+    def matvec(self, x):
+        y = self.create_vec(0)
+        self.pc.apply(as_petsc(x), as_petsc(y))
+        return y
+        
+    @vec_pool
+    def create_vec(self, dim):
+        if dim == 0:
+            vec = self.A.createVecLeft()
+        else:
+            vec = self.A.createVecRight()
+        return PETScVector(vec)
 
 # --------------------------------------------------------------------
 
