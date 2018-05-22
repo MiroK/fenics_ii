@@ -3,8 +3,10 @@
 #              u = g on boundary
 #
 # where sigma(u) = 2*mu*eps(u) + lmbda*div(u)*I
-#
+# 
 # with the boundary conditions enforced weakly by Lagrange multiplier.
+#
+# Here solved in mixed formulation with lmbda*div(u) = p
 from dolfin import *
 from xii import *
 
@@ -15,12 +17,19 @@ def setup_problem(i, (f, g), eps=None):
     mesh = UnitSquareMesh(*(n, )*2)
     bmesh = BoundaryMesh(mesh, 'exterior')
 
-    V = VectorFunctionSpace(mesh, 'CG', 1)
-    Q = VectorFunctionSpace(bmesh, 'CG', 1)
-    W = [V, Q]
+    P1 = FiniteElement('Lagrange', triangle, 1)
+    B3 = FiniteElement('Bubble', triangle, 3)
+    MINI = VectorElement(P1 + B3, 2)
+    # Displacement
+    V = FunctionSpace(mesh, MINI)
+    # Pressure
+    Q = FunctionSpace(mesh, P1)
+    # Multiplier
+    Y = VectorFunctionSpace(bmesh, 'CG', 1)
+    W = [V, Q, Y]
 
-    u, p = map(TrialFunction, W)
-    v, q = map(TestFunction, W)
+    u, p, x = map(TrialFunction, W)
+    v, q, y = map(TestFunction, W)
     Tu = Trace(u, bmesh)
     Tv = Trace(v, bmesh)
 
@@ -30,47 +39,42 @@ def setup_problem(i, (f, g), eps=None):
     mu = Constant(eps)
     lmbda = Constant(2*eps)  # This is just some choice. Must be respected in MMS!
 
-    sigma = lambda u: 2*mu*sym(grad(u)) + lmbda*div(u)*Identity(2)
+    a = [[0]*len(W) for _ in range(len(W))]
+    a[0][0] = 2*mu*inner(sym(grad(u)), sym(grad(v)))*dx
+    a[0][1] = inner(div(v), p)*dx
+    a[0][2] = inner(Tv, x)*dx_
     
-    a00 = inner(sigma(u), sym(grad(v)))*dx
-    a01 = inner(Tv, p)*dx_
-    a10 = inner(Tu, q)*dx_
+    a[1][0] = inner(div(u), q)*dx
+    a[1][1] = -Constant(1./lmbda)*inner(p, q)*dx
+    a[2][0] = inner(Tu, y)*dx_
 
     L0 = inner(f, v)*dx
-    L1 = inner(g, q)*dx_
+    L1 = inner(Constant(0), q)*dx
+    L2 = inner(g, y)*dx_
 
-    a = [[a00, a01], [a10, 0]]
-    L = [L0, L1]
+    L = [L0, L1, L2]
 
     return a, L, W
 
 
 def setup_preconditioner(W, which, eps=None):
     '''
-    This is a block diagonal preconditioner based on H1 x H^{-0.5}
+    This is a block diagonal preconditioner based on H1 x L2 x H^{-0.5}
     '''
+    from block.algebraic.petsc import LumpedInvDiag
     from xii.linalg.matrix_utils import as_petsc
     from numpy import hstack
     from petsc4py import PETSc
     from hsmg import HsNorm
     
-    V, Q = W
+    V, Q, Y = W
     
     # H1
     u, v = TrialFunction(V), TestFunction(V)
-    b00 = inner(grad(u), grad(v))*dx + inner(u, v)*dx    
-    A = as_backend_type(assemble(b00))
-
-    # Attach rigid deformations to A
-    # Functions
-    Z = [interpolate(Constant((1, 0)), V),
-         interpolate(Constant((0, 1)), V),
-         interpolate(Expression(('x[1]', '-x[0]'), degree=1), V)]
-    # The basis
-    Z = VectorSpaceBasis([z.vector() for z in Z])
-    Z.orthonormalize()
-    A.set_nullspace(Z)
-    A.set_near_nullspace(Z)
+    b00 = inner(grad(u), grad(v))*dx + inner(u, v)*dx
+    # NOTE: since interpolation is broken with MINI I don't interpolate
+    # here the RM basis to attach the vectros to matrix
+    A = assemble(b00)
 
     A = as_petsc(A)
     # Setup the preconditioner in petsc
@@ -83,14 +87,17 @@ def setup_preconditioner(W, which, eps=None):
     opts.setValue('pc_hypre_boomeramg_relax_type_all',  'symmetric-SOR/Jacobi')
     opts.setValue('pc_hypre_boomeramg_coarsen_type', 'Falgout')  
     pc.setFromOptions()         
-
     # Wrap for cbc.block
     B00 = BlockPC(pc)
-    # The Q norm via spectral
-    Qi = Q.sub(0).collapse()
-    B11 = inverse(VectorizedOperator(HsNorm(Qi, s=-0.5), Q))
 
-    return block_diag_mat([B00, B11])
+    p, q = TrialFunction(Q), TestFunction(Q)
+    B11 = LumpedInvDiag(assemble(inner(p, q)*dx))
+    
+    # The Y norm via spectral
+    Yi = Y.sub(0).collapse()
+    B22 = inverse(VectorizedOperator(HsNorm(Yi, s=-0.5), Y))
+
+    return block_diag_mat([B00, B11, B22])
 
 
 # --------------------------------------------------------------------
@@ -113,6 +120,7 @@ def setup_mms(eps=None):
 
     # The form
     f = -div(sigma(u))
+    p = lmbda*div(u)  # Solid pressure
 
     # What we want to substitute
     x, y  = sp.symbols('x, y')
@@ -122,7 +130,8 @@ def setup_mms(eps=None):
     lmbda_ = sp.Matrix([0, 0])
 
     # As expressions
-    up = (ulfy.Expression(u_, degree=5),
+    up = (ulfy.Expression(u_, degree=4),
+          ulfy.Expression(p, subs={u: u_, mu: mu(0), lmbda: lmbda(0)}, degree=4),
           ulfy.Expression(lmbda_, degree=1))
     # Note lmbda_ being a constant is compiled into constant so errornorm
     # will complaing about the Expressions's degree being too low
@@ -135,4 +144,4 @@ def setup_mms(eps=None):
 def setup_error_monitor(true, history, path=''):
     '''We measure error in H1 and L2 for simplicity'''
     from common import monitor_error, H1_norm, L2_norm
-    return monitor_error(true, [H1_norm, L2_norm], history, path=path)
+    return monitor_error(true, [H1_norm, L2_norm, L2_norm], history, path=path)
