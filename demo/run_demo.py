@@ -154,7 +154,7 @@ if __name__ == '__main__':
     # NOTE: [] denote the parameter groups, that is [1, 2, 3] [3, 4, 4] will be
     # understood as two cases where the parameters groups are respectively
     # [1, 2, 3] and [3, 4, 4]
-    parser.add_argument('-problem_eps', type=str, nargs='+',
+    parser.add_argument('-problem_eps', type=str, nargs='+', default=['[1.0]'],
                         help='Parameter value for problem setup')
     # How many uniform refinements to make
     parser.add_argument('-ncases', type=int, default=1,
