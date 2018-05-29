@@ -55,7 +55,7 @@ for (V, f), (Q, g) in cases:
 
     bar = gQ.vector().inner(x)
 
-    assert abs(foo - bar)
+    assert abs(foo - bar) < 1E-13
 
 # ------------------------------------------------------------------------------
 
@@ -101,4 +101,4 @@ for (V, f), (Q, g) in cases:
 
     bar = gQ.vector().inner(x)
 
-    assert abs(foo - bar)
+    assert abs(foo - bar) < 1E-13

@@ -1,7 +1,6 @@
 import xii.assembler.trace_assembly
 import xii.assembler.average_assembly
 import xii.assembler.restriction_assembly
-import xii.assembler.point_trace_assembly
 from xii.linalg.matrix_utils import is_number
 from xii.assembler.ufl_utils import form_arity
 from xii.linalg.list_utils import shape_list, reshape_list, flatten_list
@@ -19,8 +18,7 @@ def assemble(form):
     # dolfin can handle (hopefully)
     modules = (xii.assembler.trace_assembly,        # Codimension 1
                xii.assembler.average_assembly,      # Codimension 2
-               xii.assembler.restriction_assembly,  # Codimension 0
-               xii.assembler.point_trace_assembly)  # Dimensiom 0
+               xii.assembler.restriction_assembly)  # Codimension 0
     
     if isinstance(form, Form):
         arity = form_arity(form)

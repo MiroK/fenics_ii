@@ -87,8 +87,7 @@ def Trace(v, mmesh, restriction='', normal=None):
                            '-',     # present to get the orientation
                            'jump',  # right
                            'avg')
-    # A copy!
-    v = reconstruct(v)
+
     v.trace_ = {'type': restriction, 'mesh': mmesh, 'normal': normal}
 
     return v
