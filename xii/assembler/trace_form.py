@@ -15,6 +15,9 @@ def trace_cell(o):
     # Foo like
     if hasattr(o, 'ufl_element'):
         return trace_cell(o.ufl_element().cell())
+    # Elm
+    if hasattr(o, 'cell'):
+        return trace_cell(o.cell())
 
     # Another cell
     cell_name = {'tetrahedron': 'triangle',
@@ -23,38 +26,51 @@ def trace_cell(o):
     return ufl.Cell(cell_name, o.geometric_dimension())
 
 
-def trace_space(V, mesh):
-    '''Construct a space where traces of V to mesh should live'''
-    # Sanity
-    assert mesh.ufl_cell() == trace_cell(V)
-
-    elm = V.ufl_element()
+def trace_element(elm):
+    '''
+    Produce an intermerdiate element for computing with trace of 
+    functions in FEM space over elm
+    '''
+    # Want exact match here; otherwise VectorElement is MixedElement and while
+    # it works I don't find it pretty
+    if type(elm) == df.MixedElement:
+        return df.MixedElement(map(trace_element, elm.sub_elements()))
+    
+    # FIXME: Check out Witze Bonn's work on da Rham for trace spaces
+    # in the meantime KISS
     family = elm.family()
-    degree = elm.degree()
-
+    
     family_map = {'Lagrange': 'Lagrange'}
     # This seems like a reasonable fall back option
     family = family_map.get(family, 'Discontinuous Lagrange')
 
-    # There is an issue here where e.g. Hdiv are not scalars
+    degree = elm.degree()  # Preserve degree
+    cell = trace_cell(elm)
+
+    # How to construct:
+    # There is an issue here where e.g. Hdiv are not scalars, their
+    # element is FiniteElement but we want trace space from VectorElement
     elmtype_map = {0: df.FiniteElement,
                    1: df.VectorElement,
                    2: df.TensorElement}
-    # So let's check first for elements where scalar = FiniteElm
-    # vector == VectorElm etc
+    # So let's check first for elements where scalar = FiniteElm, vector == VectorElm 
     rank = len(elm.value_shape())
     if elmtype_map[rank] == type(elm):
-        elm = type(elm)  # I.e. vector element stays verctor element
+        elm = type(elm)  # i.e. vector element stays vector element
     else:
         elm = elmtype_map[rank]
-    # NOTE: Check out Witze Bonn's work on this and fill more
 
-    if rank == 1:
-        fs = df.FunctionSpace(mesh, elm(family, mesh.ufl_cell(), degree,
-            dim=V.ufl_element().value_shape()[0]))
-    else:
-        fs = df.FunctionSpace(mesh, elm(family, mesh.ufl_cell(), degree))
-    return fs
+
+    return elm(family, cell, degree)
+
+
+def trace_space(V, mesh):
+    '''
+    Produce an intermerdiate function space for computing with trace of 
+    functions in FEM space over elm
+    '''    
+    return df.FunctionSpace(mesh, trace_element(V.ufl_element()))
+
 
 def Trace(v, mmesh, restriction='', normal=None):
     '''
