@@ -9,8 +9,15 @@ domain. Crucial for such PDEs is the notion of the trace - hence the name.
 
 Dependencies:
   - cbc.block
-  - FEniCS stack prior to
-    DOLFIN's [commit](https://bitbucket.org/fenics-project/dolfin/commits/670c1f385c27d5ce64e9123114baa33f945761a4) which introduced this [bug](https://bitbucket.org/fenics-project/dolfin/issues/805/dirichletbc-check_arguments-is-too-strict)
+  - FEniCS 2017.2.0  (python2)
 
 To install the package put this directory on python path. For this shell
 session you can achieve this by `source setup.rc`. 
+
+[[https://github.com/MiroK/fenics_ii/blob/master/apps/d123/visit0000.png]]
+
+Limitations:
+ - Trace(expr) where expr is not a UFL terminal isn't currently supported
+ - Point constraints
+ - MPI parallelism
+ 
