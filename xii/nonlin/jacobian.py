@@ -62,53 +62,55 @@ def ii_derivative(f, x):
     test_f = is_okay_functional(f)
 
     # FIXME: for now don't allow diffing wrt compound expressions, in particular
-    # restricted args. However, since trace u is just annotating u we
-    # can make the distinction here
-    assert isinstance(x, Coefficient)
-    if is_restricted(x):
-        df.warning('Disregarding restriction in diffing')
+    # restricted args. 
+    assert isinstance(x, Coefficient) and not is_restricted(x)
 
-    # The case that dolfin can handle out of the box
-    if not any(map(is_restricted, f.coefficients())):
-        # There are no restrictied args in the definition of f
-        if not is_restricted(test_f):
-            return df.derivative(f, x)
-        # Since diff only manips of coeffs restrictions to test_f are preserved
-        # so we're always good
-        return df.derivative(f, x)
-
-    # If some was them was unrestricted then they all should be - otherwise
-    # we'd be missing terms with different dimensionality (most likely)
-    assert all(map(is_restricted, f.coefficients()))
-
-    # So now we have L(arg, v) where arg = (T[u], Pi[u], ...) and the idea
+    # So now we have L(arg, v) where arg = (u, ..., T[u], Pi[u], ...) and the idea
     # is to define derivative w.r.t to x by doing
-    # sum_{arg} (partial L / partial arg){arg=T[u]}(partial arg / partial x). 
+    # J = sum_{arg} (partial L / partial arg){arg=T[u]}(partial arg / partial x). 
     J = 0
+    # NOTE: in the following I try to avoid assembly of zero forms because
+    # these might not be well-defined for xii assembler. Also, assembling
+    # zeros is useless
     for fi in f.coefficients():
-        rtype = restriction_type(fi)
+        # Short circuit if (partial fi)/(partial x) is 0
+        if not ((fi == x) or fi.vector().id() == x.vector().id()): continue
+
+        if is_restricted(fi):
+            rtype = restriction_type(fi)
+            attributes = (rtype, )
+        else:
+            rtype = ''
+            attributes = None
         fi_sub = df.Function(fi.function_space())
         
         # To recreate the form for partial we sub in every integral of f
-        sub_form = []
+        sub_form_integrals = []
         for integral in f.integrals():
-            integrand = ii_replace(integral.integrand(), fi, fi_sub, attributes=(rtype, ))
-            sub_form.append(integral.reconstruct(integrand=integrand))
-        sub_form = ufl.Form(sub_form)
-        
+            
+            integrand = ii_replace(integral.integrand(), fi, fi_sub, attributes)
+            # If the substitution is do nothing then there's no need to diff
+            if integrand != integral.integrand():                
+                sub_form_integrals.append(integral.reconstruct(integrand=integrand))
+        sub_form = ufl.Form(sub_form_integrals)
+
         # Partial wrt to substituated argument
         df_dfi = df.derivative(sub_form, fi_sub)
 
-        sub_form = []
-        # An subback for trace!
+        # Substitue back the original form argument
+        sub_form_integrals = []
         for integral in df_dfi.integrals():
             integrand = ii_replace(integral.integrand(), fi_sub, fi)
-            sub_form.append(integral.reconstruct(integrand=integrand))
-        df_dfi = ufl.Form(sub_form)
+            assert integrand != integral.integrand()
+            sub_form_integrals.append(integral.reconstruct(integrand=integrand))
+        df_dfi = ufl.Form(sub_form_integrals)
 
         # As d Tu / dx = T(x) we now need to restrict the trial function
-        trial_f = get_trialfunction(df_dfi)
-        setattr(trial_f, rtype, getattr(fi, rtype))
+        if rtype:
+            trial_f = get_trialfunction(df_dfi)
+            setattr(trial_f, rtype, getattr(fi, rtype))
+        # Since we only allos diff wrt to coef then in the case rtype == ''
+        # we have dfi/dx = 1
         
         J += df_dfi
     # Done
@@ -126,6 +128,11 @@ if __name__ == '__main__':
         '''Is L linear in u'''
         # Compute the deriative
         dL = ii_convert(ii_assemble(ii_derivative(L, u)))
+
+        if dL == 0:
+            info('dL/du is zero')
+            return None
+        
         # Random guy
         w = Function(u.function_space()).vector()
         w.set_local(np.random.rand(w.local_size()))
@@ -139,9 +146,14 @@ if __name__ == '__main__':
         u.vector().axpy(1, w)
         Lu_dw0 = ii_assemble(L)
 
-        return (Lu_dw - Lu_dw0).norm('linf'), Lu_dw0.norm('linf')
+        return (Lu_dw - Lu_dw0).norm('linf'), Lu_dw0.norm('linf')#, dw.norm('linf')
 
     # ---------------------------------------------------------------
+    # Let's check som functional => match the hand computed value while
+    # the value of the functional is also > 0
+    def test(a, b):
+        assert a < 1E-14 and b > 0, (a, b)
+        return True
     
     mesh = UnitSquareMesh(10, 10)
     bmesh = BoundaryMesh(mesh, 'exterior')
@@ -150,19 +162,27 @@ if __name__ == '__main__':
     Q = FunctionSpace(bmesh, 'CG', 1)
     W = [V, Q]
 
-    u, p = map(Function, W)
+    u, p = interpolate(Constant(2), V), interpolate(Constant(1), Q)
     v, q = map(TestFunction, W)
     Tu, Tv = (Trace(x, bmesh) for x in (u, v))
 
+    # NOTE in the tests below `is_linear` assigns to u making it nonzero
+    # so forms where based on u = Function(V) you expect zero are nz.
+    # Also, since the assignment is rand this looks differently every time
     dxGamma = Measure('dx', domain=bmesh)
     # These should be linear
     L = inner(Tu, q)*dxGamma
-    print is_linear(L, u)
-
+    assert is_linear(L, Function(V)) == None
+    test(*is_linear(L, u))
+    
+    # ---------------------------------------------------------------
+    
     L = inner(Tu+Tu, q)*dxGamma
-    print is_linear(L, u)
+    test(*is_linear(L, u))
 
-    # Some simple nonlinearity where I can check things
+    # ---------------------------------------------------------------
+
+    # # Some simple nonlinearity where I can check things
     L = inner(Tu**2, q)*dxGamma
     dL0 = inner(2*Tu*Trace(TrialFunction(V), bmesh), q)*dxGamma
     A0 = ii_convert(ii_assemble(dL0)).array()
@@ -170,7 +190,9 @@ if __name__ == '__main__':
     dL = ii_derivative(L, u)
     A = ii_convert(ii_assemble(dL)).array()
 
-    print np.linalg.norm(A - A0, np.inf), np.linalg.norm(A, np.inf)
+    test(np.linalg.norm(A - A0, np.inf), np.linalg.norm(A0, np.inf))
+
+    # ---------------------------------------------------------------
 
     L = inner(2*Tu**3 - sin(Tu), q)*dxGamma
     dL0 = inner((6*Tu**2 - cos(Tu))*Trace(TrialFunction(V), bmesh), q)*dxGamma
@@ -179,70 +201,115 @@ if __name__ == '__main__':
     dL = ii_derivative(L, u)
     A = ii_convert(ii_assemble(dL)).array()
 
-    print np.linalg.norm(A - A0, np.inf), np.linalg.norm(A, np.inf)
+    test(np.linalg.norm(A - A0, np.inf), np.linalg.norm(A0, np.inf))
+
+    # ---------------------------------------------------------------
+
+    # Something that can be encounted in babuska
+    L = inner(u**2*grad(u), grad(v))*dx + inner(p**2, Tv)*dxGamma
+
+    du = TrialFunction(V)
+    dL0 = inner(2*u*du*grad(u) + u**2*grad(du), grad(v))*dx
+    A0 = ii_convert(ii_assemble(dL0)).array()
+
+    dL = ii_derivative(L, u)
+    A = ii_convert(ii_assemble(dL)).array()
+
+    test(np.linalg.norm(A - A0, np.inf), np.linalg.norm(A, np.inf))
+
+    # ---------------------------------------------------------------
+
+    dp = TrialFunction(Q)
+    dL0 = inner(2*p*dp, Tv)*dxGamma
+    A0 = ii_convert(ii_assemble(dL0)).array()
+
+    dL = ii_derivative(L, p)
+    A = ii_convert(ii_assemble(dL)).array()
+
+    test(np.linalg.norm(A - A0, np.inf), np.linalg.norm(A, np.inf))
+
+    # ---------------------------------------------------------------
+
+    L = inner(Tu*p, Tv)*dxGamma
+
+    du = TrialFunction(V)
+    dL0 = inner(Trace(du, bmesh)*p, Tv)*dxGamma
+    A0 = ii_convert(ii_assemble(dL0)).array()
+
+    dL = ii_derivative(L, u)
+    A = ii_convert(ii_assemble(dL)).array()
+
+    test(np.linalg.norm(A - A0, np.inf), np.linalg.norm(A, np.inf))
+
+    # ---------------------------------------------------------------
+
+    L = inner(Tu*p, Tv)*dxGamma
+
+    dp = TrialFunction(Q)
+    dL0 = inner(Tu*dp, Tv)*dxGamma
+    A0 = ii_convert(ii_assemble(dL0)).array()
+
+    dL = ii_derivative(L, p)
+    A = ii_convert(ii_assemble(dL)).array()
+
+    test(np.linalg.norm(A - A0, np.inf), np.linalg.norm(A, np.inf))
+
+    # ---------------------------------------------------------------
+
+    L = inner(Tu*Tu + p*p, Tv)*dxGamma
+
+    du = TrialFunction(V)
+    dL0 = inner(2*Tu*Trace(du, bmesh), Tv)*dxGamma
+    A0 = ii_convert(ii_assemble(dL0)).array()
+
+    dL = ii_derivative(L, u)
+    A = ii_convert(ii_assemble(dL)).array()
+
+    test(np.linalg.norm(A - A0, np.inf), np.linalg.norm(A, np.inf))
+
+    # ---------------------------------------------------------------
+
+    dp = TrialFunction(Q)
+    dL0 = inner(2*p*dp, Tv)*dxGamma
+    A0 = ii_convert(ii_assemble(dL0)).array()
+
+    dL = ii_derivative(L, p)
+    A = ii_convert(ii_assemble(dL)).array()
+
+    test(np.linalg.norm(A - A0, np.inf), np.linalg.norm(A, np.inf))
 
 
+    # # Babuska
+    # f = interpolate(Expression('sin(pi*(x[0]+x[1]))', degree=1), V)
+    # g = interpolate(Expression('x[0]*x[0]+x[1]*x[1]', degree=1), Q)
 
+    # F = [inner((1 + u)**2*grad(u), grad(v))*dx + inner(p, Tv)*dxGamma - inner(f, v)*dx,
+    #      inner(Tu, q)*dxGamma - inner(g, q)*dxGamma]
 
-    exit()
-    #dL = ii_convert(ii_assemble(dL))
+    # dF = block_jacobian(F, (u, p))
 
-    x = Function(V).vector()
-    x.set_local(np.random.rand(x.local_size()))
+    # # Newton
+    # omega = 1.0       # relaxation parameter
+    # eps = 1.0
+    # tol = 1.0E-5
+    # iter = 0
+    # maxiter = 25
 
-    y = Function(Q).vector()
-    dL.mult(x, y)
-    y.axpy(-1, ii_assemble(L))
-    print y.norm('linf')
-    
+    # dup = ii_Function(W)
+    # while eps > tol and iter < maxiter:
+    #     iter += 1
+    #     A, b = map(ii_assemble, (dF, F))
 
-    exit()
-    up = ii_Function(W)
-    u, p = up
-
-    Tu, Tv = (Trace(x, bmesh) for x in (u, v))
-
-
-    L = inner(Tu, q)*dxGamma
-
-    print ii_derivative(L, u)
-
-    exit()
-
-    
-    f = interpolate(Expression('sin(pi*(x[0]+x[1]))', degree=1), V)
-    g = interpolate(Expression('x[0]*x[0]+x[1]*x[1]', degree=1), Q)
-
-    F = [inner((1 + u)**2*grad(u), grad(v))*dx + inner(u, v)*dx - inner(f, v)*dx,
-         inner((1 + p)**2*grad(p), grad(q))*dx + inner(p, q)*dx - inner(g, q)*dx]
-
-    dF = block_jacobian(F, (u, p))
-
-    # Newton
-    omega = 1.0       # relaxation parameter
-    eps = 1.0
-    tol = 1.0E-5
-    iter = 0
-    maxiter = 25
-
-    dup = ii_Function(W)
-    while eps > tol and iter < maxiter:
-        iter += 1
-        A, b = map(ii_assemble, (dF, F))
-
-        A, b = map(ii_convert, (A, b))
+    #     A, b = map(ii_convert, (A, b))
         
-        solve(A, dup.vector(), b)
+    #     solve(A, dup.vector(), b)
         
-        eps = sqrt(sum(x.norm('l2')**2 for x in dup.vectors()))
+    #     eps = sqrt(sum(x.norm('l2')**2 for x in dup.vectors()))
         
-        print 'Norm:', eps, A.norm('linf'), b.norm('l2')
+    #     print 'Norm:', eps, A.norm('linf'), b.norm('l2')
 
-        for i in range(len(W)):
-            up[i].vector().axpy(-omega, dup[i].vector())
+    #     for i in range(len(W)):
+    #         up[i].vector().axpy(-omega, dup[i].vector())
 
-    for i, x in enumerate(up):
-        File('%s_%d.pvd' % ('test_nlin', i)) << x
-
-
-    
+    # for i, x in enumerate(up):
+    #     File('%s_%d.pvd' % ('test_nlin', i)) << x
