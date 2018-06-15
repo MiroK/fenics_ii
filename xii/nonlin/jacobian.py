@@ -23,7 +23,7 @@ def block_jacobian(bf, foos):
     # Things in a row are forms
     assert all(isinstance(L, ufl.Form) for L in bf)
     # Diff w.r.t functions
-    assert all(isinstance(f, Coefficient) for f in foos)
+    assert all(isinstance(f, df.Coefficient) for f in foos)
 
     # Each row is supposed to be a function in a non-mixed function space
     test_functions = map(is_okay_functional, bf)
@@ -63,7 +63,7 @@ def ii_derivative(f, x):
 
     # FIXME: for now don't allow diffing wrt compound expressions, in particular
     # restricted args. 
-    assert isinstance(x, Coefficient) and not is_restricted(x)
+    assert isinstance(x, df.Coefficient) and not is_restricted(x)
 
     # So now we have L(arg, v) where arg = (u, ..., T[u], Pi[u], ...) and the idea
     # is to define derivative w.r.t to x by doing
@@ -277,39 +277,3 @@ if __name__ == '__main__':
     A = ii_convert(ii_assemble(dL)).array()
 
     test(np.linalg.norm(A - A0, np.inf), np.linalg.norm(A, np.inf))
-
-
-    # # Babuska
-    # f = interpolate(Expression('sin(pi*(x[0]+x[1]))', degree=1), V)
-    # g = interpolate(Expression('x[0]*x[0]+x[1]*x[1]', degree=1), Q)
-
-    # F = [inner((1 + u)**2*grad(u), grad(v))*dx + inner(p, Tv)*dxGamma - inner(f, v)*dx,
-    #      inner(Tu, q)*dxGamma - inner(g, q)*dxGamma]
-
-    # dF = block_jacobian(F, (u, p))
-
-    # # Newton
-    # omega = 1.0       # relaxation parameter
-    # eps = 1.0
-    # tol = 1.0E-5
-    # iter = 0
-    # maxiter = 25
-
-    # dup = ii_Function(W)
-    # while eps > tol and iter < maxiter:
-    #     iter += 1
-    #     A, b = map(ii_assemble, (dF, F))
-
-    #     A, b = map(ii_convert, (A, b))
-        
-    #     solve(A, dup.vector(), b)
-        
-    #     eps = sqrt(sum(x.norm('l2')**2 for x in dup.vectors()))
-        
-    #     print 'Norm:', eps, A.norm('linf'), b.norm('l2')
-
-    #     for i in range(len(W)):
-    #         up[i].vector().axpy(-omega, dup[i].vector())
-
-    # for i, x in enumerate(up):
-    #     File('%s_%d.pvd' % ('test_nlin', i)) << x
