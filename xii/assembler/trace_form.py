@@ -87,6 +87,15 @@ def Trace(v, mmesh, restriction='', normal=None):
                            '-',     # present to get the orientation
                            'jump',  # right
                            'avg')
+    # NOTE: for functions we make a new one which is annotated for restriction
+    # but uses the same vector. This allows to make distinction e.g. in
+    # differentiation. Crucially if Tu = Trace(u) the update to u of the form
+    # u.vector()[:] = Vector(...) are reflected in Tu. WARNING: u.assign will
+    # not work this way.
+    # FIXME: should Trace(coeffcient) be a coefficient in the trace space right
+    # away, what would be changes to the assembler etc?
+    if isinstance(v, df.Coefficient):
+        v =  df.Function(v.function_space(), v.vector())
 
     v.trace_ = {'type': restriction, 'mesh': mmesh, 'normal': normal}
 

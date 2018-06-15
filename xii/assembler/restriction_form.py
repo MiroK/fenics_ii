@@ -36,6 +36,9 @@ def Restriction(v, mmesh):
     assert restriction_cell(v) == mmesh.ufl_cell()
     assert isinstance(mmesh, SubDomainMesh)
 
+    if isinstance(v, df.Coefficient):
+        v =  df.Function(v.function_space(), v.vector())
+
     v.restriction_ = {'mesh': mmesh}
 
     return v

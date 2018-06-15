@@ -86,6 +86,9 @@ def Average(v, line_mesh, radius, quadrature_degree=8, surface='cylinder'):
         
     if is_number(radius): assert radius > 0
 
+    if isinstance(v, df.Coefficient):
+        v =  df.Function(v.function_space(), v.vector())
+
     v.average_ = {'mesh': line_mesh, 'radius': radius, 'quad_degree': quadrature_degree,
                   'surface': surface}
 

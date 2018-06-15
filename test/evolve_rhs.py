@@ -24,8 +24,9 @@ L = inner(Trace(v, bmesh), q)*dx_
 
 for t in range(5):
     f.t = t
-    
-    v.assign(interpolate(f, V))
+    # Don't point v to a different vector, rather fill the values
+    # v.assign(interpolate(f, V))
+    v.vector()[:] = interpolate(f, V).vector()
 
     b = ii_convert(ii_assemble(L))
     ans = b.inner(interpolate(f, Q).vector())
