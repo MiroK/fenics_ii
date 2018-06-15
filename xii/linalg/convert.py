@@ -282,7 +282,7 @@ def get_dims(thing):
             assert dims_A[1] == dims_B[0]  
             return (dims_A[0], dims_B[1])
     # +, -
-    elif isinstance(thing, (block_add, block_sub)):
+    if isinstance(thing, (block_add, block_sub)):
         A, B = thing.A, thing.B
         if is_number(A):
             return get_dims(B)
@@ -294,12 +294,12 @@ def get_dims(thing):
         assert dims == get_dims(B), (dims, get_dims(B))
         return dims
     # T
-    elif isinstance(thing, block_transpose):
+    if isinstance(thing, block_transpose):
         dims = get_dims(thing.A)
         return (dims[1], dims[0])
     # Some things in cbc.block know their matrix representation
     # E.g. InvLumpDiag...Almost last resort
-    elif hasattr(thing, 'create_vec'):
+    if hasattr(thing, 'create_vec'):
         return (thing.create_vec(0).size(), thing.create_vec(1).size())
 
     raise ValueError('Cannot get_dims of %r, %s' % (type(thing), thing))

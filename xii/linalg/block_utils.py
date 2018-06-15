@@ -28,7 +28,7 @@ def ii_PETScOperator(bmat):
         row_sizes, col_sizes = bmat_sizes(bmat)
         is_block = True
     else:
-        row_sizes, cols_sizes = (bmat.size(0), ), (bmat.size(1), )
+        row_sizes, col_sizes = (bmat.size(0), ), (bmat.size(1), )
         is_block = False
 
     class Foo(object):
@@ -86,11 +86,12 @@ def ii_PETScOperator(bmat):
 
 def ii_PETScPreconditioner(bmat, ksp):
     '''Create from bmat a preconditioner for KSP'''
-    if isinstance(bmat, block_base):
+    try:
         row_sizes, col_sizes = bmat_sizes(bmat)
         is_block = True
-    else:
-        row_sizes, cols_sizes = (bmat.size(0), ), (bmat.size(1), )
+    except ValueError:
+        nrows, ncols = get_dims(bmat)
+        row_sizes, col_sizes = (nrows, ), (ncols, )
         is_block = False
 
     # NOTE: we assume that this is a symmetric operator
