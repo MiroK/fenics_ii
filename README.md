@@ -11,6 +11,14 @@ domain. Crucial for such PDEs is the notion of the trace - hence the name.
   - cbc.block
   - FEniCS 2017.2.0  (python2)
 
+### Optional dependencies
+  - [HsMG](https://arxiv.org/abs/1806.00222) is a package implementing preconditioners
+    for operators in fractional Sobolev spaces. These are needed to construct
+    robust preconditioners for the interface component of the multiscle/multiphysics
+    problems,
+  - [ULFY](https://github.com/MiroK/ulfy) is used to construct manufactured
+    solutions in some of the demos
+  
 ## Install
 To install the package put this directory on python path. For this shell
 session you can achieve this by `source setup.rc`. 
