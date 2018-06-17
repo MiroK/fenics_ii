@@ -1,10 +1,13 @@
-# Nonlinear Babuska
+# Mortaring with nonlinearity both in the 2d domains and on the interface
+#
 # -div(nl1(u1)*grad(u1)) = f1 in Omega_1
 # -div(nl2(u2)*grad(u2)) = f2 in Omega_2
 #
-# nl1(u1)*grad(u1).n1 + nl2(u2)*grad(u2).n2 = 0
-# nl3(u1 - u2) + nl1(u1)*grad(u1).n1 = h
-
+# (3) nl1(u1)*grad(u1).n1 + nl2(u2)*grad(u2).n2 = 0
+# (4) nl3(u1 - u2) + nl1(u1)*grad(u1).n1 = h   
+#
+# The last equation (3) is meant as a prototype nonlinear equation relating
+# normal flux (unique because of (4)) to the potential difference
 from dolfin import *
 from xii import *
 from ulfy import Expression
@@ -39,6 +42,7 @@ def mortar_lin_couple(N):
 
     w = ii_Function(W)
     u1, u2, p = w  # Split
+    p.assign(interpolate(Constant(0.1), Q))
 
     v1, v2, q = map(TestFunction, W)
     Tu1, Tv1 = (Trace(x, gamma_mesh) for x in (u1, v1))
@@ -47,8 +51,8 @@ def mortar_lin_couple(N):
     dxGamma = Measure('dx', domain=gamma_mesh)
 
     # Nonlinearity
-    nl1 = lambda u: (1+u)**2
-    nl2 = lambda u: (2+u)**4
+    nl1 = lambda u: (1 + u)**2
+    nl2 = lambda u: (2 + u)**4
 
     f1 = interpolate(Expression('x[0]*x[0]+x[1]*x[1]', degree=1), V1)
     f2 = interpolate(Constant(1), V2)
@@ -65,7 +69,7 @@ def mortar_lin_couple(N):
     eps = 1.0
     tol = 1.0E-10
     niter = 0
-    maxiter = 25
+    maxiter = 125
 
     dw = ii_Function(W)
     while eps > tol and niter < maxiter:
@@ -91,7 +95,7 @@ def mortar_lin_couple(N):
 if __name__ == '__main__':
     import sympy as sp
 
-    u1h, u2h, ph = mortar_lin_couple(N=16)
+    u1h, u2h, ph = mortar_lin_couple(N=64)
 
     # # Setup the test case
     # x, y = sp.symbols('x y')

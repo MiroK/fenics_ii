@@ -297,8 +297,12 @@ def get_dims(thing):
     if isinstance(thing, block_transpose):
         dims = get_dims(thing.A)
         return (dims[1], dims[0])
-    # Some things in cbc.block know their matrix representation
+    # Some things in cbc.block know their ma-
+    if hasattr(thing, 'A'):
+        assert is_petsc_mat(thing.A)
+        return get_dims(thing.A)
     # E.g. InvLumpDiag...Almost last resort
+    
     if hasattr(thing, 'create_vec'):
         return (thing.create_vec(0).size(), thing.create_vec(1).size())
 

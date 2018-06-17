@@ -6,6 +6,7 @@
 from dolfin import *
 from xii import *
 from ulfy import Expression
+from petsc4py import PETSc
 
 
 def nonlinear_babuska(N, u_exact, p_exact):
@@ -51,10 +52,20 @@ def nonlinear_babuska(N, u_exact, p_exact):
     while eps > tol and niter < maxiter:
         niter += 1
     
-        A, b = map(ii_assemble, (dF, F))
-        A, b = map(ii_convert, (A, b))
+        A, b = (ii_convert(ii_assemble(x)) for x in (dF, F))
+
+        # FIXME: gmres
+        #        iterative with preconditioner
+        ksp = PETSc.KSP().create(PETSc.COMM_WORLD)
+        ksp.setType('gmres')
+        ksp.getPC().setType('lu')
+        ksp.setOperators(as_backend_type(A).mat())
+        ksp.setFromOptions()
         
-        solve(A, dup.vector(), b)
+        ksp.solve(as_backend_type(dup.vector()).vec(),
+                  as_backend_type(b).vec())
+
+        # solve(A, dup.vector(), b)
         
         eps = sqrt(sum(x.norm('l2')**2 for x in dup.vectors()))
         
@@ -88,7 +99,7 @@ if __name__ == '__main__':
         eu = errornorm(uh, u_expr, 'H1', degree_rise=0)
         ep = errornorm(ph, p_expr, 'L2', degree_rise=0)
         h = Vh.mesh().hmin()
-        
+
         if eu0 > 0:
             rate_u = ln(eu/eu0)/ln(h/h0)
             rate_p = ln(ep/ep0)/ln(h/h0)

@@ -1,4 +1,5 @@
 from dolfin import Function, as_backend_type, PETScVector
+import dolfin as df
 from block import block_vec
 from petsc4py import PETSc
 
@@ -60,3 +61,11 @@ class ii_Function(object):
 
     def __iter__(self):
         for i in range(len(self)): yield self[i]
+
+    def interpolate(self, f):
+        '''
+        Interpolate other ii_Function/ntuple of interpolable things into self.
+        '''
+        assert len(self) == len(f)
+        [fi.assign(df.interpolate(f, fi.function_space())) for fi in self]
+        

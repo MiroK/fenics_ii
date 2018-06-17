@@ -1,4 +1,5 @@
-# Nonlinear Babuska
+# Mortaring with nonlinearity in the 2d domains and lin coupling constraint
+#
 # -div(nl1(u1)*grad(u1)) + u1 = f1 in Omega_1
 # -div(nl2(u2)*grad(u2)) + u2 = f2 in Omega_2
 #
@@ -91,7 +92,7 @@ def mortar_lin_couple(N):
 if __name__ == '__main__':
     import sympy as sp
 
-    u1h, u2h, ph = mortar_lin_couple(N=16)
+    u1h, u2h, ph = mortar_lin_couple(N=64)
 
     # # Setup the test case
     # x, y = sp.symbols('x y')

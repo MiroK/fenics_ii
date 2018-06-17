@@ -43,7 +43,7 @@ def nonlinear_babuska(N, u_exact, p_exact):
 
     dF = block_jacobian(F, up)
 
-    return F, dF, up
+    return ii_convert(ii_assemble(F)), ii_convert(ii_assemble(dF)), up
 
 
 class SNESFeed(object):
@@ -120,24 +120,41 @@ if __name__ == '__main__':
     p_expr = Expression(p_exact, degree=4)
 
     eu0, ep0, h0 = -1, -1, -1
-    for N in (8, 16, 32, 64, 128, 256):
+    for N in (8, ):#16, 32, 64, 128, 256):
         F, dF, w = nonlinear_babuska(N, u_exact, p_exact)
+        set_lg_map(dF)
+        #feed = SNESFeed(F, dF, w)
+        F = as_backend_type(F).vec()
+        dF = as_backend_type(dF).mat()
 
-        feed = SNESFeed(F, dF, w)
+        print dF.getValuesCSR()
 
-        snes = PETSc.SNES().create()
+        A = PETSc.Mat().createAIJ(size=dF.size,
+                                  csr=dF.getValuesCSR())
+        A.assemble()
+        
+        x = A.createVecLeft()
+        y = A.createVecRight()
 
-        b = feed.vec()
-        snes.setFunction(feed.formFunction, b)
+        ksp = PETSc.KSP().create()
+        #ksp.setType('gmres')
+        #ksp.getPC().setType('lu')
+        ksp.setOperators(A)
+        ksp.solve(y, x)
 
-        A = feed.mat()
-        snes.setJacobian(feed.formJacobian, A)
+        #snes = PETSc.SNES().create()
+
+        #b = feed.vec()
+        #snes.setFunction(feed.formFunction, b)
+
+        #A = feed.mat()
+        #snes.setJacobian(feed.formJacobian, A)
         
         #snes.getKSP().setType('gmres')
         #snes.getKSP().getPC().setType('lu')
-        snes.setFromOptions()
+        #snes.setFromOptions()
 
-        snes.solve(None, b.copy())
+        #snes.solve(None, b.copy())
 
         
     #     Vh = uh.function_space()
