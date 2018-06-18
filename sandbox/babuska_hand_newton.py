@@ -47,7 +47,6 @@ def nonlinear_babuska(N, u_exact, p_exact):
     niter = 0
     maxiter = 25
 
-
     OptDB = PETSc.Options()
 
     # This is way to use inv(A) for the solution

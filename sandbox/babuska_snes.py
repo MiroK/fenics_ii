@@ -43,65 +43,54 @@ def nonlinear_babuska(N, u_exact, p_exact):
 
     dF = block_jacobian(F, up)
 
-    return ii_convert(ii_assemble(F)), ii_convert(ii_assemble(dF)), up
+    return F, dF, up
 
 
-class SNESFeed(object):
+class NLProblem(NonlinearProblem):
     '''Object for SNES solver'''
-    def __init__(self, F, dF, up):
-        '''
-        F = Nonlinear functional which assembles into vector
-        dF = Jacobian of F which assembles into matrix
-        up = Function which vector F == 0 is solved into
-        '''
-        self.F = F
-        self.dF = dF
-        self.up = up
+    def __init__(self, F, dF):
+        NonlinearProblem.__init__(self)
+        self.lhs_form = F
+        self.jac_form = dF
+        self.Fcount, self.Jcount = 0, 0
 
-        self.__mat = None
-        self.__vec = None
+    def F(self, b, x):
+        print 'F, enter', x.size()
+        b_ = ii_convert(ii_assemble(self.lhs_form))
+        self.Fcount += 0
+        if b.empty():
+            b = as_backend_type(b).vec()
+            b.setSizes(b_.size())
+            b.setUp()
+            b.assemble()
 
-    def formJacobian(self, snes, X, A, B):
-        A_ = ii_convert(ii_assemble(self.dF))
-        set_lg_map(A_)
-        #A_ = as_backend_type(A_).mat()
-        ## Assembled Jacobian
-        #A.zeroEntries()
-        #A.axpy(1., A_, None)
-        #A.assemble()
-        
-        # Potentially different matrix for the preconditioner
-        #B.assemblyBegin()
-        #B.assemblyEnd()
-        #B.zeroEntries()
-        #B.axpy(1., A_, None)
-
-        return PETSc.Mat.Structure.SAME_NONZERO_PATTERN
-
-    def formFunction(self, snes, X, b):
-        b_ = as_backend_type(ii_convert(ii_assemble(self.F))).vec()
-
-        b.assemblyBegin()
-        b.assemblyEnd()
-        
+        print 'F, enter', b_.size(), b.size
+                    
         b.zeroEntries()
-        b.axpy(1., b_)
+        b.axpy(1, as_backend_type(b_).vec())
         b.assemble()
+        print '6', self.Fcount
 
-    def mat(self):
-        '''Allocate matrix'''
-        if self.__mat is None:
-            A = ii_convert(ii_assemble(self.dF))
-            set_lg_map(A)
-            self.__mat = as_backend_type(A).mat()
-        return self.__mat
+    def J(self, A, x):
+        print 'J, enter', x.size()
+        A_ = ii_convert(ii_assemble(self.jac_form))
+        print '1'
+        self.Jcount += 0
+        if A.empty():
+            A = as_backend_type(A).mat()
+            A.setSizes((A_.size(0), A_.size(1)))
+            print '2'
+            A.setUp()
+            A.assemble()
+        print '3'
+        A.zeroEntries()
+        print '4'
+        A.axpy(1, as_backend_type(A_).mat(), PETSc.Mat.Structure.DIFFERENT_NONZERO_PATTERN)
+        A.assemble()
 
-    def vec(self):
-        '''Allocate vector'''
-        if self.__vec is None:
-            b = ii_convert(ii_assemble(self.F))
-            self.__vec = as_backend_type(b).vec()
-        return self.__vec
+        print (PETScMatrix(A).array() - A_.array())
+        print '5', self.Jcount
+
         
 # --------------------------------------------------------------------
 
@@ -122,39 +111,30 @@ if __name__ == '__main__':
     eu0, ep0, h0 = -1, -1, -1
     for N in (8, ):#16, 32, 64, 128, 256):
         F, dF, w = nonlinear_babuska(N, u_exact, p_exact)
-        set_lg_map(dF)
-        #feed = SNESFeed(F, dF, w)
-        F = as_backend_type(F).vec()
-        dF = as_backend_type(dF).mat()
 
-        print dF.getValuesCSR()
+        problem = NLProblem(F, dF)
 
-        A = PETSc.Mat().createAIJ(size=dF.size,
-                                  csr=dF.getValuesCSR())
-        A.assemble()
+        solver = NewtonSolver()
+        solver.solve(problem, w.vector())
+        # w_vec = as_backend_type(w.vector()).vec()
+
+        # feed = SNESFeed(F, dF)
+
+        # snes = PETSc.SNES().create()
+
+        # b = as_backend_type(w.vector()).vec().copy()
+        # snes.setFunction(feed.formFunction, b)
+
+        # A = PETSc.Mat().createAIJ(size=(b.size, b.size))
+        # A.setUp()
+        # snes.setJacobian(feed.formJacobian, A)
         
-        x = A.createVecLeft()
-        y = A.createVecRight()
-
-        ksp = PETSc.KSP().create()
-        #ksp.setType('gmres')
-        #ksp.getPC().setType('lu')
-        ksp.setOperators(A)
-        ksp.solve(y, x)
-
-        #snes = PETSc.SNES().create()
-
-        #b = feed.vec()
-        #snes.setFunction(feed.formFunction, b)
-
-        #A = feed.mat()
-        #snes.setJacobian(feed.formJacobian, A)
-        
-        #snes.getKSP().setType('gmres')
+        #snes.getKSP().setType('preonly')
         #snes.getKSP().getPC().setType('lu')
+        #snes.getKSP().getPC().setFactorSolverPackage('umfpack')
         #snes.setFromOptions()
 
-        #snes.solve(None, b.copy())
+        #snes.solve(None, w_vec)
 
         
     #     Vh = uh.function_space()
