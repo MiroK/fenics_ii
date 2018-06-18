@@ -1,6 +1,7 @@
 from dolfin import (PETScMatrix, Matrix, IndexMap, PETScVector, Vector,
                     as_backend_type, mpi_comm_world)
 from block import block_mat, block_vec
+from scipy.sparse import csr_matrix
 from contextlib import contextmanager
 from petsc4py import PETSc
 import numpy as np
@@ -54,9 +55,16 @@ def diagonal_matrix(size, A=1):
 
 def zero_matrix(nrows, ncols):
     '''Zero matrix'''
-    I = PETSc.Mat().createAIJ(size=[[nrows, nrows], [ncols, ncols]])
+    mat = csr_matrix((np.zeros(nrows, dtype=float),  # Data
+                      # Rows, cols = so first col in each row is 0
+                      (np.arange(nrows), np.zeros(nrows, dtype=int))),  
+                     shape=(nrows, ncols))
 
-    return PETScMatrix(I)
+    A = PETSc.Mat().createAIJ(size=[[nrows, nrows], [ncols, ncols]],
+                              csr=(mat.indptr, mat.indices, mat.data))
+    A.assemble()
+
+    return PETScMatrix(A)
 
 
 @contextmanager
