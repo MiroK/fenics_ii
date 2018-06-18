@@ -2,6 +2,9 @@
 # -div(nl(u)*grad(u)) = f in [0, 1]^2
 #               T(u) = h on boundary
 #
+# Solved either with DOLFIN.solver [calling direct solver]
+# or with ksp('preonly') together with LU preconditioner
+#
 
 from dolfin import *
 from xii import *

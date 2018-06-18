@@ -72,7 +72,7 @@ def ii_derivative(f, x):
     # NOTE: in the following I try to avoid assembly of zero forms because
     # these might not be well-defined for xii assembler. Also, assembling
     # zeros is useless
-    for fi in f.coefficients():
+    for fi in filter(lambda c: not isinstance(c, df.Constant), f.coefficients()):
         # Short circuit if (partial fi)/(partial x) is 0
         if not ((fi == x) or fi.vector().id() == x.vector().id()): continue
 
