@@ -12,6 +12,8 @@ import numpy as np
 import itertools
 import operator
 
+COMM = PETSc.COMM_WORLD
+
 
 def convert(bmat, algorithm='numpy'):
     '''
@@ -22,6 +24,7 @@ def convert(bmat, algorithm='numpy'):
     if isinstance(bmat, block_vec):
         array = block_vec_to_numpy(bmat)
         vec = PETSc.Vec().createWithArray(array)
+        vec.assemble()
         return PETScVector(vec)
     
     # Conversion of bmat is bit more involved because of the possibility
@@ -36,14 +39,16 @@ def convert(bmat, algorithm='numpy'):
         for block, (i, j) in zip(bmat.blocks.flatten(), indices):
             # This might is guaranteed to be matrix or number
             A = collapse(block)
-            # Only numbers on the diagonal block are interpresented as
-            # scaled identity matrices
+
             if is_number(A):
-                if A != 0:
-                    assert row_sizes[i] == col_sizes[j]
+                # Diagonal matrices can be anything provided square
+                if i == j and row_sizes[i] == col_sizes[j]:
                     A = diagonal_matrix(row_sizes[i], A)
                 else:
-                    A = 0
+                    # Offdiagonal can only be zero
+                    A = zero_matrix(row_sizes[i], col_sizes[j])
+                #else:
+                #    A = 0
             # The converted block
             blocks[i, j] = A
         # Now every block is a matrix/number and we can make a monolithic thing
@@ -91,7 +96,7 @@ def collapse(bmat):
         diagonal = bmat.v
 
         n = diagonal.size
-        mat = PETSc.Mat().createAIJ(size=[[n, n], [n, n]], nnz=1)
+        mat = PETSc.Mat().createAIJ(comm=COMM, size=[[n, n], [n, n]], nnz=1)
         mat.assemblyBegin()
         mat.setDiagonal(diagonal)
         mat.assemblyEnd()
@@ -213,8 +218,10 @@ def numpy_to_petsc(mat):
     if isinstance(mat, np.ndarray):
         return numpy_to_petsc(csr_matrix(mat))
     # Sparse
-    A = PETSc.Mat().createAIJ(size=mat.shape,
-                              csr=(mat.indptr, mat.indices, mat.data)) 
+    A = PETSc.Mat().createAIJ(comm=COMM,
+                              size=mat.shape,
+                              csr=(mat.indptr, mat.indices, mat.data))
+    A.assemble()
     return PETScMatrix(A)
 
 

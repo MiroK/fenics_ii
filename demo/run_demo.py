@@ -49,7 +49,7 @@ def main(module_name, ncases, params, petsc_params):
         transform = lambda i, x: x
 
     print '='*79
-    print '\t\t\tProblem eps = %s' % (' '.join(map(str, eps)))
+    print '\t\t\tProblem eps = %r' % eps
     print '='*79
     for i in ncases:
         a, L, W = module.setup_problem(i, rhs_data, eps=eps)
@@ -178,6 +178,7 @@ if __name__ == '__main__':
 
     args, petsc_args = parser.parse_known_args()
 
+    print args.problem_eps
     if petsc_args:
         petsc_args = dict((k, v) for k, v in zip(petsc_args[::2], petsc_args[1::2]))
     else:

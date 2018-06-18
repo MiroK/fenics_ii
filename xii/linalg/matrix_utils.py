@@ -47,6 +47,7 @@ def diagonal_matrix(size, A=1):
     d = PETSc.Vec().createWithArray(A*np.ones(size))
     I = PETSc.Mat().createAIJ(size=size, nnz=1)
     I.setDiagonal(d)
+    I.assemble()
 
     return PETScMatrix(I)
 

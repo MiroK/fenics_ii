@@ -140,7 +140,6 @@ def setup_mms(eps):
     '''Simple MMS problem for UnitSquareMesh'''
     from common import as_expression
     import sympy as sp
-    
     pi = sp.pi
     x, y, EPS = sp.symbols('x[0] x[1] EPS')
     

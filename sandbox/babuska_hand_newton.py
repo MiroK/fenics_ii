@@ -11,7 +11,6 @@ from petsc4py import PETSc
 
 def nonlinear_babuska(N, u_exact, p_exact):
     '''MMS for the problem'''
-    
     mesh = UnitSquareMesh(N, N)
     bmesh = BoundaryMesh(mesh, 'exterior')
 
@@ -48,28 +47,42 @@ def nonlinear_babuska(N, u_exact, p_exact):
     niter = 0
     maxiter = 25
 
+
+    OptDB = PETSc.Options()
+
+    # This is way to use inv(A) for the solution
+    OptDB.setValue('ksp_type', 'preonly')  # Only appy preconditiner
+    # Which is lu factorization with umfpack. NOTE: the package matters
+    # a lot; e.g. superlu_dist below blows up
+    OptDB.setValue('pc_type', 'lu')
+    OptDB.setValue('pc_factor_mat_solver_package', 'umfpack')
+
     dup = ii_Function(W)
+    x_vec = as_backend_type(dup.vector()).vec()
     while eps > tol and niter < maxiter:
         niter += 1
     
         A, b = (ii_convert(ii_assemble(x)) for x in (dF, F))
 
-        # FIXME: gmres
-        #        iterative with preconditioner
-        ksp = PETSc.KSP().create(PETSc.COMM_WORLD)
-        ksp.setType('gmres')
-        ksp.getPC().setType('lu')
-        ksp.setOperators(as_backend_type(A).mat())
-        ksp.setFromOptions()
-        
-        ksp.solve(as_backend_type(dup.vector()).vec(),
-                  as_backend_type(b).vec())
+        # PETSc solver
+        A_mat = as_backend_type(A).mat()
+        b_vec = as_backend_type(b).vec()
 
-        # solve(A, dup.vector(), b)
+        ksp = PETSc.KSP().create()
+        ksp.setOperators(A_mat)
+        ksp.setFromOptions()
+
+        ksp.solve(b_vec, x_vec)
+        niters = ksp.getIterationNumber()
+
+        # DOLFIN solver
+        # niters = solve(A, dup.vector(), b)
         
         eps = sqrt(sum(x.norm('l2')**2 for x in dup.vectors()))
         
-        print '\t%d |du| = %.6E |A|= %.6E |b| = %.6E' % (niter, eps, A.norm('linf'), b.norm('l2'))
+        print '\t%d |du| = %g |A|= %g |b| = %g | niters %d' % (
+            niter, eps, A.norm('linf'), b.norm('l2'), niters
+        )
 
         # FIXME: Update
         for i in range(len(W)):
@@ -81,6 +94,8 @@ def nonlinear_babuska(N, u_exact, p_exact):
 
 if __name__ == '__main__':
     import sympy as sp
+
+    RED = '\033[1;37;31m%s\033[0m'
 
     # Setup the test case
     x, y = sp.symbols('x y')
@@ -110,7 +125,8 @@ if __name__ == '__main__':
         
         data = (eu, rate_u, ep, rate_p, Vh.dim() + Qh.dim())
         
-        print('|e|_1 = %.4E[%.2f] |p|_0 = %.4E[%.2f] | ndofs = %d' % data)
+        msg = '|e|_1 = %.4E[%.2f] |p|_0 = %.4E[%.2f] | ndofs = %d' % data
+        print(RED % msg)
     
     File('./nl_results/babuska_uh.pvd') << uh
     File('./nl_results/babuska_ph.pvd') << ph
