@@ -2,8 +2,9 @@ from xii.linalg.matrix_utils import petsc_serial_matrix
 from xii.assembler.trace_assembly import trace_cell
 from xii.assembler.fem_eval import DegreeOfFreedom, FEBasisFunction
 from xii.meshing.embedded_mesh import build_embedding_map
+from xii.assembler.nonconforming_trace_matrix import nonconforming_trace_mat
 
-from dolfin import Cell, PETScMatrix
+from dolfin import Cell, PETScMatrix, warning
 from petsc4py import PETSc
 import numpy as np
 
@@ -50,7 +51,13 @@ def trace_mat_no_restrict(V, TV, trace_mesh=None):
     fdim = trace_mesh.topology().dim()
 
     # Init/extract the mapping
-    assert get_entity_map(mesh, trace_mesh)
+    try:
+        assert get_entity_map(mesh, trace_mesh)
+    except AssertionError:
+        warning('Using non-conforming trace')
+
+        return nonconforming_trace_mat(V, TV)
+        
     # We can get it
     mapping = trace_mesh.parent_entity_map[mesh.id()][fdim]  # Map cell of TV to cells of V
 
