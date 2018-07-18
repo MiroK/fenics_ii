@@ -1,3 +1,4 @@
+from make_mesh_cpp import make_mesh
 from collections import defaultdict
 from itertools import chain
 import dolfin as df
@@ -98,27 +99,14 @@ class EmbeddedMesh(df.Mesh):
                 cell_colors[marker].append(new_cell_index)
 
                 new_cell_index += 1
-
+        vertex_coordinates = base_mesh.coordinates()[new_vertices]
+        new_cells = np.array(new_cells, dtype='uintp')
+        
         # With acquired data build the mesh
         df.Mesh.__init__(self)
-        editor = df.MeshEditor()
-
-        if df.__version__ == '2017.2.0':
-            cell_type = {1: 'interval', 2: 'triangle', 3: 'tetrahedron'}[tdim]
-            editor.open(self, cell_type, tdim, gdim)            
-        else:
-            editor.open(self, tdim, gdim)
-
-        editor.init_vertices(len(new_vertices))
-        editor.init_cells(len(new_cells))
-
-        vertex_coordinates = base_mesh.coordinates()[new_vertices]
-
-        for vi, x in enumerate(vertex_coordinates): editor.add_vertex(vi, x)
-
-        for ci, c in enumerate(new_cells): editor.add_cell(ci, *c)
-
-        editor.close()
+        # Fill
+        make_mesh(coordinates=vertex_coordinates, cells=new_cells, tdim=tdim, gdim=gdim,
+                  mesh=self)
 
         # The entity mapping attribute
         mesh_key = marking_function.mesh().id()
@@ -249,7 +237,7 @@ def build_embedding_map(emesh, mesh, tol=1E-14):
 if __name__ == '__main__':
     # Embedding map
     n0, dt0 = None, None
-    for n in [8, 16, 32, 64, 128, 256, 512]:
+    for n in [8, 16, 32, 64, 128, 256, 512, 1024]:
 
         mesh = df.UnitSquareMesh(n, n)
         emesh = df.BoundaryMesh(mesh, 'exterior')
@@ -335,5 +323,3 @@ if __name__ == '__main__':
     for cell in df.SubsetIterator(mesh.marking_function, 3):
         x, y, z = cell.midpoint().array()
         assert x < 0 and y > 0
-
-        
