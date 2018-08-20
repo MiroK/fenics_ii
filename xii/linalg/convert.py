@@ -330,18 +330,23 @@ def bmat_sizes(bmat):
             size = set([dim[0]
                         for dim in [get_dims(A) for A in row]
                         if dim is not None])
-            # Moreover all the things should agree on the row size
-            # (since they are in the same row)
-            assert len(size) == 1, size
-            row_sizes.append(size.pop())
+            if len(size) == 1:
+                # Moreover all the things should agree on the row size
+                # (since they are in the same row)
+                row_sizes.append(size.pop())
+            else:
+                # Scalars
+                row_sizes.append(None)
 
         for col in bmat.T:
             size = set([dim[1]
                         for dim in [get_dims(A) for A in col]
                         if dim is not None])
             
-            assert len(size) == 1, size
-            col_sizes.append(size.pop())
+            if len(size) == 1:
+                col_sizes.append(size.pop())
+            else:
+                col_sizes.append(None)
             
         # However we return both to indicate this was matrix like
         return (tuple(row_sizes), tuple(col_sizes))

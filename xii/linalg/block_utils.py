@@ -93,7 +93,6 @@ def ii_PETScPreconditioner(bmat, ksp):
         nrows, ncols = get_dims(bmat)
         row_sizes, col_sizes = (nrows, ), (ncols, )
         is_block = False
-
     # NOTE: we assume that this is a symmetric operator
     class Foo(object):
         def __init__(self, A):
@@ -165,8 +164,7 @@ class VectorizedOperator(block_base):
         
         if isinstance(W, list):
             # All V
-            size = W[0].dim()
-            assert all(size == Wj.dim() for Wj in W)
+            size,  = set(Wi.dim() for Wi in W)
 
             # Matches A
             n, n = get_dims(bmat)
@@ -183,8 +181,7 @@ class VectorizedOperator(block_base):
             nsubs = W.num_sub_spaces()
             assert nsubs > 0
 
-            elm = W.sub(0).ufl_element()
-            assert all(elm == W.sub(j).ufl_element() for j in range(nsubs))
+            elm,  = set(W.ufl_element().sub_elements())
             
             # Matches
             n, m = get_dims(bmat)
