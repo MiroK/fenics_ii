@@ -10,7 +10,7 @@ from xii import *
 from xii.nonlin.jacobian import ii_derivative
 from ulfy import Expression
 from petsc4py import PETSc
-from hsmg import HsNorm
+from hsmg.hseig import HsNorm
 from block.algebraic.petsc import AMG
 import numpy as np
 

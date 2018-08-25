@@ -24,13 +24,18 @@ class ii_Function(object):
             # Functions them selves
             if hasattr(first(components), 'function_space'):
                 assert [c.function_space() == Wi for c, Wi in zip(components, W)]
-                self.functions = [ci for ci in c]                
+                self.functions = components
             # The components can be vectors in that case
             else:
                 # Dim check
                 assert all(c.size() == Wi.dim() for c, Wi in zip(components, W))
                 # Create
                 self.functions = [Function(Wi, c) for c, Wi in zip(components, W)]
+
+        self._W = W
+
+    def function_space(self):
+        return self._W
 
     def vectors(self):
         '''Coefficient vectors of the functions I hold'''

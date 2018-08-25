@@ -5,6 +5,7 @@ from xii.linalg.matrix_utils import (is_petsc_vec, is_petsc_mat, diagonal_matrix
 from block.block_compose import block_mul, block_add, block_sub, block_transpose
 from block import block_mat, block_vec
 from dolfin import PETScVector, PETScMatrix, mpi_comm_world
+from dolfin import Vector, GenericVector, Matrix
 from scipy.sparse import bmat as numpy_block_mat
 from scipy.sparse import csr_matrix
 from petsc4py import PETSc
@@ -75,6 +76,9 @@ def collapse(bmat):
     # Single block cases
     # Do nothing
     if is_petsc_mat(bmat) or is_number(bmat) or is_petsc_vec(bmat):
+        return bmat
+
+    if isinstance(bmat, (Vector, Matrix, GenericVector)):
         return bmat
 
     # Multiplication
