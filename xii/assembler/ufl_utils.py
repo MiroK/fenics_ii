@@ -53,9 +53,10 @@ def is_equal_terminal(this, that, attributes=None):
         if not ufl_equal or attributes is None:
             return ufl_equal
         # All atributes are there and objects agree on their value
-        return all((all(hasattr(this, a) for a in attributes),
-                    all(hasattr(that, a) for a in attributes),
-                    all(getattr(this, a) == getattr(that, a) for a in attributes)))
+        if all(hasattr(this, a) for a in attributes) and all(hasattr(that, a) for a in attributes):
+            return all(getattr(this, a) == getattr(that, a) for a in attributes)
+
+        return False
 
     return False
 
@@ -102,6 +103,7 @@ def replace(expr, arg, replacement, attributes=None):
     # Identical 
     if matches(expr, arg, attributes):
         return replacement
+
     # Reconstruct the node with the substituted argument
     return type(expr)(*[replace(op, arg, replacement, attributes) for op in expr.ufl_operands])
 
