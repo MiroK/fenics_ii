@@ -27,7 +27,7 @@ def inverse(bmat):
     # Do it your self
     if U is None or lmbda is None:
         A, M = extract_attributes(bmat, ('A', 'M'))
-    lmbda, U = eigh(A.array(), M.array())
+        lmbda, U = eigh(A.array(), M.array())
 
     diagonal = np.zeros_like(lmbda)
     for alpha, s in collect(bmat):
@@ -125,5 +125,22 @@ if __name__ == '__main__':
     A, M = assemble(a+m), assemble(m)
     I = InterpolationMatrix(A, M, 0.5)
     J = InterpolationMatrix(A, M, 0.25)
+    K = InterpolationMatrix(A, M, -0.25)
 
-    print (inverse(0.1234*I)).array() - ((1./0.1234)*((I**-1).array()))
+    print np.linalg.norm((inverse(0.1234*I)).array() - ((1./0.1234)*((I**-1).array())))
+
+    num = inverse(2.*I + 3*J + 10*K).array()
+
+    x = I.create_vec()
+    I*x
+    Imat = I.matrix
+
+    J*x
+    Jmat = J.matrix
+
+    K*x
+    Kmat = K.matrix
+
+    true = np.linalg.inv(2*Imat.array() + 3*Jmat.array() + 10*Kmat.array())
+
+    print np.linalg.norm(num - true)
