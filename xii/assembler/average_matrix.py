@@ -326,7 +326,7 @@ if __name__ == '__main__':
     Tf = Function(TV)
     Trace.mult(f.vector(), Tf.vector())
     Tf0.vector().axpy(-1, Tf.vector())
-    print '??', Tf0.vector().norm('linf')
+    print('??', Tf0.vector().norm('linf'))
 
     V = VectorFunctionSpace(mesh, 'CG', 2)
     TV = VectorFunctionSpace(bmesh, 'DG', 1)
@@ -340,7 +340,7 @@ if __name__ == '__main__':
     Tf = Function(TV)
     Trace.mult(f.vector(), Tf.vector())
     Tf0.vector().axpy(-1, Tf.vector())
-    print '??', Tf0.vector().norm('linf')
+    print('??', Tf0.vector().norm('linf'))
 
     # PI
     radius = 0.01
@@ -363,7 +363,7 @@ if __name__ == '__main__':
     Pi.mult(f.vector(), Pi_f.vector())
 
     Pi_f0.vector().axpy(-1, Pi_f.vector())
-    print '>>', Pi_f0.vector().norm('linf')
+    print('>>', Pi_f0.vector().norm('linf'))
 
     V = VectorFunctionSpace(mesh, 'CG', 3)
     Q = VectorFunctionSpace(bmesh, 'DG', 3)
@@ -385,7 +385,8 @@ if __name__ == '__main__':
     Pi.mult(f.vector(), Pi_f.vector())
 
     Pi_f0.vector().axpy(-1, Pi_f.vector())
-    print '>>', Pi_f0.vector().norm('linf')
+
+    print('>>', Pi_f0.vector().norm('linf'))
 
     # Ball
     radius = 0.02
@@ -424,5 +425,5 @@ if __name__ == '__main__':
     Pi.mult(f.vector(), Pi_f.vector())
 
     Pi_f0.vector().axpy(-1, Pi_f.vector())
-    print '>>', Pi_f0.vector().norm('linf')
-    print Pi_f0.vector().get_local()
+    print('>>', Pi_f0.vector().norm('linf'))
+    print(Pi_f0.vector().get_local())

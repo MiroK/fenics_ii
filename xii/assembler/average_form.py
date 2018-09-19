@@ -80,7 +80,7 @@ def Average(v, line_mesh, radius, quadrature_degree=8, surface='cylinder'):
         if hasattr(line_mesh, 'parent_entity_map'):
             assert v_family == 'Lagrange', '3d1d trace undefined for %s' % v_family
         # Otherise the hope is that we will eval in cell interior which
-        print '\tUsing 3d-1d trace!!!!'
+        print('\tUsing 3d-1d trace!!!!')
         
         radius = None  # Signal to avg_mat
         

@@ -8,6 +8,6 @@ from . function import ii_Function, as_petsc_nest
 try:
     from . hsmg_utils import inverse
 except ImportError:
-    print 'Missing HsMG for fract norm computing'
+    print('Missing HsMG for fract norm computing')
     pass
 

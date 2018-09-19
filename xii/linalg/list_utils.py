@@ -1,6 +1,7 @@
 # Newly, b = np.array([Vector]) will for some reason call .array of vector
 # b is not an array of vector object but of numbers! As a workaround
 # we'll do things with lists
+from functools import reduce
 
 def shape_list(lst):
     '''Shape of a list (of lists of list)'''
@@ -27,7 +28,8 @@ def flatten_list(lst):
 def reshape_list(lst, shape):
     '''Same as array.reshape'''
     old_shape = shape_list(lst)
-    assert reduce(lambda x, y: x*y, old_shape) == reduce(lambda x, y: x*y, shape)
+    if old_shape is not ():
+        assert reduce(lambda x, y: x*y, old_shape) == reduce(lambda x, y: x*y, shape)
 
     lst = flatten_list(lst)
     while len(shape) > 1:
@@ -39,7 +41,7 @@ def reshape_list(lst, shape):
 
 def package(lst, count):
     '''Break a flat list into pieces with count items'''
-    return [] if not lst else ([lst[:count]] + package(lst[count:], count))
+    return [] if not lst else ([list(lst)[:count]] + package(list(lst)[count:], count))
 
 # --------------------------------------------------------------------
 

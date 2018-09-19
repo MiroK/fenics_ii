@@ -119,7 +119,7 @@ def monitor_error(u, norms, memory, reduction=lambda x: x, path=''):
                        ['|r|_l2=%g' % r_norm] +
                        ['niters=%d' % niters])
         # Screen
-        print GREEN % msg
+        print(GREEN % msg)
         # Log
         if path:
             with open(path, 'a') as f: f.write(msg + '\n')

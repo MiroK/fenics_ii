@@ -1,7 +1,10 @@
-from dolfin import compile_extension_module as compile_cpp
+from dolfin import compile_cpp_code as compile_cpp
 from dolfin import Mesh, MeshEditor
 
 code='''
+#include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
+#include <pybind11/pytypes.h>
 #include <dolfin/mesh/Mesh.h>
 #include <dolfin/mesh/MeshEditor.h>
 #include <dolfin/mesh/CellType.h>
@@ -12,11 +15,11 @@ code='''
 #include <algorithm>
 #include <unordered_set>
 #include <map>
-
+namespace py = pybind11;
 namespace dolfin {
   // Fills a SIMPLICIAL mesh
-  void fill_mesh(const Array<double>& coordinates,
-                 const Array<std::size_t>& cells, 
+  void fill_mesh(const py::array_t<double>& coordinates,
+                 const py::array_t<std::size_t>& cells,
                  const int tdim, 
                  const int gdim, 
                  std::shared_ptr<Mesh> mesh)
@@ -41,17 +44,17 @@ namespace dolfin {
      editor.init_cells(ncells);
 
      std::vector<double> vertex(gdim);
-     for(std::size_t index = 0; index < nvertices; index++){
-         for(std::size_t i = 0; i < gdim; i++){
-             vertex[i] = coordinates[gdim*index  + i];
+     for(int index = 0; index < nvertices; index++){
+         for(int i = 0; i < gdim; i++){
+             vertex[i] = coordinates.data()[gdim*index  + i];
          }
          editor.add_vertex(index, vertex);
      }
 
      std::vector<std::size_t> cell(nvertices_per_cell);
-     for(std::size_t index = 0; index < ncells; index++){
-         for(std::size_t i = 0; i < nvertices_per_cell; i++){
-             cell[i] = cells[nvertices_per_cell*index  + i];
+     for(int index = 0; index < ncells; index++){
+         for(int i = 0; i < nvertices_per_cell; i++){
+             cell[i] = cells.data()[nvertices_per_cell*index  + i];
          }
          editor.add_cell(index, cell);
      }
@@ -59,6 +62,10 @@ namespace dolfin {
      editor.close();
   }
 };
+PYBIND11_MODULE(SIGNATURE, m)
+{
+  m.def("fill_mesh", &dolfin::fill_mesh);
+}
 '''
 module = compile_cpp(code)
 

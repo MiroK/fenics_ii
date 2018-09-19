@@ -1,7 +1,8 @@
 from xii.linalg.matrix_utils import petsc_serial_matrix
 from xii.assembler.trace_assembly import trace_cell
 from xii.assembler.fem_eval import DegreeOfFreedom, FEBasisFunction
-from dolfin import warning, cells, Point
+from dolfin.cpp import warning
+from dolfin import cells, Point
 from petsc4py import PETSc
 import numpy as np
 

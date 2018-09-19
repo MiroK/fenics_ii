@@ -1,5 +1,5 @@
 from xii.assembler.ufl_utils import replace as ii_replace
-from itertools import ifilter
+import itertools
 import dolfin as df
 import ufl
 
@@ -54,7 +54,7 @@ def restriction_type(x):
 
 def get_trialfunction(f):
     '''Extract (pointer) to trial function of the object'''
-    return next(ifilter(lambda x: x.number() == 1, f.arguments()))
+    return next(filter(lambda x: x.number() == 1, f.arguments()))
 
 
 def ii_derivative(f, x):
