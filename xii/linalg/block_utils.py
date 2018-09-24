@@ -7,7 +7,8 @@ from xii.linalg.function import as_petsc_nest
 from xii.linalg.matrix_utils import as_petsc
 
 from block import block_mat, block_vec
-from dolfin import PETScVector, as_backend_type, Function, Vector, GenericVector
+from dolfin import (PETScVector, as_backend_type, Function, Vector, GenericVector,
+                    mpi_comm_world, Matrix, PETScMatrix)
 from petsc4py import PETSc
 import numpy as np
 
@@ -86,13 +87,14 @@ def ii_PETScOperator(bmat):
 
 def ii_PETScPreconditioner(bmat, ksp):
     '''Create from bmat a preconditioner for KSP'''
-    try:
-        row_sizes, col_sizes = bmat_sizes(bmat)
-        is_block = True
-    except ValueError:
-        nrows, ncols = get_dims(bmat)
-        row_sizes, col_sizes = (nrows, ), (ncols, )
-        is_block = False
+    # try:
+    #     row_sizes, col_sizes = bmat_sizes(bmat)
+    #     is_block = True
+    # except ValueError:
+    #     nrows, ncols = get_dims(bmat)
+    #     row_sizes, col_sizes = (nrows, ), (ncols, )
+    #     is_block = False
+    is_block = not isinstance(bmat, (Matrix, PETScMatrix))
     # NOTE: we assume that this is a symmetric operator
     class Foo(object):
         def __init__(self, A):
@@ -248,10 +250,13 @@ class ReductionOperator(block_base):
                     index_set.append(PETSc.IS().createGeneral(this.tolist()))
                     prev = len(this)
                 self.index_sets.append(index_set)
+        # Handle get_dims
+        self.__sizes__ = (sum(Wi.dim() for Wi in W), )*2
 
     def matvec(self, b):
         '''Reduce'''
-        assert len(b) == self.offsets[-1]
+        # print type(b), b.size(), self.offsets
+        # assert b.size() == self.offsets[-1]
 
         reduced = []
         for f, l in zip(self.offsets[:-1], self.offsets[1:]):
@@ -334,7 +339,7 @@ if __name__ == '__main__':
     z_block = BB*bb
     
     # Make into a monolithic matrix
-    BB_m =ii_convert(BB)
+    BB_m = ii_convert(BB)
     
     R = ReductionOperator([2], W=[V, Vb])
 

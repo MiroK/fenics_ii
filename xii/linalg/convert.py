@@ -1,6 +1,7 @@
 from xii.linalg.matrix_utils import (is_petsc_vec, is_petsc_mat, diagonal_matrix,
                                      is_number, as_petsc, petsc_serial_matrix,
                                      zero_matrix)
+import xii
 
 from block.block_compose import block_mul, block_add, block_sub, block_transpose
 from block import block_mat, block_vec
@@ -284,13 +285,13 @@ def get_dims(thing):
         # Otherwise, consistency
         if len(B) == 1:
             assert len(dims_A) == len(dims_B) 
-            assert dims_A[1] == dims_B[0]  
+            assert dims_A[1] == dims_B[0], (dims_A, dims_B) 
             return (dims_A[0], dims_B[1])
         else:
             dims_B = get_dims(reduce(operator.mul, B))
             
             assert len(dims_A) == len(dims_B) 
-            assert dims_A[1] == dims_B[0]  
+            assert dims_A[1] == dims_B[0], (dims_A, dims_B)
             return (dims_A[0], dims_B[1])
     # +, -
     if isinstance(thing, (block_add, block_sub)):
@@ -308,11 +309,14 @@ def get_dims(thing):
     if isinstance(thing, block_transpose):
         dims = get_dims(thing.A)
         return (dims[1], dims[0])
-    # Some things in cbc.block know their ma-
+    
+    # Some things in cbc.block know their maE.g. InvLumpDiag...Almost last resort
     if hasattr(thing, 'A'):
         assert is_petsc_mat(thing.A)
         return get_dims(thing.A)
-    # E.g. InvLumpDiag...Almost last resort
+
+    if hasattr(thing, '__sizes__'):
+        return thing.__sizes__
     
     if hasattr(thing, 'create_vec'):
         return (thing.create_vec(0).size(), thing.create_vec(1).size())
