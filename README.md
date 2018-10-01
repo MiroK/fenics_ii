@@ -8,7 +8,7 @@ mesh for the embedded manifold must consist of entities of the mesh of the
 domain. Crucial for such PDEs is the notion of the trace - hence the name.
 
 ## Dependencies
-  - cbc.block
+  - [cbc.block](https://github.com/MiroK/cbc.block)
   - FEniCS 2017.2.0  (python2)
 
 ### Optional dependencies
