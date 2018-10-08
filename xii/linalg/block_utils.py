@@ -225,6 +225,23 @@ def is_increasing(seq):
     return seq[0] < seq[1] and is_increasing(seq[1:])
 
 
+class PermutationOperator(block_base):
+    '''Permute block of block_vector'''
+    def __init__(self, permutation):
+        nblocks = len(permutation)
+        # Completeness
+        assert set(range(nblocks)) == set(permutation)
+
+        self.perm = list(permutation)
+        self.iperm = range(nblocks)
+
+    def matvec(self, b):
+        return block_vec([b[i] for i in self.perm])
+
+    def transpmult(self, b):
+        return block_vec([b[i] for i in self.iperm])
+
+
 class ReductionOperator(block_base):
     '''
     This operator reduces block vector into a block vector with 
@@ -257,7 +274,6 @@ class ReductionOperator(block_base):
         '''Reduce'''
         # print type(b), b.size(), self.offsets
         # assert b.size() == self.offsets[-1]
-
         reduced = []
         for f, l in zip(self.offsets[:-1], self.offsets[1:]):
             if (l - f) == 1:

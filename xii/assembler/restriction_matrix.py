@@ -30,7 +30,8 @@ def restriction_matrix(V, TV, rmesh):
     tdim = mesh.topology().dim()
     
     # Let's get the mapping or cell of TV mesh to V mesh cells
-    mapping = rmesh.parent_entity_map[mesh.id()][tdim]  
+    mapping = rmesh.parent_entity_map[mesh.id()][tdim]
+
     # The idea is to evaluate TV's degrees of freedom at basis functions
     # of V
     Tdmap = TV.dofmap()

@@ -38,16 +38,16 @@ class EmbeddedMesh(df.Mesh):
             # So everybody is marked as 1
             one_cell_f = df.MeshFunction('size_t', base_mesh, tdim, 0)
             for cells in color_cells.itervalues(): one_cell_f.array()[cells] = 1
-            
+
             # The Embedded mesh now steals a lot from submesh
             submesh = df.SubMesh(base_mesh, one_cell_f, 1)
 
             df.Mesh.__init__(self, submesh)
-
             # The entity mapping attribute
             mesh_key = marking_function.mesh().id()
-            self.parent_entity_map = {mesh_key: {0: submesh.data().array('parent_vertex_indices', 0),
-                                                 tdim: submesh.data().array('parent_cell_indices', tdim)}}
+            self.parent_entity_map = {mesh_key:
+                {0: np.fromiter(submesh.data().array('parent_vertex_indices', 0), dtype='uintp'),
+                 tdim: np.fromiter(submesh.data().array('parent_cell_indices', tdim), dtype='uintp')}}
 
             # Finally it remains to preserve the markers
             f = df.MeshFunction('size_t', self, tdim, 0)
@@ -62,7 +62,7 @@ class EmbeddedMesh(df.Mesh):
                             break
             else:
                 f.set_all(markers[0])
-
+                
             self.marking_function = f
             return None  # https://stackoverflow.com/questions/2491819/how-to-return-a-value-from-init-in-python
 
