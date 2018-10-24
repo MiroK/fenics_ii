@@ -4,11 +4,11 @@
 
 (FEniCS)_ii offers some functionality for using FEniCS for PDEs where you combine
 equation on one domain with equation on a submanifold embedded in that domain. A
-mesh for the embedded manifold must consist of entities of the mesh of the
+mesh for the embedded manifold does not need to consist of entities of the mesh of the
 domain. Crucial for such PDEs is the notion of the trace - hence the name.
 
 ## Dependencies
-  - cbc.block
+  - [cbc.block](https://github.com/MiroK/cbc.block)
   - FEniCS 2017.2.0  (python2)
 
 ### Optional dependencies
