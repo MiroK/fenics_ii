@@ -111,8 +111,7 @@ def Average(v, line_mesh, radius, quadrature_degree=8, surface='cylinder'):
 # each arg above was created by Average
 def is_average_integrand(expr, tdim):
     '''Some of the arguments need restriction'''
-    return any((topological_dim(arg) == tdim + 2) and isinstance(arg, Argument)
-               for arg in traverse_unique_terminals(expr))
+    return any((topological_dim(arg) == tdim + 2) for arg in traverse_unique_terminals(expr))
 
 
 def is_average_integral(integral):

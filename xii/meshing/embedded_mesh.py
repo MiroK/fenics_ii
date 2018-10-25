@@ -174,9 +174,22 @@ def build_embedding_map(emesh, mesh, tol=1E-14):
     of mesh we find here a map from emesh vertices and cells to mesh
     vertices and entities.
     '''
+    df.info('\tEmbedding map'); e_timer = df.Timer('emap')
     assert emesh.topology().dim() < mesh.topology().dim()
     edim = emesh.topology().dim()
-    
+
+    # We might be lucky and this is a boundary mesh -> extract
+    if hasattr(emesh, 'entity_map'):
+        # One must be careful here for it is guaranteed that emsh was
+        # constructed from mesh. This has to be flagged by the user
+        if hasattr(emesh, 'parent_id') and emesh.parent_id == mesh.id():
+            entity_map = {0: emesh.entity_map(0).array().copy(),
+                          edim: emesh.entity_map(edim).array().copy()}
+            df.info('\tDone (Embeddeding map by extracting) %g' % e_timer.stop())
+
+            return entity_map
+        # Otherwise we work hard
+        
     # Localization will require
     tree = mesh.bounding_box_tree()
     # to find candidata cells. We zoom in on the unique entity by
@@ -195,21 +208,27 @@ def build_embedding_map(emesh, mesh, tol=1E-14):
     # Also build the map for vertices
     entity_map = {0: [None]*emesh.num_vertices(),
                   edim: [None]*emesh.num_cells()}
+    vertex_map = entity_map[0]
+    cells_with_vertex = dict()
     for cell in df.cells(emesh):
         
         the_entity = set()
         for vertex in cell.entities(0):
-            vertex_x = emesh_x[vertex]
-            mcells = tree.compute_entity_collisions(df.Point(*vertex_x))
+            if vertex_map[vertex] is None:
+                vertex_x = emesh_x[vertex]
+                mcells = tree.compute_entity_collisions(df.Point(*vertex_x))
             
-            # What is the id of vertex in the mesh
-            mcell_vertices = c2v(mcells[0])
-            the_vertex = min(mcell_vertices, key=lambda v: np.linalg.norm(vertex_x-mesh_x[v]))
-            error = np.linalg.norm(vertex_x - mesh_x[the_vertex])/scale
-            assert error < tol, 'Found a hanging node %16f' % error
+                # What is the id of vertex in the mesh
+                mcell_vertices = c2v(mcells[0])
+                the_vertex = min(mcell_vertices, key=lambda v: np.linalg.norm(vertex_x-mesh_x[v]))
+                error = np.linalg.norm(vertex_x - mesh_x[the_vertex])/scale
+                assert error < tol, 'Found a hanging node %16f' % error
             
-            entity_map[0][vertex] = the_vertex
-            
+                vertex_map[vertex] = the_vertex
+                cells_with_vertex[vertex] = mcells
+            else:
+                the_vertex = vertex_map[vertex]
+                mcells = cells_with_vertex[vertex]
             # For each I want to get its entities which containt the vertex
             # We are after such (UNIQUE) entity which would be in each such
             # set build for a vertex
@@ -220,14 +239,15 @@ def build_embedding_map(emesh, mesh, tol=1E-14):
             if not the_entity:
                 the_entity.update(vertex_set)
             else:
-                the_entity = the_entity & vertex_set
+                the_entity.intersection_update(vertex_set)
         assert len(the_entity) == 1
         # Insert
         entity_map[edim][cell.index()] = the_entity.pop()
         
     assert not any(v is None for v in entity_map[0])
     assert not any(v is None for v in entity_map[edim])
-        
+
+    df.info('\tDone (Embeddeding map) %g' % e_timer.stop())
     return entity_map
 
 
