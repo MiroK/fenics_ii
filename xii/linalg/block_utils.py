@@ -288,7 +288,37 @@ class ReductionOperator(block_base):
                 unpacked.extend(subvecs)
         return block_vec(unpacked)
 
+    
+class RegroupOperator(block_base):
+    '''Block vec to Block vec of block_vec/vecs.'''
+    def __init__(self, offsets, W):
+        assert len(W) == offsets[-1]
+        assert is_increasing(offsets)
+        self.offsets = [0] + offsets
 
+    def matvec(self, b):
+        '''Reduce'''
+
+        reduced = []
+        for f, l in zip(self.offsets[:-1], self.offsets[1:]):
+            if (l - f) == 1:
+                reduced.append(b[f])
+            else:
+                reduced.append(block_vec(b.blocks[f:l]))
+        return block_vec(reduced) if len(reduced) > 1 else reduced[0]
+
+    def transpmult(self, b):
+        '''Unpack'''
+        b_block = []
+        for bi in b:
+            if isinstance(bi, (Vector, GenericVector)):
+                b_block.append(bi)
+            else:
+                b_block.extend(bi.blocks)
+                
+        return block_vec(b_block)
+
+    
 class BlockPC(block_base):
     '''Wrap petsc preconditioner for cbc.block'''
     def __init__(self, pc):

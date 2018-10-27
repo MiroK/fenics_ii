@@ -74,10 +74,10 @@ def setup_problem(i, data, eps=1.):
     Q1 = FunctionSpace(stokes_domain, 'CG', 1)
 
     M = FunctionSpace(iface_domain, 'DG', 0)
-    W = [V1, Q, Q1]
+    W = [V1, Q1, Q]
 
-    u1, p, p1 = map(TrialFunction, W)
-    v1, q, q1 = map(TestFunction, W)
+    u1, p1, p = map(TrialFunction, W)
+    v1, q1, q = map(TestFunction, W)
     
     dxGamma = Measure('dx', domain=iface_domain)
     # We will need traces of the functions on the boundary
@@ -95,13 +95,13 @@ def setup_problem(i, data, eps=1.):
     a[0][0] = Constant(2)*inner(sym(grad(u1)), sym(grad(v1)))*dx +\
               inner(u1, v1)*dx +\
               inner(dot(Tu1, tau1), dot(Tv1, tau1))*dxGamma
-    a[0][1] = inner(Tp, dot(Tv1, n1))*dxGamma
-    a[0][2] = -inner(p1, div(v1))*dx
+    a[0][1] = -inner(p1, div(v1))*dx
+    a[0][2] = inner(Tp, dot(Tv1, n1))*dxGamma
 
-    a[1][0] = -inner(Tq, dot(Tu1, n1))*dxGamma
-    a[1][1] = inner(grad(p), grad(q))*dx
+    a[2][0] = -inner(Tq, dot(Tu1, n1))*dxGamma
+    a[2][2] = inner(grad(p), grad(q))*dx
 
-    a[2][0] = -inner(q1, div(u1))*dx
+    a[1][0] = -inner(q1, div(u1))*dx
 
     ####
     n_outer = FacetNormal(stokes_domain)
@@ -115,37 +115,130 @@ def setup_problem(i, data, eps=1.):
            inner(v1, dot(data['expr_stokes_stress'], n_outer))*dsOuter + \
            inner(dot(Tv1, tau1), dot(data['expr_u1'] + dot(data['expr_stokes_stress'], n1), tau1))*dxGamma + \
            inner(-dot(Tv1, n1), data['expr_f'])*dxGamma
-    L[1] = inner(data['expr_f2'], q)*dx +\
+    L[1] = inner(Constant(0), p1)*dx
+    
+    L[2] = inner(data['expr_f2'], q)*dx +\
            -inner(dot(data['expr_u1'], n1) + dot(data['expr_u2'], -n1), Tq)*dxGamma
-    L[2] = inner(Constant(0), p1)*dx
+
     
     return a, L, W
 
+# This is adopted from weak_bcs
+# <---
+from block.block_base import block_base
+
+def block_op_from_action(action, create_vec):
+    '''block_base object with the methods'''
+    return type('BlockOpDummy',
+                (block_base, ),
+                {'matvec': lambda self, b, f=action: f(b),
+                 'create_vec': lambda self, i, f=create_vec: f(i)})()
+
+
+def UMFPACK_LU(A):
+    '''Dolfin solver as preconditioner'''
+    solver = LUSolver(A, 'umfpack')
+    solver.set_operator(A)
+    solver.parameters['reuse_factorization'] = True
+
+    x = PETScVector(as_backend_type(A).mat().createVecLeft())
+
+    solve_ = lambda b, x=x, solver=solver: (solver.solve(x, b), x)[1]
+    create_vec_ = lambda i, x=x: x
+
+    return block_op_from_action(solve_, create_vec_)
+# --->
+
+
 def setup_preconditioner(W, which, eps):
+        
+    from block.algebraic.petsc import AMG
+    from xii.linalg.block_utils import ReductionOperator, RegroupOperator
+    
     # This is best on H1 x H1 x L2 spaces where the Discacciati proces
     # well posedness
-    from block.algebraic.petsc import AMG
-    # The following settings seem not so bad for GMRES
-    #
-    # -ksp_rtol 1E-6
-    # -ksp_monitor_true_residual none
-    # -ksp_type gmres
-    # -ksp_gmres_restart 30
-    # -ksp_gmres_modifiedgramschmidt 1
+    if which == 0:
+        # The following settings seem not so bad for GMRES
+        # -ksp_rtol 1E-6
+        # -ksp_monitor_true_residual none
+        # -ksp_type gmres
+        # -ksp_gmres_restart 30
+        # -ksp_gmres_modifiedgramschmidt 1
     
-    u1, p, p1 = map(TrialFunction, W)
-    v1, q, q1 = map(TestFunction, W)
+        u1, p1, p = map(TrialFunction, W)
+        v1, q1, q = map(TestFunction, W)
 
-    b00 = inner(grad(u1), grad(v1))*dx + inner(u1, v1)*dx
-    B00 = AMG(ii_assemble(b00))
+        b00 = inner(grad(u1), grad(v1))*dx + inner(u1, v1)*dx
+        B00 = AMG(ii_assemble(b00))
 
-    b11 = inner(grad(p), grad(q))*dx + inner(p, q)*dx
-    B11 = AMG(ii_assemble(b11))
+        b11 = inner(p1, q1)*dx
+        B11 = AMG(ii_assemble(b11))
 
-    b22 = inner(p1, q1)*dx
-    B22 = AMG(ii_assemble(b22))
+        b22 = inner(grad(p), grad(q))*dx + inner(p, q)*dx
+        B22 = AMG(ii_assemble(b22))
     
-    return block_diag_mat([B00, B11, B22])
+        return block_diag_mat([B00, B11, B22])
+    
+    # System without coupling: Solve Poisson and Stokes individually
+    iface_domain = BoundaryMesh(W[-1].mesh(), 'exterior')
+        
+    M = FunctionSpace(iface_domain, 'DG', 0)
+
+    u1, p1, p = map(TrialFunction, W)
+    v1, q1, q = map(TestFunction, W)
+    
+    dxGamma = Measure('dx', domain=iface_domain)
+    # We will need traces of the functions on the boundary
+    Tu1, Tv1 = map(lambda x: Trace(x, iface_domain), (u1, v1))
+    Tp, Tq = map(lambda x: Trace(x, iface_domain), (p, q))
+
+    n = OuterNormal(iface_domain, [0.5, 0.5])  # Outer of Darcy
+    n1 = -n                                  # Outer of Stokes
+    # Get tangent vector
+    tau1 = Constant(((0, -1),
+                     (1, 0)))*n1
+
+    stokes = [[0]*2 for i in range(2)]
+    
+    stokes[0][0] = Constant(2)*inner(sym(grad(u1)), sym(grad(v1)))*dx +\
+                   inner(u1, v1)*dx +\
+                   inner(dot(Tu1, tau1), dot(Tv1, tau1))*dxGamma
+    stokes[0][1] = -inner(p1, div(v1))*dx
+    stokes[1][0] = -inner(q1, div(u1))*dx
+
+    if which == 1:
+        B0 = UMFPACK_LU(ii_convert(ii_assemble(stokes)))
+
+        poisson = inner(p, q)*dx + inner(grad(p), grad(q))*dx
+        B1 = AMG(assemble(poisson))
+
+        # 2x2
+        B = block_diag_mat([B0, B1])
+        # Need an adapter for 3 vectors
+        R = ReductionOperator([2, 3], W)
+
+        return R.T*B*R        
+
+    from block.iterative import MinRes
+    # Solve stokes with Minres
+    A0 = ii_assemble(stokes)
+    # The preconditioner
+    B = block_diag_mat([AMG(ii_assemble(inner(grad(u1), grad(v1))*dx + inner(u1, v1)*dx)),
+                        AMG(ii_assemble(inner(p1, q1)*dx))])
+    # Approx
+    A0_inv = MinRes(A0, precond=B, relativeconv=True, tolerance=1E-5)
+    B0 = block_op_from_action(action=lambda b, A0_inv=A0_inv: A0_inv*b,
+                              create_vec=lambda i, A0=A0: A0.create_vec(i))
+        
+    poisson = inner(p, q)*dx + inner(grad(p), grad(q))*dx
+    B1 = AMG(assemble(poisson))
+
+    # 2x2
+    B = block_diag_mat([B0, B1])
+    # Need an adapter for 3 vectors
+    R = RegroupOperator([2, 3], W)
+
+    return R.T*B*R
 
 # --------------------------------------------------------------------
 
@@ -200,7 +293,7 @@ def setup_mms(eps):
 
     # NOTE: the multiplier is grad(u).n and with the chosen data this
     # means that it's zero on the interface
-    up = map(as_expression, (u1, p2, p1))  # The flux
+    up = map(as_expression, (u1, p1, p2))  # The flux
     fg = map(as_expression, (f, f1, f2, u1, u2, T(u1, p1)))
     fg = dict(zip(['expr_%s' % s for s in ('f', 'f1', 'f2', 'u1', 'u2', 'stokes_stress')],
                   fg))
@@ -212,9 +305,9 @@ def setup_error_monitor(true, history, path=''):
     '''We measure error V1 x Q1, V2 x Q2, L2(instead of fractional)'''
     from common import monitor_error, H1_norm, L2_norm, Hdiv_norm
     # First stokes, then darcy pressure
-    reduction = lambda e: None if e is None else [sqrt(e[0]**2 + e[2]**2), e[1]]
+    reduction = lambda e: None if e is None else [sqrt(e[0]**2 + e[1]**2), e[2]]
 
     return monitor_error(true,
                          # u1, p, p1
-                         [H1_norm, H1_norm, L2_norm],
+                         [H1_norm, L2_norm, H1_norm],
                          history, path=path, reduction=reduction)

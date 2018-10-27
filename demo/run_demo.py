@@ -108,7 +108,8 @@ def main(module_name, ncases, params, petsc_params):
             # Solve, note the past object must be PETSc.Vec
             t = Timer('solve'); t.start()            
             ksp.solve(as_petsc_nest(bb), wh.petsc_vec())
-            print '\tSolver took %g s' % t.stop()
+            print '\tSolver took %g s' % t.stop(), ksp.getConvergedReason()
+            
 
             niters = ksp.getIterationNumber()
 
