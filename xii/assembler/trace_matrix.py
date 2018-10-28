@@ -8,7 +8,24 @@ from dolfin import Cell, PETScMatrix, warning
 from petsc4py import PETSc
 import numpy as np
 
+# Restriction operators are potentially costly so we memoize the results.
+# Let every operator deal with cache keys as it sees fit
+def memoize_trace(trace_mat):
+    '''Cached trace'''
+    cache = {}
+    def cached_trace_mat(V, TV, trace_mesh, data):
+        key = ((V.ufl_element(), V.mesh().id()),
+               (TV.ufl_element(), TV.mesh().id()),
+               data['restriction'], data['normal'])
+               
+        if key not in cache:
+            cache[key] = trace_mat(V, TV, trace_mesh, data)
+        return cache[key]
 
+    return cached_trace_mat
+
+
+@memoize_trace
 def trace_mat(V, TV, trace_mesh, data):
     '''
     A mapping for computing traces of function in V in TV. If f in V 

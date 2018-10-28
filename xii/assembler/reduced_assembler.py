@@ -12,7 +12,7 @@ import xii.assembler.xii_assembly
 
 class ReducedFormAssembler(object):
     '''
-    We assemble the biliner form into a product of algebraic representation
+    We assemble the bilinear form into a product of algebraic representation
     of the reduction operatrion and a assembled reduced bilinear form. 
     A linear form is reduction operation times vector.
     '''
@@ -89,8 +89,9 @@ class ReducedFormAssembler(object):
             # Setup the matrix to from space of the trace_terminal to the
             # intermediate space. FIXME: normal and trace_mesh
             #! mat construct
+            df.info('\tGetting reduction op'); rop_timer = df.Timer('rop')
             T = self.reduction_matrix(V, TV, reduced_mesh, data)
-
+            df.info('\tDone (reduction op) %g' % rop_timer.stop())
             # T
             if is_test_function(terminal):
                 replacement = df.TestFunction(TV)

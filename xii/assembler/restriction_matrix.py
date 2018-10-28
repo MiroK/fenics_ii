@@ -7,6 +7,21 @@ from petsc4py import PETSc
 import numpy as np
 
 
+def memoize_restriction(restriction_mat):
+    '''Cached restriction'''
+    cache = {}
+    def cached_restriction_mat(V, TV, reduced_mesh, data):
+        key = ((V.ufl_element(), V.mesh().id()),
+               (TV.ufl_element(), TV.mesh().id()))
+
+        if key not in cache:
+            cache[key] = restriction_mat(V, TV, reduced_mesh, data)
+        return cache[key]
+    
+    return cached_restriction_mat
+
+
+@memoize_restriction
 def restriction_mat(V, TV, rmesh, data):
     '''
     A mapping for computing restriction of function in V in TV. If f in V 

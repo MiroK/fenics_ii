@@ -7,6 +7,22 @@ from petsc4py import PETSc
 import numpy as np
 
 
+def memoize_average(average_mat):
+    '''Cached average'''
+    cache = {}
+    def cached_average_mat(V, TV, reduced_mesh, data):
+        key = ((V.ufl_element(), V.mesh().id()),
+               (TV.ufl_element(), TV.mesh().id()),
+               data['radius'], data['quad_degree'], data['surface'])
+
+        if key not in cache:
+            cache[key] = average_mat(V, TV, reduced_mesh, data)
+        return cache[key]
+    
+    return cached_average_mat
+
+
+@memoize_average
 def avg_mat(V, TV, reduced_mesh, data):
     '''
     A mapping for computing the surface averages of function in V in the 
