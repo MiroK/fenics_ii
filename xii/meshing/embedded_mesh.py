@@ -14,6 +14,37 @@ class EmbeddedMesh(df.Mesh):
     Having several maps in the dict is useful for mortating.
     '''
     def __init__(self, marking_function, markers):
+        # Convenience option to specify only subdomains
+        is_number = lambda m: isinstance(m, int)
+
+        new_markers = []
+        # Build a new list int list with facet_function marked
+        if not is_number(markers) or any(not is_number(m) for m in markers):
+
+            if not isinstance(markers, (list, tuple)): markers = [markers]
+
+            numbers = filter(is_number, markers)
+            next_int_marker = max(numbers) if numbers else 0
+            for marker in markers:
+                if is_number(marker):
+                    new_markers.append(marker)
+                else:
+                    next_int_marker += 1
+                    # SubDomain
+                    try:
+                        marker.mark(marking_function, next_int_marker)
+                    except AttributeError:
+                        # A string
+                        try:
+                            df.CompiledSubDomain(marker).mark(marking_function, next_int_marker)
+                        # A lambda
+                        except TypeError:
+                            df.CompiledSubDomain(*marker()).mark(marking_function, next_int_marker)
+
+                    new_markers.append(next_int_marker)
+            
+            markers = new_markers
+        
         base_mesh = marking_function.mesh()
         
         assert base_mesh.topology().dim() >= marking_function.dim()

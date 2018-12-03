@@ -96,7 +96,10 @@ def Trace(v, mmesh, restriction='', normal=None):
     # away, what would be changes to the assembler etc?
     if isinstance(v, df.Coefficient):
         v =  df.Function(v.function_space(), v.vector())
-
+    else:
+        # Object copy?
+        v = [df.TestFunction, df.TrialFunction][v.number()](v.function_space())
+        
     v.trace_ = {'type': restriction, 'mesh': mmesh, 'normal': normal}
 
     return v
