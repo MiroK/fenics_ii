@@ -14,15 +14,16 @@ class EmbeddedMesh(df.Mesh):
     Having several maps in the dict is useful for mortating.
     '''
     def __init__(self, marking_function, markers):
+
+        if not isinstance(markers, (list, tuple)): markers = [markers]
+        
         # Convenience option to specify only subdomains
         is_number = lambda m: isinstance(m, int)
 
         new_markers = []
         # Build a new list int list with facet_function marked
-        if not is_number(markers) or any(not is_number(m) for m in markers):
-
-            if not isinstance(markers, (list, tuple)): markers = [markers]
-
+        if not all(map(is_number, markers)):
+            
             numbers = filter(is_number, markers)
             next_int_marker = max(numbers) if numbers else 0
             for marker in markers:
@@ -46,7 +47,7 @@ class EmbeddedMesh(df.Mesh):
             markers = new_markers
         
         base_mesh = marking_function.mesh()
-        
+
         assert base_mesh.topology().dim() >= marking_function.dim()
 
         # Work in serial only (much like submesh)
@@ -55,8 +56,6 @@ class EmbeddedMesh(df.Mesh):
         gdim = base_mesh.geometry().dim()
         tdim = marking_function.dim()
         assert tdim > 0, 'No Embedded mesh from vertices'
-
-        if isinstance(markers, int): markers = [markers]
 
         assert markers, markers
 
@@ -157,6 +156,7 @@ class EmbeddedMesh(df.Mesh):
 class OuterNormal(df.Function):
     '''Outer normal of a manifold mesh as a vector DG0 function.'''
     def __init__(self, mesh, orientation):
+
         # Manifold assumption
         assert 1 <= mesh.topology().dim() < mesh.geometry().dim()
         gdim = mesh.geometry().dim()
@@ -175,14 +175,22 @@ class OuterNormal(df.Function):
         df.Function.__init__(self, V)
         n_values = self.vector().get_local()
 
+        X = mesh.coordinates()
+
+        dd = X[np.argmin(X[:, 0])] - X[np.argmax(X[:, 0])] 
+        
         values = []
+        R = np.array([[0, -1], [1, 0]])
+
         for cell in df.cells(mesh):
             n = cell.cell_normal().array()[:gdim]
+
             x = cell.midpoint().array()[:gdim]
             # Disagree?
             if np.inner(orientation(x), n) < 0:
-                n *= -1
+                n *= -1.
             values.append(n/np.linalg.norm(n))
+
         values = np.array(values)
 
         for sub in range(gdim):
