@@ -375,7 +375,7 @@ if __name__ == '__main__':
 
     z = (R.T)*BB_m*(R*bb)
 
-    print (z - z_block).norm()
+    print((z - z_block).norm())
 
     y  = BB_m*(R*bb)
-    print np.linalg.norm(np.hstack([bi.get_local() for bi in z_block])-y.get_local())
+    print(np.linalg.norm(np.hstack([bi.get_local() for bi in z_block])-y.get_local()))

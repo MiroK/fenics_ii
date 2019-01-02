@@ -184,7 +184,7 @@ if __name__ == '__main__':
         
         timer = Timer('x'); timer.start()
         submeshes, interface, colormap = mortar_meshes(subdomains, (0, 1), ifacet_iter)
-        print '\t', timer.stop()
+        print('\t', timer.stop())
     x = interface.parent_entity_map
 
     maps = [build_embedding_map(interface, meshi) for meshi in submeshes]

@@ -18,7 +18,7 @@ class ii_Function(object):
     '''Really a list of functions where each is in some W[i]'''
     def __init__(self, W, components=None):
         if components is None:
-            self.functions = map(Function, W)
+            self.functions = list(map(Function, W))
         else:
             assert len(components) == len(W)
             # Functions them selves

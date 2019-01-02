@@ -34,7 +34,7 @@ def trace_element(elm):
     # Want exact match here; otherwise VectorElement is MixedElement and while
     # it works I don't find it pretty
     if type(elm) == df.MixedElement:
-        return df.MixedElement(map(trace_element, elm.sub_elements()))
+        return df.MixedElement(list(map(trace_element, elm.sub_elements())))
     
     # FIXME: Check out Witze Bonn's work on da Rham for trace spaces
     # in the meantime KISS
@@ -94,7 +94,7 @@ def Trace(v, mmesh, restriction='', normal=None):
     # not work this way.
     # FIXME: should Trace(coeffcient) be a coefficient in the trace space right
     # away, what would be changes to the assembler etc?
-    if isinstance(v, df.Coefficient):
+    if isinstance(v, ufl.Coefficient):
         v =  df.Function(v.function_space(), v.vector())
     else:
         # Object copy?

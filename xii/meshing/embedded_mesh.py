@@ -1,4 +1,4 @@
-from make_mesh_cpp import make_mesh
+from xii.meshing.make_mesh_cpp import make_mesh
 from collections import defaultdict
 from itertools import chain
 import dolfin as df
@@ -134,6 +134,7 @@ class EmbeddedMesh(df.Mesh):
         
         # With acquired data build the mesh
         df.Mesh.__init__(self)
+
         # Fill
         make_mesh(coordinates=vertex_coordinates, cells=new_cells, tdim=tdim, gdim=gdim,
                   mesh=self)
@@ -318,7 +319,7 @@ if __name__ == '__main__':
             rate = np.log(dt/dt0)/np.log(float(n)/n0)
         else:
             rate = np.nan
-        print n, dt, rate
+        print(n, dt, rate)
         n0, dt0 = n, dt
         
     # Check creation

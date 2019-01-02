@@ -5,8 +5,10 @@ import xii
 
 from block.block_compose import block_mul, block_add, block_sub, block_transpose
 from block import block_mat, block_vec
-from dolfin import PETScVector, PETScMatrix, mpi_comm_world
+#from dolfin import PETScVector, PETScMatrix, mpi_comm_world
+from dolfin import PETScVector, PETScMatrix
 from dolfin import Vector, GenericVector, Matrix
+
 from scipy.sparse import bmat as numpy_block_mat
 from scipy.sparse import csr_matrix
 from petsc4py import PETSc
@@ -211,7 +213,7 @@ def block_mat_to_numpy(bmat):
     if is_number(bmat):
         return None  # What bmat accepts
     # Recurse on blocks
-    blocks = np.array(map(block_mat_to_numpy, bmat.blocks.flatten()))
+    blocks = np.array(list(map(block_mat_to_numpy, bmat.blocks.flatten())))
     blocks = blocks.reshape(bmat.blocks.shape)
     # The bmat
     return numpy_block_mat(blocks).tocsr()
@@ -411,12 +413,12 @@ if __name__ == '__main__':
 
     t = Timer('x'); t.start()
     X = convert(AA)
-    print t.stop()
+    print(t.stop())
 
     t = Timer('x'); t.start()
     Y = convert(AA, 'foo')
-    print t.stop()
+    print(t.stop())
 
     X_ = X.array()
     X_[:] -= Y.array()
-    print np.linalg.norm(X_, np.inf)
+    print(np.linalg.norm(X_, np.inf))
