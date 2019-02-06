@@ -14,7 +14,6 @@ class EmbeddedMesh(df.Mesh):
     Having several maps in the dict is useful for mortating.
     '''
     def __init__(self, marking_function, markers):
-
         if not isinstance(markers, (list, tuple)): markers = [markers]
         
         # Convenience option to specify only subdomains
@@ -45,7 +44,7 @@ class EmbeddedMesh(df.Mesh):
                     new_markers.append(next_int_marker)
             
             markers = new_markers
-        
+            
         base_mesh = marking_function.mesh()
 
         assert base_mesh.topology().dim() >= marking_function.dim()
@@ -76,9 +75,8 @@ class EmbeddedMesh(df.Mesh):
 
             # The entity mapping attribute
             mesh_key = marking_function.mesh().id()
-            self.parent_entity_map = {mesh_key: {0: submesh.data().array('parent_vertex_indices', 0),
-                                                 tdim: submesh.data().array('parent_cell_indices', tdim)}}
-
+            self.parent_entity_map = {mesh_key: {0: submesh.data().array('parent_vertex_indices', 0).copy(),
+                                                 tdim: submesh.data().array('parent_cell_indices', tdim).copy()}}
             # Finally it remains to preserve the markers
             f = df.MeshFunction('size_t', self, tdim, 0)
             if len(markers) > 1:
@@ -140,7 +138,8 @@ class EmbeddedMesh(df.Mesh):
 
         # The entity mapping attribute
         mesh_key = marking_function.mesh().id()
-        self.parent_entity_map = {mesh_key: {0: new_vertices, tdim: cell_map}}
+        self.parent_entity_map = {mesh_key: {0: np.array(new_vertices, dtype='uintp'),
+                                             tdim: np.array(cell_map, dtype='uintp')}}
 
         f = df.MeshFunction('size_t', self, tdim, 0)
         f_ = f.array()
