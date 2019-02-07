@@ -1,7 +1,6 @@
 from xii import *
 from dolfin import *
 
-i = 2
 
 def main(i):
     n = 4*2**i
