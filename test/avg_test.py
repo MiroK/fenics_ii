@@ -1,6 +1,7 @@
 from dolfin import *
 from xii.meshing.make_mesh_cpp import make_mesh
-from xii.assembler.average_matrix import cylinder_average_matrix
+from xii.assembler.average_matrix import surface_average_matrix
+from xii.assembler.average_shape import Cylinder
 from xii import EmbeddedMesh
 import numpy as np
 
@@ -32,7 +33,9 @@ def test(f, n, radius):
 
     f = interpolate(f, V)
 
-    Pi = cylinder_average_matrix(V, TV, radius, 10)
+    cylinder = Cylinder(radius, n)
+
+    Pi = surface_average_matrix(V, TV, cylinder)
     print '\t', Pi.norm('linf'), max(len(Pi.getrow(i)[0]) for i in range(TV.dim()))
     
     Pi_f = Function(TV)
@@ -49,7 +52,7 @@ if __name__ == '__main__':
     f = Expression('x[2]', degree=1)
     Pi_f0 = f
 
-    f = Expression('x[0]*x[0] + x[1]*x[1]', degree=1)
+    f = Expression('x[0]*x[0] + x[1]*x[1]', degree=2)
     Pi_f0 = Constant(radius**2)
 
     f = Expression('x[2]*(x[0]*x[0] + x[1]*x[1])', degree=1)
@@ -61,7 +64,17 @@ if __name__ == '__main__':
     f = Expression('sin(k*pi*x[2])', k=0.5, degree=1)
     Pi_f0 = Expression('sin(k*pi*x[2])', k=0.5, degree=1)
 
+    e0, n0 = None, None
     for n in (4, 8, 16, 32):
         Pi_f = test(f, n, radius)
         assert Pi_f.vector().norm('l2') > 0
-        print sqrt(abs(assemble(inner(Pi_f0 - Pi_f, Pi_f0 - Pi_f)*dx)))
+        e = sqrt(abs(assemble(inner(Pi_f0 - Pi_f, Pi_f0 - Pi_f)*dx)))
+
+        if e0 is not None:
+            rate = ln(e/e0)/ln(float(n0)/n)
+        else:
+            rate = np.inf
+
+        print 'error %g, rate=%.2f' % (e, rate)
+        
+        n0, e0 = n, e

@@ -52,7 +52,7 @@ def average_space(V, mesh):
     return df.FunctionSpace(mesh, elm(family, mesh.ufl_cell(), degree))
 
 
-def Average(v, line_mesh, radius, quadrature_degree=8, surface='cylinder'):
+def Average(v, line_mesh, bdry_curve):
     '''
     Annotated function for being surface average around line mesh. 
     For surface == 'cylinder' this means that 
@@ -65,7 +65,14 @@ def Average(v, line_mesh, radius, quadrature_degree=8, surface='cylinder'):
     at x with radius. This integral is computed numerically with given quad.
     degree.
 
-    If radius == 0, this reduction is understood as 3d-1d trace. In this 
+    In general bdry_curve is an object with the following API:
+      bdry_curve.weights() -> list of quarature weights
+      bdry_curve.length(n) -> (x -> length of the curve in a plane crossing x 
+                                 with normal n)
+      bdry_curve.points(n) -> (x -> quadrature points for the curve in plane 
+                               crossing x with normal n)
+
+    If bdry_curve is None, this reduction is understood as 3d-1d trace. In this 
     case the reduced function must be in some CG space!
     '''
     # Prevent Trace(grad(u)). But it could be interesting to have this
@@ -73,7 +80,7 @@ def Average(v, line_mesh, radius, quadrature_degree=8, surface='cylinder'):
     assert average_cell(v) == line_mesh.ufl_cell()
 
     # Some sanity check for the radius
-    if isinstance(radius, int) and radius == 0:
+    if bdry_curve is None:
         v_family = v.ufl_element().family()
         # If we have en embedded mesh this mean that we want trace on en
         # edge and this make it well defined (only?) for CG
@@ -82,15 +89,13 @@ def Average(v, line_mesh, radius, quadrature_degree=8, surface='cylinder'):
         # Otherise the hope is that we will eval in cell interior which
         print '\tUsing 3d-1d trace!!!!'
         
-        radius = None  # Signal to avg_mat
-        
-    if is_number(radius): assert radius > 0
-
     if isinstance(v, df.Coefficient):
         v =  df.Function(v.function_space(), v.vector())
+    else:
+        # Object copy?
+        v = [df.TestFunction, df.TrialFunction][v.number()](v.function_space())
 
-    v.average_ = {'mesh': line_mesh, 'radius': radius, 'quad_degree': quadrature_degree,
-                  'surface': surface}
+    v.average_ = {'mesh': line_mesh, 'bdry_curve': bdry_curve}
 
     return v
 
