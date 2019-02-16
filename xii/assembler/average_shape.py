@@ -45,7 +45,7 @@ class Cylinder(object):
         t1 = np.array([n[1]-n[2], n[2]-n[0], n[0]-n[1]])
     
         t2 = np.cross(n, t1)
-        t1 /= np.linalg.norm(t1)
+        t1 = t1/np.linalg.norm(t1)
         t2 = t2/np.linalg.norm(t2)
 
         def pts(x0, me=self, t1=t1, t2=t2):
@@ -99,7 +99,7 @@ class Ball(object):
         return lambda x: 1
 
 
-class Square(object):
+class SquareBox(object):
     '''
     Is specified by normal (will be given by 1d mesh) and functions:
     P(x\in R^3) -> R^3 the position of the ll corner
@@ -177,32 +177,54 @@ class Square(object):
 if __name__ == '__main__':
     from mpl_toolkits.mplot3d import Axes3D
     import matplotlib.pyplot as plt
-    
-    sq = Square(P=lambda x0: np.array([-0.5, -0.5, x0[2]]),
-                degree=8)
+
+    size = 0.125
+    sq = SquareBox(P=lambda x0: np.array([size*np.cos(0.5*pi*x0[2]),
+                                          size*np.sin(0.5*pi*x0[2]),
+                                          x0[2]]),
+                   degree=8)
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
     n = np.array([0, 0, 1])
 
-    f = lambda x: 1#x[0]
+    f = lambda x: x[0]*x[0]
     
     pts = sq.points(n=n)
     length = sq.length(n=n)
     wq = sq.weights
-    print wq
     l = len(wq)/4
-    for s in (0, ): #0.25, 0.5, 0.75, 1):
+    
+    for s in np.linspace(0, 2, 20):
         x0 = np.array([0.0, 0.0, s])
         x = np.row_stack(pts(x0))
-
-        for i in range(4):
-            print x[i*l:(i+1)*l][0], x[i*l:(i+1)*l][-1]
-            print sum(f(xi)*wqi for xi, wqi in zip(x[i*l:(i+1)*l],
-                                                   wq[i*l:(i+1)*l]))
-        print
+        # print x
+        # for i in range(4):
+        #     # print x[i*l:(i+1)*l][0], x[i*l:(i+1)*l][-1]
+        #     print 2*size*sum(f(xi)*wqi for xi, wqi in zip(x[i*l:(i+1)*l],
+        #                                            wq[i*l:(i+1)*l]))
+        # print
         
-        ax.plot3D(x[:, 0], x[:, 1], x[:, 2])
+        ax.plot3D(x[:, 0], x[:, 1], x[:, 2], marker='o')
+
+    # ----------------------
+
+    radius = 0.125
+    sq = Cylinder(radius=radius, degree=16)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    n = np.array([0, 0, 1])
+
+    f = lambda x: x[0]*x[0]
+    
+    pts = sq.points(n=n)
+    
+    for s in np.linspace(0, 2, 20):
+        x0 = np.array([0.0, 0.0, s])
+        x = np.row_stack(pts(x0))
+        ax.plot3D(x[:, 0], x[:, 1], x[:, 2], marker='o')
 
     plt.show()

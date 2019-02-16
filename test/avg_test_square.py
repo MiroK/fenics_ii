@@ -1,7 +1,7 @@
 from dolfin import *
 from xii.meshing.make_mesh_cpp import make_mesh
 from xii.assembler.average_matrix import surface_average_matrix
-from xii.assembler.average_shape import Square
+from xii.assembler.average_shape import SquareBox
 from xii import EmbeddedMesh
 import numpy as np
 
@@ -33,7 +33,7 @@ def test(f, n, P, degree=8):
 
     f = interpolate(f, V)
 
-    cylinder = Square(P, degree)
+    cylinder = SquareBox(P, degree)
 
     Pi = surface_average_matrix(V, TV, cylinder)
     print '\t', Pi.norm('linf'), max(len(Pi.getrow(i)[0]) for i in range(TV.dim()))
@@ -65,7 +65,16 @@ if __name__ == '__main__':
     f = Expression('x[0]+x[1]', degree=2)
     Pi_f0 = Constant(0)
 
+    f = Expression('x[0]*x[0]', degree=2)
+    Pi_f0 = Constant(2*size**2/3.)
 
+    f = Expression('x[0]*x[0]+x[1]*x[1]', degree=2)
+    Pi_f0 = Constant(4*size**2/3.)
+
+    f = Expression('x[2]*(x[0]*x[0]+x[1]*x[1])', degree=2)
+    Pi_f0 = Expression('x[2]*4*A*A/3.', A=size, degree=1)
+
+    
     e0, n0 = None, None
     for n in (4, 8, 16, 32):
         Pi_f = test(f, n, P)
