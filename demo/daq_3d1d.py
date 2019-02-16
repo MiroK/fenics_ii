@@ -35,8 +35,11 @@ def setup_problem(i, f, eps=None):
     u, p = map(TrialFunction, W)
     v, q = map(TestFunction, W)
 
-    Pi_u = Average(u, bmesh, radius, quadrature_degree)
-    T_v = Average(v, bmesh, radius=0)  # This is 3d-1d trace
+    # Averaging surface
+    cylinder = Cylinder(radius=radius, degree=quadrature_degree)
+
+    Pi_u = Average(u, bmesh, cylinder)
+    T_v = Average(v, bmesh, None)  # This is 3d-1d trace
 
     dxGamma = Measure('dx', domain=bmesh)
 

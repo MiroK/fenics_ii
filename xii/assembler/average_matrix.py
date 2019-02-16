@@ -13,7 +13,7 @@ def memoize_average(average_mat):
     def cached_average_mat(V, TV, reduced_mesh, data):
         key = ((V.ufl_element(), V.mesh().id()),
                (TV.ufl_element(), TV.mesh().id()),
-               data['radius'], data['quad_degree'], data['surface'])
+               data['bdry_curve'])
 
         if key not in cache:
             cache[key] = average_mat(V, TV, reduced_mesh, data)
