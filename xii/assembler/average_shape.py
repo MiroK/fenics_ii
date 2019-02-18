@@ -1,4 +1,5 @@
 from xii.linalg.matrix_utils import is_number
+from xii.assembler.average_form import average_space
 from numpy.polynomial.legendre import leggauss
 import numpy as np
 from math import pi
@@ -172,59 +173,66 @@ class SquareBox(object):
 
         return (P, Pm, Pr, Pp)
 
+
+def render_avg_surface(Pi):
+    '''Plot the averaging surface via looking at the quadrature points used'''
+    V = Pi.function_space()
+    line_mesh = Pi.average_['mesh']
+    # Where the average will be represented
+    Pi_V = average_space(V, line_mesh)
+
+    curve = Pi.average_['bdry_curve']
+
+    # We produce a curve of quardrature points for each dof
+    surface = []
+    
+    dm = Pi_V.dofmap()
+    dofs_x = Pi_V.tabulate_dof_coordinates().reshape((Pi_V.dim(), -1))
+    for cell in df.cells(line_mesh):
+        v0, v1 = cell.get_vertex_coordinates().reshape((2, 3))
+        n = v1 - v0
+
+        pts = curve.points(n=n)
+        for dof_x in dofs_x[dm.cell_dofs(cell.index())]:
+            x = np.row_stack(pts(dof_x))
+            surface.append(x)
+
+    return surface
+        
 # --------------------------------------------------------------------
 
 if __name__ == '__main__':
     from mpl_toolkits.mplot3d import Axes3D
     import matplotlib.pyplot as plt
 
+    from xii.assembler.average_form import Average
+    from xii.meshing.embedded_mesh import EmbeddedMesh
+    import dolfin as df
+
+    # 3d
+    mesh = df.BoxMesh(df.Point(-1, -1, -1), df.Point(1, 1, 1), 16, 16, 16)
+    # Make 1d
+    f = df.MeshFunction('size_t', mesh, 1, 0)
+    df.CompiledSubDomain('near(x[0], 0) && near(x[1], 0)').mark(f, 1)
+    
+    line_mesh = EmbeddedMesh(f, 1)
+
+    # Setup bounding curve
     size = 0.125
     sq = SquareBox(P=lambda x0: np.array([size*np.cos(0.5*pi*x0[2]),
                                           size*np.sin(0.5*pi*x0[2]),
                                           x0[2]]),
                    degree=8)
 
+    u = df.Function(df.FunctionSpace(mesh, 'CG', 1))
+    op = Average(u, line_mesh, sq)
+
+    surface = render_avg_surface(op)
+    
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
-    n = np.array([0, 0, 1])
-
-    f = lambda x: x[0]*x[0]
-    
-    pts = sq.points(n=n)
-    length = sq.length(n=n)
-    wq = sq.weights
-    l = len(wq)/4
-    
-    for s in np.linspace(0, 2, 20):
-        x0 = np.array([0.0, 0.0, s])
-        x = np.row_stack(pts(x0))
-        # print x
-        # for i in range(4):
-        #     # print x[i*l:(i+1)*l][0], x[i*l:(i+1)*l][-1]
-        #     print 2*size*sum(f(xi)*wqi for xi, wqi in zip(x[i*l:(i+1)*l],
-        #                                            wq[i*l:(i+1)*l]))
-        # print
-        
-        ax.plot3D(x[:, 0], x[:, 1], x[:, 2], marker='o')
-
-    # ----------------------
-
-    radius = 0.125
-    sq = Cylinder(radius=radius, degree=16)
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-
-    n = np.array([0, 0, 1])
-
-    f = lambda x: x[0]*x[0]
-    
-    pts = sq.points(n=n)
-    
-    for s in np.linspace(0, 2, 20):
-        x0 = np.array([0.0, 0.0, s])
-        x = np.row_stack(pts(x0))
-        ax.plot3D(x[:, 0], x[:, 1], x[:, 2], marker='o')
+    for plane in surface:
+        ax.plot3D(plane[:, 0], plane[:, 1], plane[:, 2], marker='o')
 
     plt.show()
