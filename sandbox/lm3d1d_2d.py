@@ -60,13 +60,18 @@ a[1][1] = inner(grad(u1d), grad(v1d))*dx
 a[1][2] = inner(Ev1d, p)*dxLM
 
 a[2][0] = -inner(Tu3d, q)*dxLM
-a[2][1] = inner(Ev1d, q)*dxLM
+a[2][1] = inner(Eu1d, q)*dxLM
 
 #print ii_assemble(a[0][0])
 #print ii_assemble(a[1][1])
 #print ii_assemble(a[2][0])
 #print ii_assemble(a[0][2])
 
-print ii_assemble(a[1][2])
+A12 = ii_assemble(a[1][2])
+A21 = ii_assemble(a[2][1])
+
 print Q.dim(), V1d.dim()
 
+# FIXME: extension for tensors
+#        memoization in extension
+#        correctness of blocks
