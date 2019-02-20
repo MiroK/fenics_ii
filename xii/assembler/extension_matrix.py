@@ -1,6 +1,7 @@
 from xii.linalg.convert import numpy_to_petsc
 from scipy.spatial.distance import cdist
 from scipy.sparse import csr_matrix
+import dolfin as df
 import numpy as np
 
 # NOTE: for uniform extension the test can
@@ -8,7 +9,7 @@ import numpy as np
 # where Pi is the surface average operator and A
 # the crossection area.
 
-# Restriction operators are potentially costly so we memoize the results.
+# Extension operators are potentially costly so we memoize the results.
 # Let every operator deal with cache keys as it sees fit
 def memoize_ext(ext_mat):
     '''Cached extension mapping'''
@@ -17,18 +18,19 @@ def memoize_ext(ext_mat):
         key = ((V.ufl_element(), V.mesh().id()),
                (TV.ufl_element(), TV.mesh().id()),
                data['type'])
-               
+        
         if key not in cache:
-            cache[key] = extension_mat(V, TV, extended_mesh, data)
+            cache[key] = ext_mat(V, TV, extended_mesh, data)
         return cache[key]
 
     return cached_ext_mat
 
 
-#@memoize_ext
+@memoize_ext
 def extension_mat(V, EV, extended_mesh, data):
     '''
-    # FIXME
+    Dispatch to individual methods for extending functions from V to 
+    EV(on extended_mesh)
     '''
     assert EV.mesh().id() == extended_mesh.id()
     
@@ -39,22 +41,30 @@ def extension_mat(V, EV, extended_mesh, data):
     assert V.ufl_element().family() == EV.ufl_element().family()
     assert V.mesh().geometry().dim() == EV.mesh().geometry().dim() == 3
 
-    if data['type'] == 'uniform':
-        return uniform_extension_matrix(V, EV)
-    else:
-        assert False
-        
+    # NOTE: add more here
+    # - something based on radial basis function
+    # - using the method of Green's functions
+    return {'uniform': uniform_extension_matrix(V, EV)}[data['type']]
+
 
 def uniform_extension_matrix(V, EV):
     '''
-    Map vector of coeficients of V(over 1d domain) to 
-    vector of coefficients of EV(over 3d domain). The spaces
-    need to used the same element type.
+    Map vector of coeficients of V(over 1d domain) to vector of coefficients of 
+    EV(over 2d domain). The spaces need to use the same element type.
     '''
-    # Assumption checks
-    
-    V_dofs_x = V.tabulate_dof_coordinates().reshape((V.dim(), -1))
-    EV_dofs_x = EV.tabulate_dof_coordinates().reshape((EV.dim(), -1))
+    # For Vector and Tensor elements more than 1 degree of freedom is 
+    # associated with the same geometric point. It is therefore cheaper
+    # to compute the mapping based only on the scalar/one subspace considerations.
+    is_tensor_elm = isinstance(V.ufl_element(), (df.VectorElement, df.TensorElement))
+    # Base on scalar
+    if is_tensor_elm:
+        V_dofs_x = V.sub(0).collapse().tabulate_dof_coordinates().reshape((-1, 3))
+        EV_dofs_x = EV.sub(0).collapse().tabulate_dof_coordinates().reshape((-1, 3))
+    # Otherwise 'scalar', (Hdiv element belong here as well)
+    else:
+        V_dofs_x = V.tabulate_dof_coordinates().reshape((V.dim(), 3))
+        EV_dofs_x = EV.tabulate_dof_coordinates().reshape((EV.dim(), 3))
+        
     # Compute distance from every EV dof(row) to every V dof(column)
     lookup = cdist(EV_dofs_x, V_dofs_x)
     # Make sure the two domains do not intersect
@@ -62,9 +72,16 @@ def uniform_extension_matrix(V, EV):
 
     # Now get the closest dof to E
     columns = np.argmin(lookup, axis=1)
+    # Every scalar can be used used to set all the components
+    if is_tensor_elm:
+        shift = V.dim()/len(V_dofs_x)
+        component_idx = np.arange(shift)
+        # shift*dof + components
+        columns = (shift*np.array([columns]).T + component_idx).flatten()
+
     # As csr (1 col per row)
     values = np.ones_like(columns)
-    rows = np.arange(len(columns)+1)
+    rows = np.arange(EV.dim()+1)
 
     E = csr_matrix((values, columns, rows), shape=(EV.dim(), V.dim()))
 

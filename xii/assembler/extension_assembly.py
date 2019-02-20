@@ -35,7 +35,5 @@ class ExtensionFormAssembler(ReducedFormAssembler):
         return extension_mat(V, TV, extended_mesh, data)
 
 # Expose
-    
 def assemble_form(form, arity, assembler=ExtensionFormAssembler()):
-    print('XXXX')
     return assembler.assemble(form, arity)

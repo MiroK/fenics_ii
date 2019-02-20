@@ -3,7 +3,7 @@ from xii import EmbeddedMesh
 from xii.assembler.extension_matrix import uniform_extension_matrix
 
 
-mesh = UnitCubeMesh(4, 4, 4)
+mesh = UnitCubeMesh(16, 16, 16)
 
 f = MeshFunction('size_t', mesh, 1, 0)
 CompiledSubDomain('near(x[0], 0.5) && near(x[1], 0.5)').mark(f, 1)
