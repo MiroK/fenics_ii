@@ -46,14 +46,14 @@ p_func = interpolate(p_expr, Q)
 v_func = interpolate(v_expr, V1d)
 # Quadrature
 num = v_func.vector().inner(A*p_func.vector())
-print abs(num - true), (true, num)
+print '>', abs(num - true), (true, num)
 
 # Check the transpose as well
 a = inner(Eu1d, q)*dxLM
 A = ii_assemble(a)
 # Quadrature
 num = p_func.vector().inner(A*v_func.vector())
-print abs(num - true), (true, num)
+print '>>', abs(num - true), (true, num)
 
 # Maybe at some point we want something like this
 a = inner(Tu3d, Ev1d)*dxLM
@@ -61,4 +61,4 @@ A = ii_assemble(a)
 
 u_func = interpolate(p_expr, V3d)
 num = v_func.vector().inner(A*u_func.vector())
-print abs(num - true), (true, num)
+print '>>>', abs(num - true), (true, num)

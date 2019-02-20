@@ -4,10 +4,6 @@ from scipy.sparse import csr_matrix
 import dolfin as df
 import numpy as np
 
-# NOTE: for uniform extension the test can
-# be that inner(Ev1d, p)*dxLM = inner(A*v1d, Pi(p))*dx1d
-# where Pi is the surface average operator and A
-# the crossection area.
 
 # Extension operators are potentially costly so we memoize the results.
 # Let every operator deal with cache keys as it sees fit
