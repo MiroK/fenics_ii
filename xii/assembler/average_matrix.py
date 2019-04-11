@@ -66,7 +66,7 @@ def surface_average_matrix(V, TV, bdry_curve):
     # We do this numerically as |L(s)|^-1*\sum_q u(x_q)*w_q 
 
     # Weights remaing fixed
-    wq = bdry_curve.weights
+    wq = bdry_curve.weights()
     
     mesh_x = TV.mesh().coordinates()
     # The idea for point evaluation/computing dofs of TV is to minimize

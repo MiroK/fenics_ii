@@ -57,13 +57,11 @@ def Average(v, line_mesh, bdry_curve):
     Annotated function for being surface average around line mesh. 
     For surface == 'cylinder' this means that 
 
-        (Average(v))(x) = |C_R(x)|\int_{C_R(x)} v(y) dy for every point 
+        (Average(v))(x) = |C_R(x)|^-1 \int_{C_R(x)} v(y) dy for every point 
 
-    x on the line_mesh. C_R(x) is a center of radius R(x) centered at x
+    x on the line_mesh. C_R(x) is a circle of radius R(x) centered at x
     with normal vector determined by tangent of the line_mesh segment @ 
-    x. For surface == 'sphere' we integrate over a surface of a ball 
-    at x with radius. This integral is computed numerically with given quad.
-    degree.
+    x. This integral is computed numerically with given quad. degree.
 
     In general bdry_curve is an object with the following API:
       bdry_curve.weights() -> list of quarature weights
