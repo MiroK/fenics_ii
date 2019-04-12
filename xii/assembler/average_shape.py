@@ -3,11 +3,12 @@ from xii.linalg.matrix_utils import is_number
 from xii.assembler.average_form import average_space
 from numpy.polynomial.legendre import leggauss
 from itertools import product
-from math import pi
+from math import pi, sqrt
 import numpy as np
 import quadpy
 
 
+# FIXME: cleanup shapes and averaging. Too bloated now!!!
 class BoundingCurve:
     '''API of a bounding curve in plane with normal n'''
     __metaclass__ = ABCMeta
@@ -30,6 +31,11 @@ class BoundingCurve:
         \(x) -> quadrature points for surface averaging over curve in plane 
         with normal n'''
         pass
+
+    @abstractmethod
+    def circumnference(self, n):
+        '''\(x) -> TRUE length of the averaging curve'''
+        pass
     
     @abstractmethod
     def cross_weights(self):
@@ -49,7 +55,12 @@ class BoundingCurve:
         '''
         pass
 
+    @abstractmethod
+    def cross_area(self, n):
+        '''\(x) -> TRUE area of the surface bounded by averaging curve'''
+        pass
 
+    
 class Square(BoundingCurve):
     '''
     Is specified by normal (will be given by 1d mesh) and functions:
@@ -101,6 +112,13 @@ class Square(BoundingCurve):
             return me.square_xq(r)
 
         return pts
+
+    def circumnference(self, n):
+        '''Square(x0, n) circumnference'''
+        def l(x0, n=n, me=self):
+            a = np.linalg.norm(me.P(x0) - x0)*sqrt(2)/2
+            return (2*a)*4
+        return l
 
     def square_xq(self, (A, B, C, D)):
         '''Quad points for rectangle A--B--D--D--'''
@@ -162,9 +180,16 @@ class Square(BoundingCurve):
             return A + 0.5*(B-A)*(s+1) + 0.5*(D-A)*(t+1)
 
         return pts
+    
+    def cross_area(self, n):
+        '''Square(x0, n) cross section area'''
+        def l(x0, n=n, me=self):
+            a = np.linalg.norm(me.P(x0) - x0)*sqrt(2)/2
+            return (2*a)**2
+        return l
 
     
-class Cicle(BoundingCurve):
+class Circle(BoundingCurve):
     '''Obtain the bounding surface by making a circle of radius r in the normal plane'''
     def __init__(self, radius, degree):
         # Make constant function
@@ -226,6 +251,14 @@ class Cicle(BoundingCurve):
         # NOTE: Due to the cancellation above (wq is included in weight)
         # the length is 1 for the purpose of integration
         return lambda x: 1
+
+    def circumnference(self, n):
+        '''Circle(x0, n) circumnference'''
+        def l(x0, n=n, me=self):
+            r = me.radius(x0)
+            return 2*pi*r
+        return l
+
     #
     # Cross section averaging
     # Do this by mapping to unit circle
@@ -255,6 +288,13 @@ class Cicle(BoundingCurve):
             return x0 + rad*y
 
         return pts
+    
+    def cross_area(self, n):
+        '''Circle(x0, n) cross section area'''
+        def l(x0, n=n, me=self):
+            r = me.radius(x0)
+            return pi*r**2
+        return l
 
 
 # Testing utils
@@ -304,7 +344,7 @@ if __name__ == '__main__':
 
     # Setup bounding curve
     size = 0.125
-    ci = Cicle(radius=lambda x0: size, degree=8)
+    ci = Circle(radius=lambda x0: size, degree=8)
 
     u = df.Function(df.FunctionSpace(mesh, 'CG', 1))
     op = Average(u, line_mesh, ci)
@@ -338,13 +378,18 @@ if __name__ == '__main__':
     value = ci_integrate(f)
     assert abs(value - (size**2/2. - 0.5**2)) < 1E-13
 
+
+    n = np.array([0, 0, 1])
+    x0 = np.array([0, 0, 0.5])
+    print ci.circumnference(n)(x0), 2*pi*size
+    print ci.cross_area(n)(x0), pi*size**2
     
     for plane in surface:
         ax.plot3D(plane[:, 0], plane[:, 1], plane[:, 2], marker='o', linestyle='none')
 
     # plt.show()
     # Square
-    if False:
+    if True:
         mesh = df.BoxMesh(df.Point(-1, -1, -1), df.Point(1, 1, 1), 16, 16, 16)
         # Make 1d
         f = df.MeshFunction('size_t', mesh, 1, 0)
@@ -388,7 +433,7 @@ if __name__ == '__main__':
         for plane in surface:
             ax.plot3D(plane[:, 0], plane[:, 1], plane[:, 2], marker='o')
 
-        plt.show()
+        # plt.show()
 
         f = lambda x, y, z: x + 2*y
 
@@ -430,3 +475,8 @@ if __name__ == '__main__':
                                       sq.cross_points(np.array([0, 0, 1]))(np.array([0, 0, 0]))))
     
         assert abs(value - (size**2/3. + size**2)) < 1E-13
+
+        n = np.array([0, 0, 1])
+        x0 = np.array([0, 0, 0.5])
+        print sq.circumnference(n)(x0), (2*size)*4
+        print sq.cross_area(n)(x0), (2*size)**2
