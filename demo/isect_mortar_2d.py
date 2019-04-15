@@ -78,6 +78,8 @@ def setup_problem(i, (f1, f2, h2, h, g), eps):
     Tu1, Tu2 = map(lambda x: Trace(x, gamma_mesh), (u1, u2))
     Tv1, Tv2 = map(lambda x: Trace(x, gamma_mesh), (v1, v2))
 
+    eps = eps[0]
+    
     a00 = (Constant(eps)*inner(grad(u1), grad(v1))*dx +
            inner(u1, v1)*dx +
            inner(Tu1, Tv1)*dxGamma)
