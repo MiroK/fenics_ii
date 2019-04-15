@@ -168,8 +168,8 @@ def setup_mms(eps):
     h = u1 + u2
     g = u1 - u2
 
-    up = map(as_expression, (u1, u2, p)) 
-    fg = [as_expression(f1, EPS=eps)] + map(as_expression, (f2, h2, h, g))
+    up = map(as_expression, (u1, u2, p))
+    fg = [as_expression(f1, EPS=eps[0])] + map(as_expression, (f2, h2, h, g))
 
     return up, fg
 
