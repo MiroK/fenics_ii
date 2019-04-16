@@ -30,7 +30,7 @@ class AverageFormAssembler(ReducedFormAssembler):
 
     def reduction_matrix(self, V, TV, reduced_mesh, data):
         '''Algebraic representation of the reduction'''
-        return avg_mat(V, TV, reduced_mesh, data)
+        return avg_mat(V, TV, reduced_mesh, data, which='surface')
 
 # Expose
     

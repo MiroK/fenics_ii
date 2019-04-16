@@ -1,70 +1,32 @@
 from abc import ABCMeta, abstractmethod
-from xii.linalg.matrix_utils import is_number
-from xii.assembler.average_form import average_space
-from numpy.polynomial.legendre import leggauss
+from collections import namedtuple
 from itertools import product
 from math import pi, sqrt
 import numpy as np
+
+from numpy.polynomial.legendre import leggauss
 import quadpy
 
+from xii.linalg.matrix_utils import is_number
+from xii.assembler.average_form import average_space
 
-# FIXME: cleanup shapes and averaging. Too bloated now!!!
-class BoundingCurve:
-    '''API of a bounding curve in plane with normal n'''
+
+Quadrature = namedtuple('quadrature', ('points', 'weights'))
+
+
+class BoundingSurface:
+    '''Shape used for reducing a 3d function to 1d by carrying out integration'''
     __metaclass__ = ABCMeta
-    # NOTE: lenth and area a not the true measures of the curve. They
-    # depend on how integration is done; in particular cancellation
-    # due to mapping to reference domain
-    @abstractmethod
-    def weights(self):
-        '''Quadrature weights for surface integral averaging'''
-        pass
-
-    @abstractmethod
-    def length(self, n):
-        '''\(x) -> length of averaging curve in plane with normal n'''
-        pass
     
     @abstractmethod
-    def points(self, n):
-        '''
-        \(x) -> quadrature points for surface averaging over curve in plane 
-        with normal n'''
-        pass
-
-    @abstractmethod
-    def circumnference(self, n):
-        '''\(x) -> TRUE length of the averaging curve'''
-        pass
-    
-    @abstractmethod
-    def cross_weights(self):
-        '''Quadrature weights for cross section integral averaging'''
-        pass
-
-    @abstractmethod
-    def area(self, n):
-        '''\(x) -> area of averaging surface in plane with normal n'''
-        pass
-
-    @abstractmethod
-    def cross_points(self, n):
-        '''
-        \(x) -> quadrature points for cross surface averaging over curve 
-        in plane with normal n
-        '''
-        pass
-
-    @abstractmethod
-    def cross_area(self, n):
-        '''\(x) -> TRUE area of the surface bounded by averaging curve'''
+    def quadrature(self, x0, n):
+        '''Quadrature weights and points for reduction'''
         pass
 
     
-class Square(BoundingCurve):
+class Square(BoundingSurface):
     '''
-    Is specified by normal (will be given by 1d mesh) and functions:
-    P(x\in R^3) -> R^3 the position of the ll corner
+    Square in plane(x0, n) with ll corner given by P(x\in R^3) -> R^3
     '''
     def __init__(self, P, degree):
         if isinstance(P, (tuple, list, np.ndarray)):
@@ -73,124 +35,108 @@ class Square(BoundingCurve):
         else:
             self.P = P
 
-        xq, wq = leggauss(degree)
-        # Point for edge -1 -- 1        
-        self.__wq__ = wq  
-        self.__xq__ = xq
+        # Weights for [-1, 1] for 2d will do the tensor product
+        self.xq, self.wq = leggauss(degree)
 
-    # Surface averaging
-    #
-    # NOTE: we want (*) 1/|sq|*\int_{sq} f*dl, len e be the square edge
-    # then (*) = 1/4/|e|*\sum_e \int_{e} f*dl
-    #          = 1/4/|e|*\sum_e \int_{A}^B f*dl
-    #          = 1/4/|e|*\sum_e \int_{-1}^1 f(0.5*A*(1-s)+0.5*B*(1+s))*(0.5*|e|)dl
-    #          = 1/4 * \sum_e \sum_q 0.5*wq f(0.5*A*(1-sq)+0.5*B*(1+sq))
-    #
-    # In the API of shape_surface_averege 0.5*wq are weights,
-    #                                     4 has the role of length
-    #                                     xq are clear
-    def length(self, n):
-        '''Length in plane with normal n'''
-        # NOTE: Due to the cancellation above (wq is included in weight)
-        # the length is 1 for the purpose of integration
-        def circumnference(x0, n=n, me=self):
-            return 4.
-        return circumnference
-
-    def weights(self):
-        '''Quad weights'''
-        # Repeat for 5 edges
-        not hasattr(self, '__surf_weights__') and setattr(self, '__surf_weights__', 0.5*np.tile(self.__wq__, 4))
-        return self.__surf_weights__
-
-    def points(self, n):
-        '''Quad points for square'''
-        n = n/np.linalg.norm(n)
-
-        def pts(x0, n=n, me=self):
-            r = me.square(x0, n, me.P(x0))
-            return me.square_xq(r)
-
-        return pts
-
-    def circumnference(self, n):
-        '''Square(x0, n) circumnference'''
-        def l(x0, n=n, me=self):
-            a = np.linalg.norm(me.P(x0) - x0)*sqrt(2)/2
-            return (2*a)*4
-        return l
-
-    def square_xq(self, (A, B, C, D)):
-        '''Quad points for rectangle A--B--D--D--'''
-        xq = []
-        for X, Y in zip((A, B, C, D), (B, C, D, A)):
-            xq.extend([0.5*X*(1 - s) + 0.5*Y*(1 + s) for s in self.__xq__])
-        return xq
-
-    def square(self, x0, n, P):
-        '''
-        Make square with center x0 in plane with normal n and other 
-        vertices obtained by rotating (P-x0)
-        '''
-        # n = n/np.linalg.norm(n)
-        #  P_       Pr
-        # 
-        #      x0
-        # P         P+
+    @staticmethod
+    def map_from_reference(x0, n, p):
+        '''A map of [-1, 1]x[-1, 1] to square(x0, n, P).'''
+        n = n / np.linalg.norm(n)
+        # C   B
+        #  x0
+        # P   A
         vec = P - x0
-        Pm = x0 + vec*np.cos(pi/2) + np.cross(n, vec)*np.sin(pi/2) + n*(n.dot(vec))*(1-np.cos(pi/2))
-        Pr = x0 - (P-x0)
-        Pp = x0 + vec*np.cos(3*pi/2) + np.cross(n, vec)*np.sin(3*pi/2) + n*(n.dot(vec))*(1-np.cos(3*pi/2))
+        # We are in the place
+        assert abs(np.dot(vec, n)) < 1E-13
+    
+        A = x0 + vec*np.cos(np.pi/2) + np.cross(n, vec)*np.sin(np.pi/2) + n*(n.dot(vec))*(1-np.cos(np.pi/2))
+        C = x0 + vec*np.cos(3*np.pi/2) + np.cross(n, vec)*np.sin(3*np.pi/2) + n*(n.dot(vec))*(1-np.cos(3*np.pi/2))
 
-        return (P, Pm, Pr, Pp)
+        def mapping(x, P=P, u=A-P, v=C-P):
+            x, y = x
+            assert abs(x) < 1 + 1E-13 and abs(y) < 1 + 1E-13
+            return P + 0.5*u*(1+x) + 0.5*v*(1+y) 
+    
+        return mapping
 
-    # Cross section averaging
-    # We want 1/|sq||*\int_{sq} f*dS
-    def cross_weights(self):
-        '''Quadrature weights for cross section integral averaging'''
-        # Precompute
-        if not hasattr(self, '__cross_weights__'):
-            cross_weights = np.fromiter(map(np.prod, product(self.__wq__, self.__wq__)), 
-                                        dtype=float)
-            setattr(self, '__cross_weights__', cross_weights)
-        return self.__cross_weights__
+    def quadrature(self, x0, n):
+        '''Gaussian qaudrature over the surface of the square'''
+        xq, wq = self.xq, self.wq
         
-    def area(self, n):
-        '''\(x) -> area of averaging surface in plane with normal n'''
-        return (lambda x: 4)
+        sq = Square.map_from_reference(x0, n, self.P(x0))
+        # 1D
+        A, B = sq(np.array([-1, -1])), sq(np.array([-1, 1]))
+        size = 0.5*np.linalg.norm(B-A)
+        # Scale the weights
+        wq = wq*size
 
-    def cross_points(self, n):
+        # 2D
+        wq = map(np.prod, itertools.product(wq, wq))
+        
+        xq = map(np.array, itertools.product(xq, xq))
+        Txq = map(sq, xq)
+        
+        return Quadrature(Txq, wq)
+
+
+class SquareRim(BoundingSurface):
+    '''
+    Boundary of a square in plane(x0, n) with ll corner given by 
+    P(x\in R^3) -> R^3
+    '''
+    def __init__(self, P, degree):
+        if isinstance(P, (tuple, list, np.ndarray)):
+            assert all(is_number(Pi) for Pi in P)
+            self.P = lambda x0, p=P: p
+        else:
+            self.P = P
+
+        # Weights for [-1, 1] for 2d will do the tensor product
+        self.xq, self.wq = leggauss(degree)
+
+    @staticmethod
+    def map_from_reference(x0, n, p):
         '''
-        \(x) -> quadrature points for cross surface averaging over curve 
-        in plane with normal n
+        A map of [-1, 1] to 4 points on the boundary of the square(x0, n, P)
         '''
-        # Precompute
-        if not hasattr(self, '__cross_points__'):
-            # Want them as two column vectors for (s, t) reference coordinates
-            s, t = np.fromiter(sum(product(self.__xq__, self.__xq__), ()),
-                               dtype=float).reshape((-1, 2)).T
-            s, t = np.array([s]).T, np.array([t]).T
-            setattr(self, '__cross_points__', (s, t))
+        # Rectangle boundary mapping
+        n = n / np.linalg.norm(n)
+        # C   B
+        #  x0
+        # P   A
+        vec = P - x0
+        # We are in the place
+        assert abs(np.dot(vec, n)) < 1E-13
+        
+        pts = [P,
+               x0 + vec*np.cos(np.pi/2) + np.cross(n, vec)*np.sin(np.pi/2) + n*(n.dot(vec))*(1-np.cos(np.pi/2)),
+               x0 - (P-x0),
+               x0 + vec*np.cos(3*np.pi/2) + np.cross(n, vec)*np.sin(3*np.pi/2) + n*(n.dot(vec))*(1-np.cos(3*np.pi/2))]
 
-        s, t = self.__cross_points__
-        n = n/np.linalg.norm(n)
-
-        def pts(x0, n=n, me=self, s=s, t=t):
-            A, B, C, D = me.square(x0, n, me.P(x0))
-            return A + 0.5*(B-A)*(s+1) + 0.5*(D-A)*(t+1)
-
-        return pts
+        def mapping(x, pts=pts):
+            assert abs(x) < 1 + 1E-13
+            return [0.5*P*(1-x) + 0.5*Q*(1+x) for P, Q in zip(pts, pts[1:]+[pts[0]])]
     
-    def cross_area(self, n):
-        '''Square(x0, n) cross section area'''
-        def l(x0, n=n, me=self):
-            a = np.linalg.norm(me.P(x0) - x0)*sqrt(2)/2
-            return (2*a)**2
-        return l
+        return mapping
 
-    
-class Circle(BoundingCurve):
-    '''Obtain the bounding surface by making a circle of radius r in the normal plane'''
+    def quadrature(self, x0, n):
+        '''Gaussian qaudrature over boundary of the square'''
+        xq, wq = self.xq, self.wq
+
+        sq_bdry = SquareRim.map_from_reference(x0, n, self.P(x0))
+        corners = sq_bdry(-1)
+        A, B = corners[:2]
+        size = 0.5*np.linalg.norm(B-A)
+        # Scale the weights
+        wq = wq*size
+
+        Txq = sum(map(sq_bdry, xq), [])
+
+        return Quadrature(Txq, wq)
+
+
+class Circle(BoundingSurface):
+    '''Circle in plane(x0, n) with radius given by radius(x0)'''
     def __init__(self, radius, degree):
         # Make constant function
         if is_number(radius):
@@ -199,113 +145,99 @@ class Circle(BoundingCurve):
         # Then this must map points on centerline to radius
         else:
             self.radius = radius
+
+        # Will use Gauss quadrature on [-1, 1]
+        self.xq, self.wq = leggauss(degree)
+
+    @staticmethod
+    def map_from_reference(x0, n, R):
+        '''
+        Map unit circle in z = 0 to plane to circle of radius R with center at x0.
+        '''
+        n = n / np.linalg.norm(n)
+        def transform(x, x0=x0, n=n, R=R):
+            norm = np.dot(x, x)
+            # Check assumptions
+            assert abs(norm - 1) < 1E-13 and abs(x[2]) < 1E-13
             
-        xq, wq = leggauss(degree)
-        self.__weights__ = wq*0.5  # Scale down by 0.5
+            y = x - n*np.dot(x, n)
+            y = y / np.sqrt(norm - np.dot(x, n)**2)
+            return x0 + R*y
 
-        # Precompute trigonometric part (only shift by tangents t1, t2)
-        self.cos_xq = np.cos(np.pi*xq).reshape((-1, 1))
-        self.sin_xq = np.sin(np.pi*xq).reshape((-1, 1))
+        return transform
 
-        # Points for the unit disk
+    def quadrature(self, x0, n):
+        '''Gauss quadratature over the boundary of the circle'''
+        xq, wq = self.xq, self.wq
+        xq = np.c_[np.cos(np.pi*xq), np.sin(np.pi*xq), np.zeros_like(xq)]
+
+        R = self.radius(x0)
+        # Circle viewed from reference
+        Txq = map(Circle.map_from_reference(x0, n, R), xq)
+        # Scaled weights (R is jac of T, pi is from theta=pi*(-1, 1)
+        wq = wq*R*np.pi
+
+        return Quadrature(Txq, wq)
+
+
+class Disk(BoundingSurface):
+    '''Disk in plane(x0, n) with radius given by radius(x0)'''
+    def __init__(self, radius, degree):
+        # Make constant function
+        if is_number(radius):
+            assert radius > 0
+            self.radius = lambda x0, r=radius: r
+        # Then this must map points on centerline to radius
+        else:
+            self.radius = radius
+
+        # Will use quadrature from quadpy over unit disk in z=0 plane
+        # and center (0, 0, 0)
         quad = quadpy.disk.Lether(degree)
-        self.__cross_weights__  = quad.weights
-        # Unit circle in plane z = 0
-        self.__cross_points__ = np.c_[quad.points, np.zeros_like(self.__cross_weights__)]
-        
-    # Surface averaging
-    # NOTE: Let s by the arch length coordinate of the centerline of the 
-    # cylinder. A tangent to 1d mesh at s is a normal to the plane in which
-    # we draw a circle C(n, r) with radius r. For reduction of 3d we compute
-    # 
-    # |2*pi*R(s)|^-1\int_{C(n, r)} u dl =
-    # 
-    # |2*pi*R(s)|^-1\int_{-pi}^{pi} u(s + t1*R(s)*cos(theta) + t2*R(s)*sin(theta))R*d(theta) = 
-    #
-    # |2*pi*R(s)|^-1\int_{-1}^{1} u(s + t1*R(s)*cos(pi*t) + t2*R(s)*sin(pi*t))*pi*R*dt = 
-    #
-    # 1/2*sum_q u(s + t1*R(s)*cos(pi*x_q) + t2*R(s)*sin(pi*x_q))
-    # 
-    @property
-    def weights(self):
-        '''Quad weights'''
-        return self.__weights__
+        self.xq, self.wq = quad.points, quad.weights
 
-    def points(self, n):
-        '''Quad points for circle(x0, radius(x0)) in plane with normal n'''
-        # Fix plane
-        t1 = np.array([n[1]-n[2], n[2]-n[0], n[0]-n[1]])
-    
-        t2 = np.cross(n, t1)
-        t1 = t1/np.linalg.norm(t1)
-        t2 = t2/np.linalg.norm(t2)
-
-        def pts(x0, me=self, t1=t1, t2=t2):
-            rad = self.radius(x0)
-            return x0 + rad*t1*me.sin_xq + rad*t2*me.cos_xq
-
-        return pts
-
-    def length(self, n):
-        '''Length in plane with normal n'''
-        # NOTE: Due to the cancellation above (wq is included in weight)
-        # the length is 1 for the purpose of integration
-        return lambda x: 1
-
-    def circumnference(self, n):
-        '''Circle(x0, n) circumnference'''
-        def l(x0, n=n, me=self):
-            r = me.radius(x0)
-            return 2*pi*r
-        return l
-
-    #
-    # Cross section averaging
-    # Do this by mapping to unit circle
-    def cross_weights(self):
-        '''Quadrature weights for cross section integral averaging'''
-        return self.__cross_weights__
-        
-    def area(self, n):
-        '''\(x) -> area of averaging surface in plane with normal n'''
-        return (lambda x: pi)
-
-    def cross_points(self, n):
+    @staticmethod
+    def map_from_reference(x0, n, R):
         '''
-        \(x) -> quadrature points for cross surface averaging over curve 
-        in plane with normal n
+        Map unit disk in z = 0 to plane to disk of radius R with center at x0.
         '''
-        # One unit disk
-        x = self.__cross_points__
+        n = n / np.linalg.norm(n)
+        def transform(x, x0=x0, n=n, R=R):
+            norm = np.dot(x, x)
+            # Check assumptions
+            assert norm < 1 + 1E-13 and abs(x[2]) < 1E-13
+            
+            y = x - n*np.dot(x, n)
+            y = y / np.sqrt(norm - np.dot(x, n)**2)
+            return x0 + R*np.sqrt(norm)*y
+
+        return transform
+
+    def quadrature(self, x0, n):
+        '''Quadrature for disk(center x0, normal n, radius x0)'''
+        xq, wq = self.xq, self.wq
         
-        n = n/np.linalg.norm(n)
-        # The tilter disk, to plane with normal n
-        y = np.array([xi - n*np.dot(xi, n) for xi in x])
+        xq = np.c_[xq, np.zeros_like(wq)]
 
-        # What remains here to scale according to radius and shift
-        def pts(x0, me=self, y=y):
-            rad = self.radius(x0)
-            return x0 + rad*y
+        R = self.radius(x0)
+        # Circle viewed from reference
+        Txq = map(Disk.map_from_reference(x0, n, R), xq)
+        # Scaled weights (R is jac of T, pi is from theta=pi*(-1, 1)
+        wq = wq*R**2
 
-        return pts
+        return Quadrature(Txq, wq)
+
     
-    def cross_area(self, n):
-        '''Circle(x0, n) cross section area'''
-        def l(x0, n=n, me=self):
-            r = me.radius(x0)
-            return pi*r**2
-        return l
-
-
 # Testing utils
-def render_avg_surface(Pi, which='surface'):
+def render_avg_surface(Pi):
     '''Plot the averaging surface via looking at the quadrature points used'''
     V = Pi.function_space()
+
     line_mesh = Pi.average_['mesh']
+    shape = Pi.average_['shape']
+        
     # Where the average will be represented
     Pi_V = average_space(V, line_mesh)
-
-    curve = Pi.average_['bdry_curve']
 
     # We produce a curve of quardrature points for each dof
     surface = []
@@ -316,9 +248,8 @@ def render_avg_surface(Pi, which='surface'):
         v0, v1 = cell.get_vertex_coordinates().reshape((2, 3))
         n = v1 - v0
 
-        pts = (curve.points if which == 'surface' else curve.cross_points)(n=n)
         for dof_x in dofs_x[dm.cell_dofs(cell.index())]:
-            x = np.row_stack(pts(dof_x))
+            x = np.row_stack(shape.quadrature(dof_x, n).points)
             surface.append(x)
 
     return surface
@@ -344,20 +275,22 @@ if __name__ == '__main__':
 
     # Setup bounding curve
     size = 0.125
-    ci = Circle(radius=lambda x0: size, degree=8)
+    ci = Circle(radius=lambda x0: size, degree=12)
 
     u = df.Function(df.FunctionSpace(mesh, 'CG', 1))
     op = Average(u, line_mesh, ci)
         
-    surface = render_avg_surface(op, which='cross')
+    surface = render_avg_surface(op)
     
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
     # NOTE: normal matches and point is on line mesh
     def ci_integrate(f, n=np.array([0, 0, 1]), x0=np.array([0, 0, 0.5])):
-        return sum(wq*f(*xq)/(ci.area(None)(None))
-                   for wq, xq in zip(ci.cross_weights(), ci.cross_points(n)(x0)))
+        pts, weights = ci.quadrature(x0, n)
+        l = sum(weights)
+        return sum(wq*f(*xq) for xq, wq in zip(pts, weights))/l
+    
     # ---
     f = lambda x, y, z: 1
     value = ci_integrate(f)
@@ -366,117 +299,118 @@ if __name__ == '__main__':
     # Odd foo over sym interval
     f = lambda x, y, z: x - y - 0.5
     value = ci_integrate(f)
-    assert abs(value - -0.5) < 1E-13
+    assert abs(value - -0.5) < 1E-8, (value, )
 
     # Odd foo over sym interval
     f = lambda x, y, z: x**3 - y - z
     value = ci_integrate(f)
-    assert abs(value - -0.5) < 1E-13
+    assert abs(value - -0.5) < 1E-8, (value, )
 
     #
     f = lambda x, y, z: x**2 + y**2 - z**2
     value = ci_integrate(f)
-    assert abs(value - (size**2/2. - 0.5**2)) < 1E-13
+    assert abs(value - (size**2/2. - 0.5**2)) < 1E-8, (value, )
 
 
-    n = np.array([0, 0, 1])
-    x0 = np.array([0, 0, 0.5])
-    print ci.circumnference(n)(x0), 2*pi*size
-    print ci.cross_area(n)(x0), pi*size**2
+#     n = np.array([0, 0, 1])
+#     x0 = np.array([0, 0, 0.5])
+#     print ci.circumnference(n)(x0), 2*pi*size
+#     print ci.cross_area(n)(x0), pi*size**2
     
     for plane in surface:
         ax.plot3D(plane[:, 0], plane[:, 1], plane[:, 2], marker='o', linestyle='none')
 
-    # plt.show()
-    # Square
-    if True:
-        mesh = df.BoxMesh(df.Point(-1, -1, -1), df.Point(1, 1, 1), 16, 16, 16)
-        # Make 1d
-        f = df.MeshFunction('size_t', mesh, 1, 0)
-        df.CompiledSubDomain('near(x[0], 0) && near(x[1], 0)').mark(f, 1)
+    plt.show()
     
-        line_mesh = EmbeddedMesh(f, 1)
+#     # Square
+#     if True:
+#         mesh = df.BoxMesh(df.Point(-1, -1, -1), df.Point(1, 1, 1), 16, 16, 16)
+#         # Make 1d
+#         f = df.MeshFunction('size_t', mesh, 1, 0)
+#         df.CompiledSubDomain('near(x[0], 0) && near(x[1], 0)').mark(f, 1)
+    
+#         line_mesh = EmbeddedMesh(f, 1)
 
-        # Setup bounding curve
-        size = 0.125
-        sq = Square(P=lambda x0: np.array([size*np.cos(0.5*pi*x0[2]),
-                                           size*np.sin(0.5*pi*x0[2]),
-                                           x0[2]]),
-                    degree=8)
+#         # Setup bounding curve
+#         size = 0.125
+#         sq = Square(P=lambda x0: np.array([size*np.cos(0.5*pi*x0[2]),
+#                                            size*np.sin(0.5*pi*x0[2]),
+#                                            x0[2]]),
+#                     degree=8)
 
-        u = df.Function(df.FunctionSpace(mesh, 'CG', 1))
-        op = Average(u, line_mesh, sq)
+#         u = df.Function(df.FunctionSpace(mesh, 'CG', 1))
+#         op = Average(u, line_mesh, sq)
         
-        surface = render_avg_surface(op)
+#         surface = render_avg_surface(op)
     
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
+#         fig = plt.figure()
+#         ax = fig.add_subplot(111, projection='3d')
         
-        for plane in surface:
-            ax.plot3D(plane[:, 0], plane[:, 1], plane[:, 2], marker='o')
+#         for plane in surface:
+#             ax.plot3D(plane[:, 0], plane[:, 1], plane[:, 2], marker='o')
 
-        # Setup bounding curve
-        size = 0.15
-        sq = Square(P=lambda x0: np.array([x0[0]-size,
-                                           x0[1]-size,
-                                           x0[2]]),
-                    degree=8)
+#         # Setup bounding curve
+#         size = 0.15
+#         sq = Square(P=lambda x0: np.array([x0[0]-size,
+#                                            x0[1]-size,
+#                                            x0[2]]),
+#                     degree=8)
 
-        u = df.Function(df.FunctionSpace(mesh, 'CG', 1))
-        op = Average(u, line_mesh, sq)
+#         u = df.Function(df.FunctionSpace(mesh, 'CG', 1))
+#         op = Average(u, line_mesh, sq)
 
-        surface = render_avg_surface(op, which='cross')
+#         surface = render_avg_surface(op, which='cross')
     
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
+#         fig = plt.figure()
+#         ax = fig.add_subplot(111, projection='3d')
 
-        for plane in surface:
-            ax.plot3D(plane[:, 0], plane[:, 1], plane[:, 2], marker='o')
+#         for plane in surface:
+#             ax.plot3D(plane[:, 0], plane[:, 1], plane[:, 2], marker='o')
 
-        # plt.show()
+#         # plt.show()
 
-        f = lambda x, y, z: x + 2*y
+#         f = lambda x, y, z: x + 2*y
 
-        value = sum(wq*f(*xq)/(sq.area(None)(None))
-                    for wq, xq in zip(sq.cross_weights(),
-                                      sq.cross_points(np.array([0, 0, 1]))(np.array([0, 0, 0]))))
-        assert abs(value - 0) < 1E-13
+#         value = sum(wq*f(*xq)/(sq.area(None)(None))
+#                     for wq, xq in zip(sq.cross_weights(),
+#                                       sq.cross_points(np.array([0, 0, 1]))(np.array([0, 0, 0]))))
+#         assert abs(value - 0) < 1E-13
 
 
-        f = lambda x, y, z: 1
+#         f = lambda x, y, z: 1
 
-        value = sum(wq*f(*xq)/(sq.area(None)(None))
-                    for wq, xq in zip(sq.cross_weights(),
-                                      sq.cross_points(np.array([0, 0, 1]))(np.array([0, 0, 0]))))
-        assert abs(value - 1) < 1E-13
+#         value = sum(wq*f(*xq)/(sq.area(None)(None))
+#                     for wq, xq in zip(sq.cross_weights(),
+#                                       sq.cross_points(np.array([0, 0, 1]))(np.array([0, 0, 0]))))
+#         assert abs(value - 1) < 1E-13
 
     
-        f = lambda x, y, z: x**2
+#         f = lambda x, y, z: x**2
 
-        value = sum(wq*f(*xq)/(sq.area(None)(None))
-                    for wq, xq in zip(sq.cross_weights(),
-                                      sq.cross_points(np.array([0, 0, 1]))(np.array([0, 0, 0]))))
-        assert abs(value - size**2/3.) < 1E-13
+#         value = sum(wq*f(*xq)/(sq.area(None)(None))
+#                     for wq, xq in zip(sq.cross_weights(),
+#                                       sq.cross_points(np.array([0, 0, 1]))(np.array([0, 0, 0]))))
+#         assert abs(value - size**2/3.) < 1E-13
 
         
-        f = lambda x, y, z: x**2 + 3*y**2
+#         f = lambda x, y, z: x**2 + 3*y**2
 
-        value = sum(wq*f(*xq)/(sq.area(None)(None))
-                    for wq, xq in zip(sq.cross_weights(),
-                                      sq.cross_points(np.array([0, 0, 1]))(np.array([0, 0, 0]))))
+#         value = sum(wq*f(*xq)/(sq.area(None)(None))
+#                     for wq, xq in zip(sq.cross_weights(),
+#                                       sq.cross_points(np.array([0, 0, 1]))(np.array([0, 0, 0]))))
     
-        assert abs(value - (size**2/3. + size**2)) < 1E-13
+#         assert abs(value - (size**2/3. + size**2)) < 1E-13
 
 
-        f = lambda x, y, z: x**2 + 3*y**2 - x*y
+#         f = lambda x, y, z: x**2 + 3*y**2 - x*y
 
-        value = sum(wq*f(*xq)/(sq.area(None)(None))
-                    for wq, xq in zip(sq.cross_weights(),
-                                      sq.cross_points(np.array([0, 0, 1]))(np.array([0, 0, 0]))))
+#         value = sum(wq*f(*xq)/(sq.area(None)(None))
+#                     for wq, xq in zip(sq.cross_weights(),
+#                                       sq.cross_points(np.array([0, 0, 1]))(np.array([0, 0, 0]))))
     
-        assert abs(value - (size**2/3. + size**2)) < 1E-13
+#         assert abs(value - (size**2/3. + size**2)) < 1E-13
 
-        n = np.array([0, 0, 1])
-        x0 = np.array([0, 0, 0.5])
-        print sq.circumnference(n)(x0), (2*size)*4
-        print sq.cross_area(n)(x0), (2*size)**2
+#         n = np.array([0, 0, 1])
+#         x0 = np.array([0, 0, 0.5])
+#         print sq.circumnference(n)(x0), (2*size)*4
+#         print sq.cross_area(n)(x0), (2*size)**2

@@ -1,4 +1,5 @@
 import numpy as np
+import itertools
 
 
 def C(x0, n, R):
@@ -58,7 +59,28 @@ def RB(x0, n, P):
         return [0.5*P*(1-x) + 0.5*Q*(1+x) for P, Q in zip(pts, pts[1:]+[pts[0]])]
     
     return mapping
+
+
+def S(x0, n, P):
+    '''A map of [-1, 1]x[-1, 1] to square(x0, n, P).'''
+
+    n = n / np.linalg.norm(n)
+    # C   B
+    #  x0
+    # P   A
+    vec = P - x0
+    # We are in the place
+    assert abs(np.dot(vec, n)) < 1E-13
     
+    A = x0 + vec*np.cos(np.pi/2) + np.cross(n, vec)*np.sin(np.pi/2) + n*(n.dot(vec))*(1-np.cos(np.pi/2))
+    C = x0 + vec*np.cos(3*np.pi/2) + np.cross(n, vec)*np.sin(3*np.pi/2) + n*(n.dot(vec))*(1-np.cos(3*np.pi/2))
+
+    def mapping(x, P=P, u=A-P, v=C-P):
+        x, y = x
+        assert abs(x) < 1 + 1E-13 and abs(y) < 1 + 1E-13
+        return P + 0.5*u*(1+x) + 0.5*v*(1+y) 
+    
+    return mapping
 
 # --------------------------------------------------------------------
 
@@ -80,7 +102,7 @@ if __name__ == '__main__':
     xq = np.c_[np.cos(np.pi*xq), np.sin(np.pi*xq), np.zeros_like(xq)]
 
     x0 = np.array([1, 2, 3])
-    n = np.array([1, 1, 1])
+    n = np.array([1, 0, 0])
     R = 0.123
 
     T = C(x0, n, R)
@@ -147,7 +169,7 @@ if __name__ == '__main__':
 
     quad = disk_quad(x0=x0, n=n, R=R, degree=10)
 
-    # 1 gives circumnference
+    # 1 gives area
     one = lambda x: 1
     assert is_close(quad(one), np.pi*R**2)
 
@@ -163,22 +185,28 @@ if __name__ == '__main__':
     assert is_close(quad(dist), np.pi/3*R**6)
 
     # -- Rectangle boundary ----------
+    # NOTE: things below are wired for n[0] == n[1]
     w = 0.123
-    P = x0 - w*np.array([-n[1], n[0], 0])
-
+    shift = w*np.array([0.2, 0.3, 0.4])
+    P = x0 + shift
+    Q = x0 + np.array([0.1, 0.6, -0.4])
+    n = np.cross(P-x0, Q-x0)
+    n = n / np.linalg.norm(n)
+    
     rect_bdry = RB(x0, n, P)
     # Corner points are in the plane
     corners = rect_bdry(-1)
     assert len(corners) == 4
     assert all(abs(np.dot(P - v, n)) < 1E-13 for v in corners)
 
+    W = np.linalg.norm(shift)
     # Their distance to center
     d, = set(np.round(np.linalg.norm(x0 - v), 13) for v in corners)
-    assert abs(d - np.sqrt(2*w**2)) < 1E-13
+    assert abs(d - W) < 1E-13, (d, W)
     
     # Their distance to each
     d, = set(np.round(np.linalg.norm(x-y), 13) for x, y in zip(corners, corners[1:] + [corners[0]]))
-    assert abs(d - 2*w) < 1E-13
+    assert abs(d - np.sqrt(2)*W) < 1E-13
 
     # Now I can integrate
     def square_bdry_quad(x0, n, P, degree):
@@ -200,7 +228,7 @@ if __name__ == '__main__':
     
     # 1 gives circumnference
     one = lambda x: 1
-    assert is_close(quad(one), 4*2*w)
+    assert is_close(quad(one), 4*np.sqrt(2)*W)
 
     # Zero by orthogonality
     null = lambda x: np.dot(x-x0, n)
@@ -208,6 +236,52 @@ if __name__ == '__main__':
 
     # Something harder
     dist = lambda x: np.dot(x-x0, x-x0)
-    assert is_close(quad(dist), 4*8*w**3/3.)
+    assert is_close(quad(dist), 4*8*(np.sqrt(2)*W/2)**3/3.)
     
     # -- Square surface ----------
+    rect = S(x0, n, P)
+    # Corner points are in the plane
+    corners = map(rect, np.array([[-1, -1], [1, -1], [1, 1], [-1, 1]]))
+
+    assert all(abs(np.dot(P - v, n)) < 1E-13 for v in corners)
+
+    # Their distance to center
+    d, = set(np.round(np.linalg.norm(x0 - v), 13) for v in corners)
+    assert abs(d - W) < 1E-13, (d, W)
+    
+    # Their distance to each
+    d, = set(np.round(np.linalg.norm(x-y), 13) for x, y in zip(corners, corners[1:] + [corners[0]]))
+    assert abs(d - np.sqrt(2)*W) < 1E-13
+
+    # Now I can integrate
+    def square_quad(x0, n, P, degree):
+        '''TODO'''
+        xq, wq = leggauss(degree)
+        
+        sq = S(x0, n, P)
+        # 1D
+        A, B = sq(np.array([-1, -1])), sq(np.array([-1, 1]))
+        size = 0.5*np.linalg.norm(B-A)
+        # Scale the weights
+        wq *= size
+
+        # 2D
+        wq = map(np.prod, itertools.product(wq, wq))
+        
+        xq = map(np.array, itertools.product(xq, xq))
+        Txq = map(sq, xq)
+        
+        return lambda f: sum(wqi*f(yi) for yi, wqi in zip(Txq, wq))
+
+    quad = square_quad(x0, n, P, degree=10)
+    # 1 gives area
+    one = lambda x: 1
+    assert is_close(quad(one), 2*W**2)
+
+    # Zero by orthogonality
+    null = lambda x: np.dot(x-x0, n)
+    assert is_close(quad(null), 0)
+
+    # Something harder
+    dist = lambda x: np.dot(x-x0, x-x0)
+    assert is_close(quad(dist), 8*(np.sqrt(2)*W/2)**4/3.)

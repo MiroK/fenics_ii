@@ -52,33 +52,20 @@ def average_space(V, mesh):
     return df.FunctionSpace(mesh, elm(family, mesh.ufl_cell(), degree))
 
 
-def Average(v, line_mesh, bdry_curve):
+def Average(v, line_mesh, shape):
     '''
-    Annotated function for being surface average around line mesh. 
-    For surface == 'cylinder' this means that 
-
-        (Average(v))(x) = |C_R(x)|^-1 \int_{C_R(x)} v(y) dy for every point 
-
-    x on the line_mesh. C_R(x) is a circle of radius R(x) centered at x
-    with normal vector determined by tangent of the line_mesh segment @ 
-    x. This integral is computed numerically with given quad. degree.
-
-    In general bdry_curve is an object with the following API:
-      bdry_curve.weights() -> list of quarature weights
-      bdry_curve.length(n) -> (x -> length of the curve in a plane crossing x 
-                                 with normal n)
-      bdry_curve.points(n) -> (x -> quadrature points for the curve in plane 
-                               crossing x with normal n)
-
-    If bdry_curve is None, this reduction is understood as 3d-1d trace. In this 
-    case the reduced function must be in some CG space!
+    Anoteate v for being a reduction of v obtained by integrating over the 
+    shape. Based on shape the reduction is done by a line integral or a 
+    surface integral (over crossection). If shape is None, the reduction 
+    is understood as 3d-1d trace. In this case the reduced function must 
+    be in some CG space!
     '''
     # Prevent Trace(grad(u)). But it could be interesting to have this
     assert is_terminal(v)
     assert average_cell(v) == line_mesh.ufl_cell()
 
     # Some sanity check for the radius
-    if bdry_curve is None:
+    if shape is None:
         v_family = v.ufl_element().family()
         # If we have en embedded mesh this mean that we want trace on en
         # edge and this make it well defined (only?) for CG
@@ -93,7 +80,7 @@ def Average(v, line_mesh, bdry_curve):
         # Object copy?
         v = [df.TestFunction, df.TrialFunction][v.number()](v.function_space())
 
-    v.average_ = {'mesh': line_mesh, 'bdry_curve': bdry_curve}
+    v.average_ = {'mesh': line_mesh, 'shape': shape}
 
     return v
 

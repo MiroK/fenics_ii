@@ -1,8 +1,8 @@
 from xii.linalg.matrix_utils import petsc_serial_matrix, is_number
-from xii.assembler.average_form import average_cell
+from xii.assembler.average_form import average_cell, average_space
 
 from numpy.polynomial.legendre import leggauss
-from dolfin import PETScMatrix, cells, Point, Cell
+from dolfin import PETScMatrix, cells, Point, Cell, Function
 from petsc4py import PETSc
 import numpy as np
 
@@ -10,13 +10,14 @@ import numpy as np
 def memoize_average(average_mat):
     '''Cached average'''
     cache = {}
-    def cached_average_mat(V, TV, reduced_mesh, data):
+    def cached_average_mat(V, TV, reduced_mesh, data, which):
         key = ((V.ufl_element(), V.mesh().id()),
                (TV.ufl_element(), TV.mesh().id()),
-               data['bdry_curve'])
+               data['shape'],
+               which)
 
         if key not in cache:
-            cache[key] = average_mat(V, TV, reduced_mesh, data)
+            cache[key] = average_mat(V, TV, reduced_mesh, data, which)
         return cache[key]
     
     return cached_average_mat
@@ -42,31 +43,27 @@ def avg_mat(V, TV, reduced_mesh, data):
     assert average_cell(V) == TV.mesh().ufl_cell()
     assert V.mesh().geometry().dim() == TV.mesh().geometry().dim()
 
-    bdry_curve = data['bdry_curve']
+    shape = data['shape']
     # 3d-1d trace
-    if bdry_curve is None:
+    if shape is None:
         return PETScMatrix(trace_3d1d_matrix(V, TV, reduced_mesh))
 
     # Surface averages
-    Rmat = surface_average_matrix(V, TV, bdry_curve)
+    Rmat = curve_average_matrix(V, TV, shape)
         
     return PETScMatrix(Rmat)
                 
 
-def surface_average_matrix(V, TV, bdry_curve):
-    '''Averaging matrix'''
-    mesh = V.mesh()
-    line_mesh = TV.mesh()
+def curve_average_matrix(V, TV, shape):
+    '''
+    Averaging matrix for reduction of g in V to TV by integration over shape.
+    '''
     # We build a matrix representation of u in V -> Pi(u) in TV where
     #
-    # Pi(u)(s) = |L(s)|^-1*\int_{L(s)}u(t) dL(s)
+    # Pi(u)(s) = |L(s)|^-1*\int_{L(s)}u(t) dx(s)
     #
-    # Here L represents a curve bounding the surface at 'height' s.
-    #
-    # We do this numerically as |L(s)|^-1*\sum_q u(x_q)*w_q 
-
-    # Weights remaing fixed
-    wq = bdry_curve.weights()
+    # Here L is the shape over which u is integrated for reduction.
+    # Its measure is |L(s)|.
     
     mesh_x = TV.mesh().coordinates()
     # The idea for point evaluation/computing dofs of TV is to minimize
@@ -94,18 +91,17 @@ def surface_average_matrix(V, TV, bdry_curve):
             # surface to yield the bdry curve
             v0, v1 = mesh_x[line_cell.entities(0)]
             n = v0 - v1
-            # We can specialize quadrature points; we can have several
-            # height points with same normal
-            pts_at_n = bdry_curve.points(n)
-            len_at_n = bdry_curve.length(n)
 
             # The idea is now to minimize the point evaluation
             scalar_dofs = TV_dm.cell_dofs(line_cell.index())
             scalar_dofs_x = TV_coordinates[scalar_dofs]
             for scalar_row, avg_point in zip(scalar_dofs, scalar_dofs_x):
                 # Avg point here has the role of 'height' coordinate
-                integration_points = pts_at_n(avg_point)
-                len_bdry_curve = len_at_n(avg_point)
+                quadrature = shape.quadrature(avg_point, n)
+                integration_points = quadrature.points
+                wq = quadrature.weights
+
+                curve_measure = sum(wq)
 
                 data = {}
                 for index, ip in enumerate(integration_points):
@@ -122,9 +118,9 @@ def surface_average_matrix(V, TV, bdry_curve):
                     # Add
                     for col, value in zip(cols_ip, values_ip.reshape((-1, value_size))):
                         if col in data:
-                            data[col] += value/len_bdry_curve
+                            data[col] += value/curve_measure
                         else:
-                            data[col] = value/len_bdry_curve
+                            data[col] = value/curve_measure
                             
                 # The thing now that with data we can assign to several
                 # rows of the matrix
@@ -215,206 +211,139 @@ def trace_3d1d_matrix(V, TV, reduced_mesh):
     return PETScMatrix(mat)
 
 
-# def sphere_average_matrix(V, TV, radius, quad_degree):
-#     '''Averaging matrix over the sphere'''
-#     mesh = V.mesh()
-#     line_mesh = TV.mesh()
-#     # Lebedev below need off degrees
-#     if quad_degree % 2 == 0: quad_degree += 1
-#     # NOTE: this is a dependency
-#     from quadpy.sphere import Lebedev
+# def MeasureFunction(averaged):
+#     '''Get measure of the bounding curve as a function on the 1d surface'''
+#     # Only for 3d -> 1d reduction operators
+#     if hasattr(averaged, 'average_'):
+#         measure = averaged.average_['bdry_curve'].circumnference
+#         mesh_1d = averaged.average_['mesh']
+#     else:
+#         assert hasattr(averaged, 'caverage_')
+#         measure = averaged.caverage_['bdry_curve'].cross_area
+#         mesh_1d = averaged.caverage_['mesh']
 
-#     integrator = Lebedev(quad_degree)
-#     xq = integrator.points
-#     wq = integrator.weights
-    
-#     if is_number(radius):
-#          radius = lambda x, radius=radius: radius 
-
-#     mesh_x = TV.mesh().coordinates()
-#     # The idea for point evaluation/computing dofs of TV is to minimize
-#     # the number of evaluation. I mean a vector dof if done naively would
-#     # have to evaluate at same x number of component times.
-#     value_size = TV.ufl_element().value_size()
-
-#     # Eval at points will require serch
-#     tree = mesh.bounding_box_tree()
-#     limit = mesh.num_cells()
+#     # Get space on 1d mesh for the measure
+#     V = averaged.function_space()  # 3d one
+#     # Want the measure in scalar space
+#     if V.ufl_element().value_shape(): V = V.sub(0).collapse()
+#     # Finally
+#     TV = average_space(V, mesh_1d)
 
 #     TV_coordinates = TV.tabulate_dof_coordinates().reshape((TV.dim(), -1))
 #     TV_dm = TV.dofmap()
-#     V_dm = V.dofmap()
-#     # For non scalar we plan to make compoenents by shift
-#     if value_size > 1:
-#         TV_dm = TV.sub(0).dofmap()
-
-#     Vel = V.element()               
-#     basis_values = np.zeros(V.element().space_dimension()*value_size)
-#     with petsc_serial_matrix(TV, V) as mat:
-
-#         for line_cell in cells(line_mesh):
-#             # The idea is now to minimize the point evaluation
-#             scalar_dofs = TV_dm.cell_dofs(line_cell.index())
-#             scalar_dofs_x = TV_coordinates[scalar_dofs]
-#             for scalar_row, avg_point in zip(scalar_dofs, scalar_dofs_x):
-#                 # Get radius and integration points
-#                 rad = radius(avg_point)
-#                 # Scale and shift the unit sphere to the point
-#                 integration_points = xq*rad + avg_point
-
-#                 data = {}
-#                 for index, ip in enumerate(integration_points):
-#                     c = tree.compute_first_entity_collision(Point(*ip))
-#                     if c >= limit: continue
-
-#                     Vcell = Cell(mesh, c)
-#                     vertex_coordinates = Vcell.get_vertex_coordinates()
-#                     cell_orientation = Vcell.orientation()
-#                     Vel.evaluate_basis_all(basis_values, ip, vertex_coordinates, cell_orientation)
-
-#                     cols_ip = V_dm.cell_dofs(c)
-#                     values_ip = basis_values*wq[index]
-#                     # Add
-#                     for col, value in zip(cols_ip, values_ip.reshape((-1, value_size))):
-#                         if col in data:
-#                             data[col] += value
-#                         else:
-#                             data[col] = value
-                            
-#                 # The thing now that with data we can assign to several
-#                 # rows of the matrix
-#                 column_indices = np.array(data.keys(), dtype='int32')
-#                 for shift in range(value_size):
-#                     row = scalar_row + shift
-#                     column_values = np.array([data[col][shift] for col in column_indices])
-#                     mat.setValues([row], column_indices, column_values, PETSc.InsertMode.INSERT_VALUES)
-#             # On to next avg point
-#         # On to next cell
-#     return PETScMatrix(mat)
-
-
-# # --------------------------------------------------------------------
-
-
-# if __name__ == '__main__':
-#     from dolfin import *
-#     from xii import EmbeddedMesh
     
-#     mesh = UnitCubeMesh(10, 10, 10)
+#     visited = np.zeros(TV.dim(), dtype=bool)
+#     mesh_x = mesh_1d.coordinates()
 
-#     f = EdgeFunction('size_t', mesh, 0)
-#     CompiledSubDomain('near(x[0], 0.5) && near(x[1], 0.5)').mark(f, 1)
+#     values = np.empty(TV.dim(), dtype=float)
+#     for cell in cells(mesh_1d):
+#         # Get the tangent (normal of the plane which cuts the virtual
+#         # surface to yield the bdry curve
+#         v0, v1 = mesh_x[cell.entities(0)]
+#         n = v0 - v1
+#         # We can specialize based on normal
+#         measure_n = measure(n)
 
-#     bmesh = EmbeddedMesh(f, 1)
-
-#     # Trace
-#     V = FunctionSpace(mesh, 'CG', 2)
-#     TV = FunctionSpace(bmesh, 'DG', 1)
+#         # Where to
+#         dofs = TV_dm.cell_dofs(cell.index())
+#         for seen, dof in zip(visited[dofs], dofs):
+#             if not seen:
+#                 x = TV_coordinates[dof]
+#                 value = measure_n(x)
+#                 values[dof] = value
+                
+#                 visited[dof] = True
+#     assert np.all(visited)
     
-#     f = interpolate(Expression('x[0]+x[1]+x[2]', degree=1), V)
-#     Tf0 = interpolate(f, TV)
+#     # Wrap as a function
+#     m = Function(TV)
+#     m.vector().set_local(values)
 
-#     Trace = avg_mat(V, TV, bmesh, {'radius': None, 'surface': 'cylinder'})
-#     Tf = Function(TV)
-#     Trace.mult(f.vector(), Tf.vector())
-#     Tf0.vector().axpy(-1, Tf.vector())
-#     print '??', Tf0.vector().norm('linf')
+#     return m
 
-#     V = VectorFunctionSpace(mesh, 'CG', 2)
-#     TV = VectorFunctionSpace(bmesh, 'DG', 1)
+
+# --------------------------------------------------------------------
+
+
+if __name__ == '__main__':
+    from dolfin import *
+    from xii import EmbeddedMesh
+    # FIXME: update this
+    mesh = UnitCubeMesh(10, 10, 10)
+
+    f = EdgeFunction('size_t', mesh, 0)
+    CompiledSubDomain('near(x[0], 0.5) && near(x[1], 0.5)').mark(f, 1)
+
+    bmesh = EmbeddedMesh(f, 1)
+
+    # Trace
+    V = FunctionSpace(mesh, 'CG', 2)
+    TV = FunctionSpace(bmesh, 'DG', 1)
     
-#     f = interpolate(Expression(('x[0]+x[1]+x[2]',
-#                                 'x[0]-x[1]',
-#                                 'x[1]+x[2]'), degree=1), V)
-#     Tf0 = interpolate(f, TV)
+    f = interpolate(Expression('x[0]+x[1]+x[2]', degree=1), V)
+    Tf0 = interpolate(f, TV)
 
-#     Trace = avg_mat(V, TV, bmesh, {'radius': None, 'surface': 'cylinder'})
-#     Tf = Function(TV)
-#     Trace.mult(f.vector(), Tf.vector())
-#     Tf0.vector().axpy(-1, Tf.vector())
-#     print '??', Tf0.vector().norm('linf')
+    Trace = avg_mat(V, TV, bmesh, {'radius': None, 'surface': 'cylinder'})
+    Tf = Function(TV)
+    Trace.mult(f.vector(), Tf.vector())
+    Tf0.vector().axpy(-1, Tf.vector())
+    print '??', Tf0.vector().norm('linf')
 
-#     # PI
-#     radius = 0.01
-#     quad_degree = 10
-#     data = {'radius': radius, 'quad_degree': quad_degree, 'surface': 'cylinder'}
-#     # Simple scalar
-#     V = FunctionSpace(mesh, 'CG', 3)
-#     Q = FunctionSpace(bmesh, 'DG', 3)
-
-
-#     f = Expression('x[2]*((x[0]-0.5)*(x[0]-0.5) + (x[1]-0.5)*(x[1]-0.5))', degree=3)
-#     Pif = Expression('x[2]*A*A', A=radius, degree=1)
+    V = VectorFunctionSpace(mesh, 'CG', 2)
+    TV = VectorFunctionSpace(bmesh, 'DG', 1)
     
-#     f = interpolate(f, V)
-#     Pi_f0 = interpolate(Pif, Q)
+    f = interpolate(Expression(('x[0]+x[1]+x[2]',
+                                'x[0]-x[1]',
+                                'x[1]+x[2]'), degree=1), V)
+    Tf0 = interpolate(f, TV)
 
-#     Pi_f = Function(Q)
+    Trace = avg_mat(V, TV, bmesh, {'radius': None, 'surface': 'cylinder'})
+    Tf = Function(TV)
+    Trace.mult(f.vector(), Tf.vector())
+    Tf0.vector().axpy(-1, Tf.vector())
+    print '??', Tf0.vector().norm('linf')
 
-#     Pi = avg_mat(V, Q, bmesh, data)
-#     Pi.mult(f.vector(), Pi_f.vector())
+    # PI
+    radius = 0.01
+    quad_degree = 10
+    data = {'radius': radius, 'quad_degree': quad_degree, 'surface': 'cylinder'}
+    # Simple scalar
+    V = FunctionSpace(mesh, 'CG', 3)
+    Q = FunctionSpace(bmesh, 'DG', 3)
 
-#     Pi_f0.vector().axpy(-1, Pi_f.vector())
-#     print '>>', Pi_f0.vector().norm('linf')
 
-#     V = VectorFunctionSpace(mesh, 'CG', 3)
-#     Q = VectorFunctionSpace(bmesh, 'DG', 3)
-
-#     f = Expression(('x[2]*((x[0]-0.5)*(x[0]-0.5) + (x[1]-0.5)*(x[1]-0.5))',
-#                     '2*x[2]*((x[0]-0.5)*(x[0]-0.5) + (x[1]-0.5)*(x[1]-0.5))',
-#                     '-3*x[2]*((x[0]-0.5)*(x[0]-0.5) + (x[1]-0.5)*(x[1]-0.5))'),
-#                     degree=3)
-#     Pif = Expression(('x[2]*A*A',
-#                       '2*x[2]*A*A',
-#                       '-3*x[2]*A*A'), A=radius, degree=1)
+    f = Expression('x[2]*((x[0]-0.5)*(x[0]-0.5) + (x[1]-0.5)*(x[1]-0.5))', degree=3)
+    Pif = Expression('x[2]*A*A', A=radius, degree=1)
     
-#     f = interpolate(f, V)
-#     Pi_f0 = interpolate(Pif, Q)
+    f = interpolate(f, V)
+    Pi_f0 = interpolate(Pif, Q)
 
-#     Pi_f = Function(Q)
+    Pi_f = Function(Q)
 
-#     Pi = avg_mat(V, Q, bmesh, data)
-#     Pi.mult(f.vector(), Pi_f.vector())
+    Pi = avg_mat(V, Q, bmesh, data)
+    Pi.mult(f.vector(), Pi_f.vector())
 
-#     Pi_f0.vector().axpy(-1, Pi_f.vector())
-#     print '>>', Pi_f0.vector().norm('linf')
+    Pi_f0.vector().axpy(-1, Pi_f.vector())
+    print '>>', Pi_f0.vector().norm('linf')
 
-#     # Ball
-#     radius = 0.02
-#     quad_degree = 5
-#     data = {'radius': radius, 'quad_degree': quad_degree, 'surface': 'sphere'}
-#     # Simple scalar
-#     V = FunctionSpace(mesh, 'CG', 4)
-#     Q = FunctionSpace(bmesh, 'DG', 4)
+    V = VectorFunctionSpace(mesh, 'CG', 3)
+    Q = VectorFunctionSpace(bmesh, 'DG', 3)
 
-#     # Sanity, NOTE - when the curve exists the domain we have an integration
-#     # error
-#     f = Constant(2)
-#     Pif = Constant(2)
-
-#     from quadpy.sphere import integrate
-#     from quadpy.sphere import Lebedev
+    f = Expression(('x[2]*((x[0]-0.5)*(x[0]-0.5) + (x[1]-0.5)*(x[1]-0.5))',
+                    '2*x[2]*((x[0]-0.5)*(x[0]-0.5) + (x[1]-0.5)*(x[1]-0.5))',
+                    '-3*x[2]*((x[0]-0.5)*(x[0]-0.5) + (x[1]-0.5)*(x[1]-0.5))'),
+                    degree=3)
+    Pif = Expression(('x[2]*A*A',
+                      '2*x[2]*A*A',
+                      '-3*x[2]*A*A'), A=radius, degree=1)
     
-#     xxx = Lebedev(11)
+    f = interpolate(f, V)
+    Pi_f0 = interpolate(Pif, Q)
 
-#     f = Expression('pow((x[0]-0.5)*(x[0]-0.5), 1) + pow((x[1]-0.5)*(x[1]-0.5), 1)', degree=2)
-#     Pif = Constant(
-#         integrate(lambda x: x[0]**2+x[1]**2, np.array([0, 0, 0]), radius, xxx)/(4*pi*radius**2)
-#     )
+    Pi_f = Function(Q)
 
-#     f = Expression('pow((x[0]-0.5)*(x[0]-0.5), 1)', degree=2)
-#     Pif = Constant(
-#         integrate(lambda x: x[0]**2, np.array([0, 0, 0]), radius, xxx)/(4*pi*radius**2)
-#     )
+    Pi = avg_mat(V, Q, bmesh, data)
+    Pi.mult(f.vector(), Pi_f.vector())
 
-#     f = interpolate(f, V)
-#     Pi_f0 = interpolate(Pif, Q)
-
-#     Pi_f = Function(Q)
-
-#     Pi = avg_mat(V, Q, bmesh, data)
-#     Pi.mult(f.vector(), Pi_f.vector())
-
-#     Pi_f0.vector().axpy(-1, Pi_f.vector())
-#     print '>>', Pi_f0.vector().norm('linf')
-#     print Pi_f0.vector().get_local()
+    Pi_f0.vector().axpy(-1, Pi_f.vector())
+    print '>>', Pi_f0.vector().norm('linf')

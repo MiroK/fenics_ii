@@ -19,7 +19,7 @@ def assemble(form):
     # for trace/average/restriction problems until something that 
     # dolfin can handle (hopefully)
     modules = (xii.assembler.trace_assembly,        # To Codimension 1
-               xii.assembler.average_assembly,      # To Codimension 2
+               xii.assembler.average_assembly,      # To Codimension 2 via surface of bding curve
                xii.assembler.extension_assembly,    # From dim 1 to 2
                xii.assembler.restriction_assembly)  # Between Codimension 0
     
