@@ -49,12 +49,12 @@ def avg_mat(V, TV, reduced_mesh, data):
         return PETScMatrix(trace_3d1d_matrix(V, TV, reduced_mesh))
 
     # Surface averages
-    Rmat = curve_average_matrix(V, TV, shape)
+    Rmat = average_matrix(V, TV, shape)
         
     return PETScMatrix(Rmat)
                 
 
-def curve_average_matrix(V, TV, shape):
+def average_matrix(V, TV, shape):
     '''
     Averaging matrix for reduction of g in V to TV by integration over shape.
     '''
@@ -211,55 +211,46 @@ def trace_3d1d_matrix(V, TV, reduced_mesh):
     return PETScMatrix(mat)
 
 
-# def MeasureFunction(averaged):
-#     '''Get measure of the bounding curve as a function on the 1d surface'''
-#     # Only for 3d -> 1d reduction operators
-#     if hasattr(averaged, 'average_'):
-#         measure = averaged.average_['bdry_curve'].circumnference
-#         mesh_1d = averaged.average_['mesh']
-#     else:
-#         assert hasattr(averaged, 'caverage_')
-#         measure = averaged.caverage_['bdry_curve'].cross_area
-#         mesh_1d = averaged.caverage_['mesh']
+def MeasureFunction(averaged):
+    '''Get measure of the averaging shape as a function on the 1d surface'''
+    # Get space on 1d mesh for the measure
+    V = averaged.function_space()  # 3d one
+    # Want the measure in scalar space
+    if V.ufl_element().value_shape(): V = V.sub(0).collapse()
 
-#     # Get space on 1d mesh for the measure
-#     V = averaged.function_space()  # 3d one
-#     # Want the measure in scalar space
-#     if V.ufl_element().value_shape(): V = V.sub(0).collapse()
-#     # Finally
-#     TV = average_space(V, mesh_1d)
+    mesh_1d = averaged._average_['mesh']
+    # Finally
+    TV = average_space(V, mesh_1d)
 
-#     TV_coordinates = TV.tabulate_dof_coordinates().reshape((TV.dim(), -1))
-#     TV_dm = TV.dofmap()
+    TV_coordinates = TV.tabulate_dof_coordinates().reshape((TV.dim(), -1))
+    TV_dm = TV.dofmap()
     
-#     visited = np.zeros(TV.dim(), dtype=bool)
-#     mesh_x = mesh_1d.coordinates()
+    visited = np.zeros(TV.dim(), dtype=bool)
+    mesh_x = mesh_1d.coordinates()
 
-#     values = np.empty(TV.dim(), dtype=float)
-#     for cell in cells(mesh_1d):
-#         # Get the tangent (normal of the plane which cuts the virtual
-#         # surface to yield the bdry curve
-#         v0, v1 = mesh_x[cell.entities(0)]
-#         n = v0 - v1
-#         # We can specialize based on normal
-#         measure_n = measure(n)
+    values = np.empty(TV.dim(), dtype=float)
+    for cell in cells(mesh_1d):
+        # Get the tangent (normal of the plane which cuts the virtual
+        # surface to yield the bdry curve
+        v0, v1 = mesh_x[cell.entities(0)]
+        n = v0 - v1
 
-#         # Where to
-#         dofs = TV_dm.cell_dofs(cell.index())
-#         for seen, dof in zip(visited[dofs], dofs):
-#             if not seen:
-#                 x = TV_coordinates[dof]
-#                 value = measure_n(x)
-#                 values[dof] = value
+        # Where to
+        dofs = TV_dm.cell_dofs(cell.index())
+        for seen, dof in zip(visited[dofs], dofs):
+            if not seen:
+                x = TV_coordinates[dof]
+                # Values sum up to the measure of the hypersurface
+                values[dof] = sum(shape.quadrature(x, n).weights)
+                visited[dof] = True
                 
-#                 visited[dof] = True
-#     assert np.all(visited)
+    assert np.all(visited)
     
-#     # Wrap as a function
-#     m = Function(TV)
-#     m.vector().set_local(values)
+    # Wrap as a function
+    m = Function(TV)
+    m.vector().set_local(values)
 
-#     return m
+    return m
 
 
 # --------------------------------------------------------------------
