@@ -10,14 +10,13 @@ import numpy as np
 def memoize_average(average_mat):
     '''Cached average'''
     cache = {}
-    def cached_average_mat(V, TV, reduced_mesh, data, which):
+    def cached_average_mat(V, TV, reduced_mesh, data):
         key = ((V.ufl_element(), V.mesh().id()),
                (TV.ufl_element(), TV.mesh().id()),
-               data['shape'],
-               which)
+               data['shape'])
 
         if key not in cache:
-            cache[key] = average_mat(V, TV, reduced_mesh, data, which)
+            cache[key] = average_mat(V, TV, reduced_mesh, data)
         return cache[key]
     
     return cached_average_mat
@@ -76,6 +75,8 @@ def average_matrix(V, TV, shape):
     limit = mesh.num_cells()
 
     TV_coordinates = TV.tabulate_dof_coordinates().reshape((TV.dim(), -1))
+    line_mesh = TV.mesh()
+    
     TV_dm = TV.dofmap()
     V_dm = V.dofmap()
     # For non scalar we plan to make compoenents by shift
@@ -218,7 +219,7 @@ def MeasureFunction(averaged):
     # Want the measure in scalar space
     if V.ufl_element().value_shape(): V = V.sub(0).collapse()
 
-    mesh_1d = averaged._average_['mesh']
+    mesh_1d = averaged.average_['mesh']
     # Finally
     TV = average_space(V, mesh_1d)
 
@@ -227,7 +228,8 @@ def MeasureFunction(averaged):
     
     visited = np.zeros(TV.dim(), dtype=bool)
     mesh_x = mesh_1d.coordinates()
-
+    shape = averaged.average_['shape']
+    
     values = np.empty(TV.dim(), dtype=float)
     for cell in cells(mesh_1d):
         # Get the tangent (normal of the plane which cuts the virtual
@@ -255,14 +257,19 @@ def MeasureFunction(averaged):
 
 # --------------------------------------------------------------------
 
-
 if __name__ == '__main__':
     from dolfin import *
     from xii import EmbeddedMesh
-    # FIXME: update this
+    from xii.assembler.average_shape import Circle
+
+    
+    def is_close(a, b=0): return abs(a - b) < 1E-13
+    
+    # ---
+    
     mesh = UnitCubeMesh(10, 10, 10)
 
-    f = EdgeFunction('size_t', mesh, 0)
+    f = MeshFunction('size_t', mesh, 1, 0)
     CompiledSubDomain('near(x[0], 0.5) && near(x[1], 0.5)').mark(f, 1)
 
     bmesh = EmbeddedMesh(f, 1)
@@ -274,11 +281,11 @@ if __name__ == '__main__':
     f = interpolate(Expression('x[0]+x[1]+x[2]', degree=1), V)
     Tf0 = interpolate(f, TV)
 
-    Trace = avg_mat(V, TV, bmesh, {'radius': None, 'surface': 'cylinder'})
+    Trace = avg_mat(V, TV, bmesh, {'shape': None})
     Tf = Function(TV)
     Trace.mult(f.vector(), Tf.vector())
     Tf0.vector().axpy(-1, Tf.vector())
-    print '??', Tf0.vector().norm('linf')
+    assert is_close(Tf0.vector().norm('linf'))
 
     V = VectorFunctionSpace(mesh, 'CG', 2)
     TV = VectorFunctionSpace(bmesh, 'DG', 1)
@@ -288,20 +295,20 @@ if __name__ == '__main__':
                                 'x[1]+x[2]'), degree=1), V)
     Tf0 = interpolate(f, TV)
 
-    Trace = avg_mat(V, TV, bmesh, {'radius': None, 'surface': 'cylinder'})
+    Trace = avg_mat(V, TV, bmesh, {'shape': None})
     Tf = Function(TV)
     Trace.mult(f.vector(), Tf.vector())
     Tf0.vector().axpy(-1, Tf.vector())
-    print '??', Tf0.vector().norm('linf')
+    assert is_close(Tf0.vector().norm('linf'))
 
-    # PI
     radius = 0.01
     quad_degree = 10
-    data = {'radius': radius, 'quad_degree': quad_degree, 'surface': 'cylinder'}
+    # PI
+    shape = Circle(radius=radius, degree=quad_degree)
+
     # Simple scalar
     V = FunctionSpace(mesh, 'CG', 3)
     Q = FunctionSpace(bmesh, 'DG', 3)
-
 
     f = Expression('x[2]*((x[0]-0.5)*(x[0]-0.5) + (x[1]-0.5)*(x[1]-0.5))', degree=3)
     Pif = Expression('x[2]*A*A', A=radius, degree=1)
@@ -311,12 +318,13 @@ if __name__ == '__main__':
 
     Pi_f = Function(Q)
 
-    Pi = avg_mat(V, Q, bmesh, data)
+    Pi = avg_mat(V, Q, bmesh, {'shape': shape})
     Pi.mult(f.vector(), Pi_f.vector())
 
     Pi_f0.vector().axpy(-1, Pi_f.vector())
-    print '>>', Pi_f0.vector().norm('linf')
+    assert is_close(Pi_f0.vector().norm('linf'))
 
+    
     V = VectorFunctionSpace(mesh, 'CG', 3)
     Q = VectorFunctionSpace(bmesh, 'DG', 3)
 
@@ -333,8 +341,8 @@ if __name__ == '__main__':
 
     Pi_f = Function(Q)
 
-    Pi = avg_mat(V, Q, bmesh, data)
+    Pi = avg_mat(V, Q, bmesh, {'shape': shape})
     Pi.mult(f.vector(), Pi_f.vector())
 
     Pi_f0.vector().axpy(-1, Pi_f.vector())
-    print '>>', Pi_f0.vector().norm('linf')
+    assert is_close(Pi_f0.vector().norm('linf'))
