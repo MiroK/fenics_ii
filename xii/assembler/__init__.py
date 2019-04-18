@@ -4,4 +4,4 @@ from . extension_form import Extension
 from . restriction_form import Restriction
 from . point_trace_form import PointTrace
 from . xii_assembly import assemble as ii_assemble
-from . average_shape import Square
+from . average_shape import Square, SquareRim, Circle, Disk

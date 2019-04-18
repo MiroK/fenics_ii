@@ -39,7 +39,7 @@ class Square(BoundingSurface):
         self.xq, self.wq = leggauss(degree)
 
     @staticmethod
-    def map_from_reference(x0, n, p):
+    def map_from_reference(x0, n, P):
         '''A map of [-1, 1]x[-1, 1] to square(x0, n, P).'''
         n = n / np.linalg.norm(n)
         # C   B
@@ -71,9 +71,9 @@ class Square(BoundingSurface):
         wq = wq*size
 
         # 2D
-        wq = map(np.prod, itertools.product(wq, wq))
+        wq = map(np.prod, product(wq, wq))
         
-        xq = map(np.array, itertools.product(xq, xq))
+        xq = map(np.array, product(xq, xq))
         Txq = map(sq, xq)
         
         return Quadrature(Txq, wq)
@@ -95,7 +95,7 @@ class SquareRim(BoundingSurface):
         self.xq, self.wq = leggauss(degree)
 
     @staticmethod
-    def map_from_reference(x0, n, p):
+    def map_from_reference(x0, n, P):
         '''
         A map of [-1, 1] to 4 points on the boundary of the square(x0, n, P)
         '''
@@ -129,6 +129,8 @@ class SquareRim(BoundingSurface):
         size = 0.5*np.linalg.norm(B-A)
         # Scale the weights
         wq = wq*size
+        # One for each side
+        wq = np.repeat(wq, 4)
 
         Txq = sum(map(sq_bdry, xq), [])
 
@@ -264,6 +266,14 @@ if __name__ == '__main__':
     from xii.meshing.embedded_mesh import EmbeddedMesh
     import dolfin as df
 
+    
+    def is_close(a, b, tol=1E-8): return np.linalg.norm(a - b) < tol
+
+    def shape_integrate(f, shape, x0, n):
+        pts, weights = shape.quadrature(x0, n)
+        l = sum(weights)
+        return sum(wq*f(*xq) for xq, wq in zip(pts, weights))/l
+
     # Get the MEAN
     mesh = df.BoxMesh(df.Point(-1, -1, -1), df.Point(1, 1, 1), 16, 16, 16)
     # Make 1d
@@ -273,7 +283,7 @@ if __name__ == '__main__':
     
     line_mesh = EmbeddedMesh(f, 1)
 
-    # Setup bounding curve
+    # Circle ---------------------------------------------------------
     size = 0.125
     ci = Circle(radius=lambda x0: size, degree=12)
 
@@ -285,132 +295,141 @@ if __name__ == '__main__':
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
-    # NOTE: normal matches and point is on line mesh
-    def ci_integrate(f, n=np.array([0, 0, 1]), x0=np.array([0, 0, 0.5])):
-        pts, weights = ci.quadrature(x0, n)
-        l = sum(weights)
-        return sum(wq*f(*xq) for xq, wq in zip(pts, weights))/l
+    x0 = np.array([0, 0, 0.5])
+    n = np.array([0, 0, 1])
+    ci_integrate = lambda f, shape=ci, n=n, x0=x0: shape_integrate(f, shape, x0, n)
     
-    # ---
+    # Sanity
     f = lambda x, y, z: 1
     value = ci_integrate(f)
-    assert abs(value - 1) < 1E-13
+    assert is_close(value, 1)
 
     # Odd foo over sym interval
     f = lambda x, y, z: x - y - 0.5
     value = ci_integrate(f)
-    assert abs(value - -0.5) < 1E-8, (value, )
+    assert is_close(value, -0.5)
 
     # Odd foo over sym interval
     f = lambda x, y, z: x**3 - y - z
     value = ci_integrate(f)
-    assert abs(value - -0.5) < 1E-8, (value, )
+    assert is_close(value, -0.5)
 
-    #
+    # Something that is constant on the dist
+    dist = lambda x, y, z: np.dot(np.array([x, y, z])-x0, np.array([x, y, z])-x0)
+    assert is_close(ci_integrate(dist), 2*np.pi*size*size**2/(2*pi*size))
+
+    # Zero by orthogonality
+    null = lambda x, y, z: np.dot(np.array([x, y, z])-x0, n)
+    assert is_close(ci_integrate(null), 0.)
+
     f = lambda x, y, z: x**2 + y**2 - z**2
     value = ci_integrate(f)
-    assert abs(value - (size**2/2. - 0.5**2)) < 1E-8, (value, )
+    assert is_close(value, (size**2 - 0.5**2))
 
-
-#     n = np.array([0, 0, 1])
-#     x0 = np.array([0, 0, 0.5])
-#     print ci.circumnference(n)(x0), 2*pi*size
-#     print ci.cross_area(n)(x0), pi*size**2
-    
     for plane in surface:
         ax.plot3D(plane[:, 0], plane[:, 1], plane[:, 2], marker='o', linestyle='none')
 
+    # Square ---------------------------------------------------------
+    size = 0.125
+    sq = SquareRim(P=lambda x0: x0 - np.array([size, size, 0]), degree=8)
+
+    u = df.Function(df.FunctionSpace(mesh, 'CG', 1))
+    op = Average(u, line_mesh, sq)
+        
+    surface = render_avg_surface(op)
+    
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+        
+    for plane in surface:
+        ax.plot3D(plane[:, 0], plane[:, 1], plane[:, 2], marker='o', linestyle='none')
+
+    sq_integrate = lambda f, shape=sq, n=n, x0=x0: shape_integrate(f, shape, x0, n)
+    # Sanity
+    f = lambda x, y, z: 1
+    value = sq_integrate(f)
+    assert is_close(value, 1)
+
+    # Odd foo over sym interval
+    f = lambda x, y, z: x - y - 0.5
+    value = sq_integrate(f)
+    assert is_close(value, -0.5), (value, )
+
+    # Odd foo over sym interval
+    f = lambda x, y, z: x**3 - y - z
+    value = sq_integrate(f)
+    assert is_close(value, -0.5)
+
+    # Zero by orthogonality
+    null = lambda x, y, z: np.dot(np.array([x, y, z])-x0, n)
+    assert is_close(sq_integrate(null), 0.)
+
+    W = np.linalg.norm(np.array([size, size, 0]))
+    # Something harder
+    dist = lambda x, y, z: np.dot(np.array([x, y, z]) - x0, np.array([x, y, z])-x0)
+    assert is_close(sq_integrate(dist), 4*8*(np.sqrt(2)*W/2)**3/3.)
+
+    # Disk ---------------------------------------------------------
+    R = 0.125
+    di = Disk(radius=lambda x0: R, degree=12)
+
+    u = df.Function(df.FunctionSpace(mesh, 'CG', 1))
+    op = Average(u, line_mesh, di)
+        
+    surface = render_avg_surface(op)
+    
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+        
+    for plane in surface:
+        ax.plot3D(plane[:, 0], plane[:, 1], plane[:, 2], marker='o', linestyle='none')
+
+    di_integrate = lambda f, shape=di, n=n, x0=x0: shape_integrate(f, shape, x0, n)
+    # Sanity
+    f = lambda x, y, z: 1
+    value = sq_integrate(f)
+    assert is_close(value, 1)
+
+    # Zero by orthogonality
+    null = lambda x, y, z: np.dot(np.array([x, y, z])-x0, n)
+    assert is_close(di_integrate(null), 0)
+
+    # Something harder
+    dist = lambda x, y, z: np.dot(np.array([x, y, z])-x0, np.array([x, y, z])-x0)
+    assert is_close(di_integrate(dist), np.pi/2*R**4/(np.pi*R**2))
+    
+    dist = lambda x, y, z: np.dot(np.array([x, y, z])-x0, np.array([x, y, z])-x0)**2
+    assert is_close(di_integrate(dist), np.pi/3*R**6/(np.pi*R**2))
+
+    # Square ---------------------------------------------------------
+    size = 0.125
+    sq = Square(P=lambda x0: x0 - np.array([size, size, 0]), degree=8)
+
+    u = df.Function(df.FunctionSpace(mesh, 'CG', 1))
+    op = Average(u, line_mesh, sq)
+        
+    surface = render_avg_surface(op)
+    
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+        
+    for plane in surface:
+        ax.plot3D(plane[:, 0], plane[:, 1], plane[:, 2], marker='o', linestyle='none')
+
+    sq_integrate = lambda f, shape=sq, n=n, x0=x0: shape_integrate(f, shape, x0, n)
+
+    # Sanity
+    one = lambda x, y, z: 1
+    assert is_close(sq_integrate(one), 1)
+
+    # Zero by orthogonality
+    null = lambda x, y, z: np.dot(np.array([x, y, z])-x0, n)
+    assert is_close(sq_integrate(null), 0)
+
+    W = np.linalg.norm([size, size, 0])
+    # Something harder
+    area = 2*W**2
+    dist = lambda x, y, z: np.dot(np.array([x, y, z])-x0, np.array([x, y, z])-x0)
+    assert is_close(sq_integrate(dist), 8*(np.sqrt(2)*W/2)**4/3./area)
+
     plt.show()
-    
-#     # Square
-#     if True:
-#         mesh = df.BoxMesh(df.Point(-1, -1, -1), df.Point(1, 1, 1), 16, 16, 16)
-#         # Make 1d
-#         f = df.MeshFunction('size_t', mesh, 1, 0)
-#         df.CompiledSubDomain('near(x[0], 0) && near(x[1], 0)').mark(f, 1)
-    
-#         line_mesh = EmbeddedMesh(f, 1)
-
-#         # Setup bounding curve
-#         size = 0.125
-#         sq = Square(P=lambda x0: np.array([size*np.cos(0.5*pi*x0[2]),
-#                                            size*np.sin(0.5*pi*x0[2]),
-#                                            x0[2]]),
-#                     degree=8)
-
-#         u = df.Function(df.FunctionSpace(mesh, 'CG', 1))
-#         op = Average(u, line_mesh, sq)
-        
-#         surface = render_avg_surface(op)
-    
-#         fig = plt.figure()
-#         ax = fig.add_subplot(111, projection='3d')
-        
-#         for plane in surface:
-#             ax.plot3D(plane[:, 0], plane[:, 1], plane[:, 2], marker='o')
-
-#         # Setup bounding curve
-#         size = 0.15
-#         sq = Square(P=lambda x0: np.array([x0[0]-size,
-#                                            x0[1]-size,
-#                                            x0[2]]),
-#                     degree=8)
-
-#         u = df.Function(df.FunctionSpace(mesh, 'CG', 1))
-#         op = Average(u, line_mesh, sq)
-
-#         surface = render_avg_surface(op, which='cross')
-    
-#         fig = plt.figure()
-#         ax = fig.add_subplot(111, projection='3d')
-
-#         for plane in surface:
-#             ax.plot3D(plane[:, 0], plane[:, 1], plane[:, 2], marker='o')
-
-#         # plt.show()
-
-#         f = lambda x, y, z: x + 2*y
-
-#         value = sum(wq*f(*xq)/(sq.area(None)(None))
-#                     for wq, xq in zip(sq.cross_weights(),
-#                                       sq.cross_points(np.array([0, 0, 1]))(np.array([0, 0, 0]))))
-#         assert abs(value - 0) < 1E-13
-
-
-#         f = lambda x, y, z: 1
-
-#         value = sum(wq*f(*xq)/(sq.area(None)(None))
-#                     for wq, xq in zip(sq.cross_weights(),
-#                                       sq.cross_points(np.array([0, 0, 1]))(np.array([0, 0, 0]))))
-#         assert abs(value - 1) < 1E-13
-
-    
-#         f = lambda x, y, z: x**2
-
-#         value = sum(wq*f(*xq)/(sq.area(None)(None))
-#                     for wq, xq in zip(sq.cross_weights(),
-#                                       sq.cross_points(np.array([0, 0, 1]))(np.array([0, 0, 0]))))
-#         assert abs(value - size**2/3.) < 1E-13
-
-        
-#         f = lambda x, y, z: x**2 + 3*y**2
-
-#         value = sum(wq*f(*xq)/(sq.area(None)(None))
-#                     for wq, xq in zip(sq.cross_weights(),
-#                                       sq.cross_points(np.array([0, 0, 1]))(np.array([0, 0, 0]))))
-    
-#         assert abs(value - (size**2/3. + size**2)) < 1E-13
-
-
-#         f = lambda x, y, z: x**2 + 3*y**2 - x*y
-
-#         value = sum(wq*f(*xq)/(sq.area(None)(None))
-#                     for wq, xq in zip(sq.cross_weights(),
-#                                       sq.cross_points(np.array([0, 0, 1]))(np.array([0, 0, 0]))))
-    
-#         assert abs(value - (size**2/3. + size**2)) < 1E-13
-
-#         n = np.array([0, 0, 1])
-#         x0 = np.array([0, 0, 0.5])
-#         print sq.circumnference(n)(x0), (2*size)*4
-#         print sq.cross_area(n)(x0), (2*size)**2
