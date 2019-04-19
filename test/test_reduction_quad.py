@@ -1,5 +1,5 @@
-from xii.assembler.average_form import Average, average_space
 from xii.assembler.average_shape import Circle, Square, SquareRim, Disk
+from xii.assembler.average_form import Average, average_space
 from xii.meshing.embedded_mesh import EmbeddedMesh
 from xii.assembler.average_matrix import avg_mat
 
@@ -12,10 +12,14 @@ def is_close(a, b=0): return abs(a-b) < 1E-12
 
 L_curve = df.CompiledSubDomain('(near(x[0], 0.5) && near(x[1], 0.5) && x[2] < 0.5 + tol) || (near(x[2], 0.5) && near(x[1], 0.5) && x[0] > 0.5 - tol)',
                                tol=1E-10)
-    
-I_curve = df.CompiledSubDomain('(near(x[0], 0.5) && near(x[1], 0.5))', tol=1E-10)
+
+
+I_curve = df.CompiledSubDomain('(near(x[0], 0.5) && near(x[1], 0.5))',
+                               tol=1E-10)
+
 
 # --------------------------------------------------------------------
+
 
 def sanity_test(n, subd, shape):
     '''Constant is preserved'''
@@ -95,6 +99,7 @@ if True:
         for n in (4, 8, 16, 32):
             assert is_close(identity_test(n, shape=shape))
 
+# --------------------------------------------------------------------
 
 def circle_test(n, subd=I_curve):
     '''Averaging over indep coords of f'''
@@ -128,8 +133,9 @@ def circle_test(n, subd=I_curve):
 
 if True:
     for n in (4, 8, 16, 32): assert is_close(circle_test(n))
-
     
+# --------------------------------------------------------------------
+      
 def disk_test(n, subd=I_curve):
     '''Averaging over indep coords of f'''
     shape = Disk(radius=lambda x0: 0.1+0.0*x0[2]/2, degree=10)
@@ -163,6 +169,7 @@ def disk_test(n, subd=I_curve):
 if True:
     for n in (4, 8, 16, 32): assert is_close(disk_test(n))
 
+# --------------------------------------------------------------------
     
 def squarerim_test(n, subd=I_curve):
     '''Averaging over indep coords of f'''
@@ -198,6 +205,7 @@ def squarerim_test(n, subd=I_curve):
 if True:
     for n in (4, 8, 16, 32): assert is_close(squarerim_test(n))
 
+# --------------------------------------------------------------------
     
 def square_test(n, subd=I_curve):
     '''Averaging over indep coords of f'''

@@ -22,7 +22,7 @@ class AverageFormAssembler(ReducedFormAssembler):
 
     def reduction_matrix_data(self, terminal):
         '''Dict of reduction data and optinal normal'''
-        return {'bdry_curve': terminal.average_['bdry_curve']}
+        return {'shape': terminal.average_['shape']}
 
     def reduced_space(self, V, reduced_mesh):
         '''Construct a reduced space for V on the mesh'''
@@ -30,7 +30,7 @@ class AverageFormAssembler(ReducedFormAssembler):
 
     def reduction_matrix(self, V, TV, reduced_mesh, data):
         '''Algebraic representation of the reduction'''
-        return avg_mat(V, TV, reduced_mesh, data, which='surface')
+        return avg_mat(V, TV, reduced_mesh, data)
 
 # Expose
     

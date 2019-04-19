@@ -48,7 +48,7 @@ def setup_preconditioner(W, which, eps=None):
     '''
     from block.algebraic.petsc import AMG
     from block.algebraic.petsc import LumpedInvDiag
-    from hsmg import HsNorm
+    from hsmg.hseig import HsNorm
     
     V, Q = W
 

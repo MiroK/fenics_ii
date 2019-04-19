@@ -32,7 +32,7 @@ def setup_problem(radius, mesh_gen):
     u3, u = map(TrialFunction, W)
     v3, v = map(TestFunction, W)
 
-    averaging_shape = Cylinder(radius, 10)
+    averaging_shape = Circle(radius, 10)
     Pi_u3, Pi_v3 = (Average(x, mesh1d, averaging_shape) for x in (u3, v3))
 
     a = [[0]*len(W) for _ in range(len(W))]
