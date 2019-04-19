@@ -70,6 +70,7 @@ def average_matrix(V, TV, shape):
     # have to evaluate at same x number of component times.
     value_size = TV.ufl_element().value_size()
 
+    mesh = V.mesh()
     # Eval at points will require serch
     tree = mesh.bounding_box_tree()
     limit = mesh.num_cells()

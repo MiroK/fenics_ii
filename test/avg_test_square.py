@@ -1,9 +1,12 @@
 from dolfin import *
 from xii.meshing.make_mesh_cpp import make_mesh
-from xii.assembler.average_matrix import surface_average_matrix
-from xii.assembler.average_shape import SquareBox
+from xii.assembler.average_matrix import curve_average_matrix
+from xii.assembler.average_shape import Square
 from xii import EmbeddedMesh
 import numpy as np
+
+
+surface_average_matrix = lambda V, TV, bdry_curve: curve_average_matrix(V, TV, bdry_curve, which='surface')
 
 
 def make_z_mesh(num_vertices, zmin=0, zmax=1):
@@ -33,7 +36,7 @@ def test(f, n, P, degree=8):
 
     f = interpolate(f, V)
 
-    cylinder = SquareBox(P, degree)
+    cylinder = Square(P, degree)
 
     Pi = surface_average_matrix(V, TV, cylinder)
     print '\t', Pi.norm('linf'), max(len(Pi.getrow(i)[0]) for i in range(TV.dim()))
