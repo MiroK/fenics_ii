@@ -4,7 +4,7 @@ from xii.assembler.fem_eval import DegreeOfFreedom, FEBasisFunction
 from xii.meshing.embedded_mesh import build_embedding_map
 from xii.assembler.nonconforming_trace_matrix import nonconforming_trace_mat
 
-from dolfin import Cell, PETScMatrix, warning
+from dolfin import Cell, PETScMatrix, warning, info
 from petsc4py import PETSc
 import numpy as np
 
@@ -320,12 +320,12 @@ def get_entity_map(mesh, trace_mesh):
     if hasattr(trace_mesh, 'parent_entity_map'):
         # Check if we have the map embedding into mesh
         if mesh_id not in trace_mesh.parent_entity_map:
-            print '\tMissing map for mesh %d' % mesh_id
+            info('\tMissing map for mesh %d' % mesh_id)
             parent_entity_map = build_embedding_map(trace_mesh, mesh)
             trace_mesh.parent_entity_map[mesh_id] = parent_entity_map
     # Compute from scratch and rememeber for future
     else:
-        print '\tComputing embedding map for mesh %d' % mesh_id
+        info('\tComputing embedding map for mesh %d' % mesh_id)
 
         parent_entity_map = build_embedding_map(trace_mesh, mesh)
         # If success we attach it to the mesh (to prevent future recomputing)

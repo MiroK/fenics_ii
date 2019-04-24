@@ -60,7 +60,9 @@ def convert(bmat, algorithm='numpy'):
                    for block in bmat.blocks.flatten())
         
         # Opt out of monolithic
-        if not algorithm: return bmat
+        if not algorithm:
+            set_lg_map(bmat)
+            return bmat
         
         # Monolithic via numpy (fast)
         # Convert to numpy
