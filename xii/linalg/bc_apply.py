@@ -57,8 +57,12 @@ def apply_bc(A, b, bcs):
     # We're after global numbering
     for shift, bcs_sub in zip(offsets, bcs): 
         for bc in bcs_sub:
-            rows.extend(shift + np.array(bc.get_boundary_values().keys(), dtype='int32'))
-            x_values.extend(bc.get_boundary_values().values())
+            # NOTE: bcs can be a dict or DirichletBC in which case we extract
+            # the dict
+            if isinstance(bc, DirichletBC): bc = bc.get_boundary_values()
+            # Dofs and values for rhs
+            rows.extend(shift + np.array(bc.keys(), dtype='int32'))
+            x_values.extend(bc.values())
             
     rows = np.hstack(rows)
     x_values = np.array(x_values)
