@@ -36,11 +36,13 @@ class DualMesh(df.Mesh):
     def dual_mesh_line(mesh):
         # FIXME: the rest here
         assert mesh.ufl_cell().cellname() == 'interval'
-
+        raise NotImplementedError
+    
     @staticmethod
     def dual_mesh_tetrahedron(mesh):
         # FIXME: the rest here
         assert mesh.ufl_cell().cellname() == 'tetrahedron'
+        raise NotImplementedError
 
     @staticmethod
     def dual_mesh_triangle(mesh):
@@ -94,8 +96,11 @@ class DualMesh(df.Mesh):
 # --------------------------------------------------------------------
 
 if __name__ == '__main__':
-    from dolfin import UnitCubeMesh, MeshFunction, File, BoundaryMesh
+    from dolfin import (UnitCubeMesh, MeshFunction, File, BoundaryMesh,
+                        UnitSquareMesh)
+    import matplotlib.pyplot as plt
     import operator
+
     
     mesh = BoundaryMesh(UnitCubeMesh(4, 4, 4), 'exterior')
 
@@ -134,3 +139,30 @@ if __name__ == '__main__':
         values[f:l] = idx
 
     File('dual_mesh.pvd') << cell_f
+
+    # Scaling
+    nvertices, times = [], []
+    for n in (4, 8, 16, 32, 64, 128, 256, 512):
+
+        mesh = UnitSquareMesh(n, n)
+        nvertices.append(mesh.num_vertices())
+        
+        timer = df.Timer('f')
+        dual_mesh = DualMesh(mesh)
+        time = timer.stop()
+        print n, time, mesh.num_vertices(), '->', dual_mesh.num_vertices()
+        times.append(time)
+    nvertices, times = map(np.array, (nvertices, times))
+    
+    slope, shift = np.polyfit(np.log2(nvertices), np.log2(times), deg=1)
+    print slope
+    
+    plt.figure()
+    plt.xlabel('N (number of vertices)')
+    plt.ylabel('dual mesh construction [s]')
+    
+    plt.loglog(nvertices, times, marker='x')
+    plt.loglog(nvertices, (2**shift)*nvertices**slope, label='O(N^(%.2f))' % slope)
+    plt.legend(loc='best')
+    
+    plt.show()
