@@ -31,11 +31,12 @@ def extension_mat(V, EV, extended_mesh, data):
     assert EV.mesh().id() == extended_mesh.id()
     
     assert V.mesh().topology().dim() == 1
-    assert EV.mesh().topology().dim() == 2
+    assert EV.mesh().topology().dim() in (1, 2)  # Line to line or line to triangle
 
     assert V.ufl_element().degree() == EV.ufl_element().degree()
     assert V.ufl_element().family() == EV.ufl_element().family()
-    assert V.mesh().geometry().dim() == EV.mesh().geometry().dim() == 3
+    assert V.mesh().geometry().dim() == EV.mesh().geometry().dim()
+    assert V.mesh().geometry().dim() in (2, 3)
 
     # NOTE: add more here
     # - something based on radial basis function
@@ -48,18 +49,21 @@ def uniform_extension_matrix(V, EV):
     Map vector of coeficients of V(over 1d domain) to vector of coefficients of 
     EV(over 2d domain). The spaces need to use the same element type.
     '''
+    gdim = V.mesh().geometry().dim()
+    assert gdim == EV.mesh().geometry().dim()
+    
     # For Vector and Tensor elements more than 1 degree of freedom is 
     # associated with the same geometric point. It is therefore cheaper
     # to compute the mapping based only on the scalar/one subspace considerations.
     is_tensor_elm = isinstance(V.ufl_element(), (df.VectorElement, df.TensorElement))
     # Base on scalar
     if is_tensor_elm:
-        V_dofs_x = V.sub(0).collapse().tabulate_dof_coordinates().reshape((-1, 3))
-        EV_dofs_x = EV.sub(0).collapse().tabulate_dof_coordinates().reshape((-1, 3))
+        V_dofs_x = V.sub(0).collapse().tabulate_dof_coordinates().reshape((-1, gdim))
+        EV_dofs_x = EV.sub(0).collapse().tabulate_dof_coordinates().reshape((-1, gdim))
     # Otherwise 'scalar', (Hdiv element belong here as well)
     else:
-        V_dofs_x = V.tabulate_dof_coordinates().reshape((V.dim(), 3))
-        EV_dofs_x = EV.tabulate_dof_coordinates().reshape((EV.dim(), 3))
+        V_dofs_x = V.tabulate_dof_coordinates().reshape((V.dim(), gdim))
+        EV_dofs_x = EV.tabulate_dof_coordinates().reshape((EV.dim(), gdim))
         
     # Compute distance from every EV dof(row) to every V dof(column)
     lookup = cdist(EV_dofs_x, V_dofs_x)
