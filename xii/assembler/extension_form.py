@@ -5,7 +5,10 @@ import ufl
 
 
 def extension_cell(o):
-    '''UFL cell corresponding to extension of o[cell] to facets in 3d'''
+    '''
+    UFL cell corresponding to extension of o[cell] to facets(triangles) 
+    in 3d or lines in (2d)
+    '''
     # Space
     if hasattr(o, 'ufl_cell'):
         return extension_cell(o.ufl_cell())
@@ -16,12 +19,18 @@ def extension_cell(o):
     if hasattr(o, 'cell'):
         return extension_cell(o.cell())
 
-    assert o.geometric_dimension() == 3
-    assert o.topological_dimension() == 1
+    gdim = o.geometric_dimension() 
+    assert gdim in (2, 3)
+    assert o.topological_dimension() == 1  # Always extend from 1
+
+    # Line in 3d extends to 'cylinder' surface around it
+    if gdim == 3:
+        return ufl.Cell('triangle', gdim)
+    # Line in 2d extends to line in 3d
+    else:
+        return ufl.Cell('interval', gdim)
+
     
-    return ufl.Cell('triangle', o.geometric_dimension())
-
-
 def extension_element(elm):
     '''
     Produce an intermerdiate element for computing with extension of 
@@ -86,8 +95,21 @@ def Extension(v, mesh, type):
 
 def is_extension_integrand(expr, tdim):
     '''Some of the arguments need extension'''
-    return any((topological_dim(arg)+1)  == tdim
-               for arg in traverse_unique_terminals(expr))
+    if tdim == 2:
+        return any((topological_dim(arg)+1)  == tdim
+                   for arg in traverse_unique_terminals(expr))
+    
+    # Line extends to line
+    top_crit = any(topological_dim(arg)  == tdim
+                   for arg in traverse_unique_terminals(expr))
+    # This is not quite enough because a regular fenics integral might be
+    # like this if the meshes of the terminals are the same. So we check
+    # for difference
+    mesh_ids = set(t.ufl_domain().ufl_cargo().id()
+                   for t in traverse_unique_terminals(expr)
+                   if topological_dim(t) == tdim)
+
+    return top_crit and len(mesh_ids) > 1 
 
 
 def is_extension_integral(integral):

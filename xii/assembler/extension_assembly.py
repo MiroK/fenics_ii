@@ -13,7 +13,8 @@ class ExtensionFormAssembler(ReducedFormAssembler):
 
     def restriction_filter(self, terminals, reduced_mesh):
         tdim = reduced_mesh.ufl_cell().topological_dimension()
-        return set(t for t in terminals if (topological_dim(t)+1) == tdim)
+        return set(t for t in terminals
+                   if ((topological_dim(t)+1) == tdim) or (topological_dim(t) == tdim))
     
     def is_compatible(self, terminal, reduced_mesh):
         assert all(hasattr(terminal, attr) for attr in self.attributes)

@@ -22,11 +22,13 @@ def assemble(form):
                xii.assembler.average_assembly,      # To Codimension 2 via surface of bding curve
                xii.assembler.extension_assembly,    # From dim 1 to 2
                xii.assembler.restriction_assembly)  # Between Codimension 0
+
+    names = ('trace', 'average', 'extension', 'restriction')
     
     if isinstance(form, Form):
         arity = form_arity(form)
         # Try with our reduced assemblers
-        for module in modules:
+        for name, module in zip(names, modules):
             tensor = module.assemble_form(form, arity)
             if tensor is not None:
                 return tensor

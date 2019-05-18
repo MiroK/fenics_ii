@@ -1,5 +1,5 @@
 from dolfin import *
-from xii import EmbeddedMesh, ii_assemble, Extension, Trace
+from xii import EmbeddedMesh, ii_assemble, Extension, Trace, ii_assemble
 import numpy as np
 
 n = 4
@@ -11,7 +11,7 @@ mesh = UnitSquareMesh(n, n)
 middle = CompiledSubDomain('near(x[0], 0.5)')
 off_middle = CompiledSubDomain('near(x[0], A)', A=(n/2+1.)/n)
 
-facet_t = MeshFunction('size_t', mesh, 1, 0)
+facet_f = MeshFunction('size_t', mesh, 1, 0)
 middle.mark(facet_f, 1)
 off_middle.mark(facet_f, 2)
 
@@ -32,8 +32,8 @@ Eu1d = Extension(u1d, mesh_lm, type='uniform')
 
 dxLM = Measure('dx', domain=mesh_lm)
 
-T = inner(Tu2d, q)*dxLM
-E = inner(Eu1d, q)*dxLM
+T = ii_assemble(inner(Tu2d, q)*dxLM)
+E = ii_assemble(inner(Eu1d, q)*dxLM)
 
 f2d = Expression('1+x[0]+2*x[1]', degree=1)
 # The extended function will practically be shifted so I want invariance
@@ -43,8 +43,7 @@ f1d = Expression('2-x[1]', degree=1)
 fLM = Expression('4-2*x[1]+x[0]', degree=1)
 
 # What we are after
-dsLM = Measure('dS', domain=mesh, subdomain_data=facet_f, subdomain_id=2)
-true = assemble(inner(avg(f2d) - avg(f1d), avg(fLM))*dsLM)
+true = assemble(inner(f2d - f1d, fLM)*dxLM)
 
 # How do we get it?
 f2d_ = interpolate(f2d, V_2d)
