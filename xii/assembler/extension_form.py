@@ -80,7 +80,7 @@ def Extension(v, mesh, type):
     # Prevent Ext(grad(u)). But it could be interesting to have this
     assert is_terminal(v)
 
-    assert extension_cell(v) == mesh.ufl_cell()
+    assert extension_cell(v) == mesh.ufl_cell(), (extension_cell(v), mesh.ufl_cell())
 
     if isinstance(v, df.Coefficient):
         v =  df.Function(v.function_space(), v.vector())
@@ -96,11 +96,11 @@ def Extension(v, mesh, type):
 def is_extension_integrand(expr, tdim):
     '''Some of the arguments need extension'''
     if tdim == 2:
-        return any((topological_dim(arg)+1)  == tdim
+        return any((topological_dim(arg)+1) == tdim
                    for arg in traverse_unique_terminals(expr))
     
     # Line extends to line
-    top_crit = any(topological_dim(arg)  == tdim
+    top_crit = any(topological_dim(arg) == tdim
                    for arg in traverse_unique_terminals(expr))
     # This is not quite enough because a regular fenics integral might be
     # like this if the meshes of the terminals are the same. So we check
@@ -108,7 +108,7 @@ def is_extension_integrand(expr, tdim):
     mesh_ids = set(t.ufl_domain().ufl_cargo().id()
                    for t in traverse_unique_terminals(expr)
                    if topological_dim(t) == tdim)
-
+    
     return top_crit and len(mesh_ids) > 1 
 
 

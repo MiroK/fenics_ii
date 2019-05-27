@@ -66,9 +66,10 @@ class ReducedFormAssembler(object):
             # Split arguments in those that need to be and those that are
             # already restricted.
             terminals = set(traverse_unique_terminals(integrand))
-
+            
             # FIXME: is it enough info (in general) to decide
-            terminals_to_restrict = self.restriction_filter(terminals, reduced_mesh)
+            terminals_to_restrict = sorted(self.restriction_filter(terminals, reduced_mesh),
+                                           key=lambda t: self.is_compatible(t, reduced_mesh))
             # You said this is a trace ingral!
             assert terminals_to_restrict
 

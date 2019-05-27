@@ -1,22 +1,25 @@
 from dolfin import *
-from xii import EmbeddedMesh, ii_assemble, Extension, Trace, ii_assemble
+from xii import (EmbeddedMesh, ii_assemble, Extension, Trace, ii_assemble,
+                 StraightLineMesh)
 import numpy as np
 
-n = 4
+n = 32
 
 mesh = UnitSquareMesh(n, n)
 
 # We will have the 1d guy live in the middle and the multiplier slighly
 # off
 middle = CompiledSubDomain('near(x[0], 0.5)')
-off_middle = CompiledSubDomain('near(x[0], A)', A=(n/2+1.)/n)
+off_middle = CompiledSubDomain('near(x[0], A) or near(x[0], B)',
+                               A=(n/2+1.)/n, B=(n/2-1.)/n)
 
 facet_f = MeshFunction('size_t', mesh, 1, 0)
 middle.mark(facet_f, 1)
 off_middle.mark(facet_f, 2)
 
 # Mesh to extend from, (so the d1)
-mesh_1d = EmbeddedMesh(facet_f, 1)
+mesh_1d = StraightLineMesh(np.array([0.5, 0]), np.array([0.5, 1]), n)
+# WORKS: EmbeddedMesh(facet_f, 1)
 # And thhe multiplier one
 mesh_lm = EmbeddedMesh(facet_f, 2)
 
@@ -33,7 +36,7 @@ Eu1d = Extension(u1d, mesh_lm, type='uniform')
 dxLM = Measure('dx', domain=mesh_lm)
 
 T = ii_assemble(inner(Tu2d, q)*dxLM)
-E = ii_assemble(inner(Eu1d, q)*dxLM)
+E = ii_assemble(inner(q, Eu1d)*dxLM)
 
 f2d = Expression('1+x[0]+2*x[1]', degree=1)
 # The extended function will practically be shifted so I want invariance

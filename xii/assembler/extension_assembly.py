@@ -17,9 +17,8 @@ class ExtensionFormAssembler(ReducedFormAssembler):
                    if ((topological_dim(t)+1) == tdim) or (topological_dim(t) == tdim))
     
     def is_compatible(self, terminal, reduced_mesh):
-        assert all(hasattr(terminal, attr) for attr in self.attributes)
-        assert terminal.extension_['mesh'].id() == reduced_mesh.id()
-        return True
+        return (all(hasattr(terminal, attr) for attr in self.attributes)
+                and terminal.extension_['mesh'].id() == reduced_mesh.id())
 
     def reduction_matrix_data(self, terminal):
         '''Dict of reduction data and optinal normal'''
