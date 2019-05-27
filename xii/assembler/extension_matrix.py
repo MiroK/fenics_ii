@@ -1,3 +1,8 @@
+from xii.assembler.trace_form import Trace
+import xii.assembler.xii_assembly 
+from xii.linalg.bc_apply import apply_bc
+from xii.linalg.fe_space_op import FESpaceOperator
+
 from xii.linalg.convert import numpy_to_petsc
 from scipy.spatial.distance import cdist
 from scipy.sparse import csr_matrix
@@ -13,7 +18,7 @@ def memoize_ext(ext_mat):
     def cached_ext_mat(V, TV, extended_mesh, data):
         key = ((V.ufl_element(), V.mesh().id()),
                (TV.ufl_element(), TV.mesh().id()),
-               data['type'])
+               data['type'], data['data'])
         
         if key not in cache:
             cache[key] = ext_mat(V, TV, extended_mesh, data)
@@ -41,7 +46,8 @@ def extension_mat(V, EV, extended_mesh, data):
     # NOTE: add more here
     # - something based on radial basis function
     # - using the method of Green's functions
-    return {'uniform': uniform_extension_matrix(V, EV)}[data['type']]
+    return {'uniform': uniform_extension_matrix(V, EV),
+            'harmonic': harmonic_extension_operator(V, EV, data['data']['aux_facet_f'])}[data['type']]
 
 
 def uniform_extension_matrix(V, EV):
@@ -86,3 +92,132 @@ def uniform_extension_matrix(V, EV):
     E = csr_matrix((values, columns, rows), shape=(EV.dim(), V.dim()))
 
     return numpy_to_petsc(E)
+
+
+def harmonic_extension_operator(V, EV, auxiliary_facet_f):
+    '''
+    Given function f in V the extension E(f) in EV is obtained as a trace 
+    to EV's mesh of uh where uh solves
+
+      -Delta u_h = delta_gamma*f on Omega,
+    
+    Here gamma is the mesh of V and Omega is a submesh of the background 
+    mesh. Its facets are marked with `auxliary_facet_f` in such a way 
+    that 1 is a domain of homog. Dirichlet boundary conditions.
+    '''
+    # For now this shall only work in 2d
+    assert V.mesh().geometry().dim() == 2 and EV.mesh().geometry().dim() == 2
+    
+    aux_mesh = auxiliary_facet_f.mesh()
+    assert aux_mesh.geometry().dim() == 2
+    assert 1 in set(auxiliary_facet_f.array())
+
+    class FOO(FESpaceOperator):
+        '''Extend from V to VE'''
+        def __init__(self, V1=V, V0=EV, facet_f=auxiliary_facet_f):
+            FESpaceOperator.__init__(self, V1, V0)
+            self.facet_f = auxiliary_facet_f
+            
+        def matvec(self, b):
+            '''Action on vector from V1'''
+            V, Q = self.V1, self.V0
+            
+            gamma_mesh = V.mesh()
+            auxiliary_facet_f = self.facet_f
+            aux_mesh = auxiliary_facet_f.mesh()
+            
+            # The problem for uh
+            V2 = df.FunctionSpace(aux_mesh, Q.ufl_element().family(), Q.ufl_element().degree())
+            u, v = df.TrialFunction(V2), df.TestFunction(V2)
+
+            # Wrap the vector as function ...
+            f = Function(V, b)
+            # ... to be used in the weak form for the Laplacian
+            a = df.inner(df.grad(u), df.grad(v))*df.dx
+            L = df.inner(f, Trace(v, gamma_mesh))*df.dx(domain=gamma_mesh)
+
+            A, b = map(xii.assembler.xii_assembly.assemble, (a, L))
+            # We have boundary conditions to apply
+            bc = df.DirichletBC(V2, df.Constant(0), auxiliary_facet_f, 1)
+            A, b = apply_bc(A, b, bc)
+
+            uh = df.Function(V2)
+            df.solve(A, uh.vector(), b)
+
+            # Now take trace of that
+            ext_mesh = Q.mesh()
+            # Get the trace at extended domain by projection
+            p, q = df.TrialFunction(Q), df.TestFunction(Q)
+            
+            f = Trace(uh, ext_mesh)
+            a = inner(p, q)*df.dx
+            L = inner(f, q)*df.dx(domain=ext_mesh)
+
+            A, b  = map(xii.assembler.xii_assembly.assemble, (a, L))
+            # We have boundary conditions to apply
+            # FIXME: inherit from uh?
+            bc = df.DirichletBC(Q, uh, 'on_boundary')
+            A, b = apply_bc(A, b, bc)
+
+            qh = df.Function(Q)
+            solve(A, qh.vector(), b)
+
+            return qh.vector()
+    # And the intance of that
+    return FOO()
+
+# -------------------------------------------------------------------
+
+if __name__ == '__main__':
+    from dolfin import *
+    from xii import EmbeddedMesh, StraightLineMesh
+    import numpy as np
+
+    set_log_level(WARNING)
+
+    nx = 63
+    ny = (nx+1)/2
+    A, B = (nx-1)/2./nx, (nx+1)/2./nx
+
+    mesh = UnitSquareMesh(nx, ny)
+
+    cell_f = MeshFunction('size_t', mesh, 2, 0)
+    CompiledSubDomain('x[0] > A - tol && x[0] < B + tol', A=A, B=B, tol=DOLFIN_EPS).mark(cell_f, 1)
+
+    left = CompiledSubDomain('A-tol < x[0] && x[0] < A+tol', A=A, tol=DOLFIN_EPS)
+    right = CompiledSubDomain('A-tol < x[0] && x[0] < A+tol', A=B, tol=DOLFIN_EPS)
+
+    # We would be extending to
+    facet_f = MeshFunction('size_t', mesh, 1, 0)
+    left.mark(facet_f, 1)
+    right.mark(facet_f, 1)
+
+    ext_mesh = EmbeddedMesh(facet_f, 1)
+    EV = FunctionSpace(ext_mesh, 'CG', 1)
+
+    # The auxiliary problem would be speced at
+    aux_mesh = SubMesh(mesh, cell_f, 1)
+    facet_f = MeshFunction('size_t', aux_mesh, 1, 0)
+    DomainBoundary().mark(facet_f, 1)
+    left.mark(facet_f, 2)
+    right.mark(facet_f, 2)
+
+    # Extending from
+    gamma_mesh = StraightLineMesh(np.array([0.5, 0]), np.array([0.5, 1]), 3*ny)
+    V = FunctionSpace(gamma_mesh, 'CG', 1)
+
+    E = harmonic_extension_operator(V, EV, auxiliary_facet_f=facet_f)
+
+    v = interpolate(Constant(1), V).vector()
+    q = Function(EV, E*v)
+    File('foo.pvd') << q
+    
+    from xii.linalg.convert import collapse
+    E_ = collapse(E)
+
+    q = Function(EV, E_*v)
+    File('foo_.pvd') << q
+
+
+    
+

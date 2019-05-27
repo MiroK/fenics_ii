@@ -21,10 +21,17 @@ class ExtensionFormAssembler(ReducedFormAssembler):
                 and terminal.extension_['mesh'].id() == reduced_mesh.id())
 
     def reduction_matrix_data(self, terminal):
-        '''Dict of reduction data and optinal normal'''
+        '''Dict of reduction data'''
         rtype = terminal.extension_['type']
-
-        return {'type': rtype}
+        data = {'type': rtype}
+        
+        # Data for other extensions?
+        if 'data' in terminal.extension_['type']:
+            data['data'] = terminal.extension_['data']
+        else:
+            data['data'] = None
+            
+        return data 
     
     def reduced_space(self, V, extended_mesh):
         '''Construct a reduced space for V on the mesh'''

@@ -40,7 +40,6 @@ def extension_element(elm):
     # it works I don't find it pretty
     if type(elm) == df.MixedElement:
         return df.MixedElement(map(extension_element, elm.sub_elements()))
-    
 
     family = elm.family()
     
@@ -75,7 +74,7 @@ def extension_space(V, mesh):
     return df.FunctionSpace(mesh, extension_element(V.ufl_element()))
 
 
-def Extension(v, mesh, type):
+def Extension(v, mesh, type, data=None):
     '''Annotated function for being an extension onto a 2d manifold.'''
     # Prevent Ext(grad(u)). But it could be interesting to have this
     assert is_terminal(v)
@@ -88,7 +87,10 @@ def Extension(v, mesh, type):
         # Object copy?
         v = [df.TestFunction, df.TrialFunction][v.number()](v.function_space())
 
+    # FIXME: for uniform extension only the extended to mesh should be
+    # needed but for others there might be more so ...
     v.extension_ = {'type': type, 'mesh': mesh}
+    if data is not None: v.extension_['data'] = data
 
     return v
 

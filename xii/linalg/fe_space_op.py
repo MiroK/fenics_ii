@@ -90,3 +90,4 @@ if __name__ == '__main__':
     A_ = foo.collapse()
 
     print np.linalg.norm(A.array() - A_.array())
+

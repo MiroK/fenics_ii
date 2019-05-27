@@ -113,6 +113,10 @@ def collapse(bmat):
     elif hasattr(bmat, 'matrix'):
         return bmat.matrix
 
+    # Try:
+    elif hasattr(bmat, 'collapse'):
+        return bmat.collapse()
+
     raise ValueError('Do not know how to collapse %r' % type(bmat))
 
 
