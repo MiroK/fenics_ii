@@ -26,11 +26,11 @@ class ExtensionFormAssembler(ReducedFormAssembler):
         data = {'type': rtype}
         
         # Data for other extensions?
-        if 'data' in terminal.extension_['type']:
+        if 'data' in terminal.extension_:
             data['data'] = terminal.extension_['data']
         else:
             data['data'] = None
-            
+
         return data 
     
     def reduced_space(self, V, extended_mesh):

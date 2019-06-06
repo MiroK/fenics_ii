@@ -8,7 +8,7 @@ import numpy as np
 # We extend from x = 0.5. As a result of geometry computation there
 # will be submesh made of cells of background intersected by the curve
 # and a facet function on it which corresponds to domain of extension
-nx = 63
+nx = 31
 ny = (nx+1)/2
 A, B = (nx-1)/2./nx, (nx+1)/2./nx
 
@@ -44,14 +44,14 @@ f = interpolate(Constant(1), V1)
 V2 = FunctionSpace(aux_mesh, 'CG', 1)
 u2, v2 = TrialFunction(V2), TestFunction(V2)
 
-a = inner(grad(u2), grad(v2))*dx
+a = inner(grad(u2), grad(v2))*dx + inner(u2, v2)*dx
 L = inner(f, Trace(v2, gamma_mesh))*dx(domain=gamma_mesh)
 
 A, b = map(ii_assemble, (a, L))
 
 # We have boundary conditions to apply
-bc = DirichletBC(V2, Constant(0), facet_f, 1)
-A, b = apply_bc(A, b, bc)
+# bc = DirichletBC(V2, Constant(0), facet_f, 1)
+# A, b = apply_bc(A, b, bc)
 
 u2h = Function(V2)
 solve(A, u2h.vector(), b)
@@ -66,8 +66,8 @@ L = inner(f, q)*dx(domain=ext_mesh)
 A, b = map(ii_assemble, (a, L))
 
 # We have boundary conditions to apply
-bc = DirichletBC(Q, u2h, 'on_boundary')
-A, b = apply_bc(A, b, bc)
+# bc = DirichletBC(Q, u2h, 'on_boundary')
+# A, b = apply_bc(A, b, bc)
 
 qh = Function(Q)
 solve(A, qh.vector(), b)

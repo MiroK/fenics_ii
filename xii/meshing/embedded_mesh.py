@@ -1,8 +1,10 @@
 from make_mesh_cpp import make_mesh
 from collections import defaultdict
+from scipy.spatial import cKDTree
 from itertools import chain
 import dolfin as df
 import numpy as np
+import operator
 
 
 class EmbeddedMesh(df.Mesh):
@@ -287,6 +289,14 @@ def build_embedding_map(emesh, mesh, tol=1E-14):
 
     df.info('\tDone (Embeddeding map) %g' % e_timer.stop())
     return entity_map
+# NOTE: vertex map could be computed with KDTree but that is slower and
+# scales worse!
+#
+#    parent = mesh.coordinates()
+#    child = emesh.coordinates()
+
+#    tree = cKDTree(parent, leafsize=24)
+#    _, vertex_map = tree.query(child, k=1)
 
 
 # -------------------------------------------------------------------
@@ -302,6 +312,12 @@ if __name__ == '__main__':
         
         time = df.Timer('map'); time.start()        
         mapping = build_embedding_map(emesh, mesh, tol=1E-14)
+        # mapping_ = build_embedding_map__(emesh, mesh, tol=1E-14)
+
+        # for k in mapping:
+        #     assert np.linalg.norm(np.array(mapping[k][0]) - np.array(mapping_[k][0])) < 1E-13
+        #     assert np.linalg.norm(np.array(mapping[k][2]) - np.array(mapping_[k][2])) < 1E-13
+
         dt = time.stop()
         
         mesh_x = mesh.coordinates()
