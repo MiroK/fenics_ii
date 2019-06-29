@@ -70,7 +70,7 @@ def trace_mat_no_restrict(V, TV, trace_mesh=None):
     # Init/extract the mapping
     try:
         assert get_entity_map(mesh, trace_mesh)
-    except AssertionError:
+    except (AssertionError, IndexError):
         warning('Using non-conforming trace')
         # So non-conforming matrix returns PETSc.Mat
         return nonconforming_trace_mat(V, TV)

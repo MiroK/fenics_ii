@@ -257,7 +257,7 @@ def build_embedding_map(emesh, mesh, tol=1E-14):
             if vertex_map[vertex] is None:
                 vertex_x = emesh_x[vertex]
                 mcells = tree.compute_entity_collisions(df.Point(*vertex_x))
-            
+
                 # What is the id of vertex in the mesh
                 mcell_vertices = c2v(mcells[0])
                 the_vertex = min(mcell_vertices, key=lambda v: np.linalg.norm(vertex_x-mesh_x[v]))

@@ -38,6 +38,8 @@ def apply_bc(A, b, bcs):
             bcs_.append(bc)
     bcs = bcs_
 
+    if not bcs or not any(bcs): return A, b
+
     # Obtain a monolithic matrix
     AA, bb = map(convert, (A, b))
     # PETSc guys

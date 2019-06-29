@@ -2,6 +2,32 @@ from xii import EmbeddedMesh
 import dolfin as df
 import numpy as np
 
+function collides{D, T}(line::Segment{D, T}, box::BoundingBox{D, T})
+    x, y = line.A
+    dx = line.B[1] - x
+    dy = line.B[2] - y
+
+    p = [-dx, dx, -dy, dy]
+    q = [x-box.low[1], box.high[1]-x, y-box.low[2], box.high[2]-y]
+
+    u1 = -Inf
+    u2 = Inf
+    for i in 1:4
+        (p[i] == 0 && q[i] < 0) && return false
+
+        t = q[i]/p[i]
+
+        if (p[i] < 0 && u1 < t)
+            u1 = max(0, t)
+        elseif (p[i] > 0 && u2 > t)
+            u2 = min(1, t)
+        end
+    end
+
+   (u1 > u2) && return false
+
+    true
+end
 
 def collides_seg(line, seg):
     pass

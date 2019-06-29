@@ -77,7 +77,10 @@ def nonconforming_trace_mat(V, T):
 
                 # Now all the V cells and their basis functions
                 c = collisions[Tdof]
-                # Set the dof cell
+                # If we have no reasonable cell leave the row empty
+                if c >= limit: continue
+                
+                # Set the dof cell                
                 V_basis_function.cell = c
                     
                 Vdofs = np.array(Vdm.cell_dofs(c), dtype='int32')  # These are columns
