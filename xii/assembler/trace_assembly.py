@@ -30,8 +30,9 @@ class TraceFormAssembler(ReducedFormAssembler):
         '''Dict of reduction data and optinal normal'''
         rtype = terminal.trace_['type']
         normal = terminal.trace_['normal'] if rtype else None
+        tag_data = terminal.trace_['tag']
 
-        return {'restriction': rtype, 'normal': normal}
+        return {'restriction': rtype, 'normal': normal, 'tag_data': tag_data}
     
     def reduced_space(self, V, reduced_mesh):
         '''Construct a reduced space for V on the mesh'''

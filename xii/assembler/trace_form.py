@@ -72,10 +72,11 @@ def trace_space(V, mesh):
     return df.FunctionSpace(mesh, trace_element(V.ufl_element()))
 
 
-def Trace(v, mmesh, restriction='', normal=None):
+def Trace(v, mmesh, restriction='', normal=None, tag=None):
     '''
     Annotated function for being a restriction onto manifold of codimension
-    one
+    one. By tag the trace can be localized on mmesh; then mmesh must have 
+    a cell function with those markers
     '''
     # Prevent Trace(grad(u)). But it could be interesting to have this
     assert is_terminal(v)
@@ -99,8 +100,23 @@ def Trace(v, mmesh, restriction='', normal=None):
     else:
         # Object copy?
         v = [df.TestFunction, df.TrialFunction][v.number()](v.function_space())
+
+    if tag is not None:
+        if isinstance(tag, int):
+            tag = (tag, )
+        tag = set(tag)
         
-    v.trace_ = {'type': restriction, 'mesh': mmesh, 'normal': normal}
+        assert hasattr(mmesh, 'marking_function')
+        assert tag <= set(mmesh.marking_function.array())
+
+        tag_data = (mmesh.marking_function, tag)
+    else:
+        # None means all
+        tag_data = (df.MeshFunction('size_t', mmesh, mmesh.topology().dim(), 0),
+                    set((0, )))
+        
+    v.trace_ = {'type': restriction, 'mesh': mmesh, 'normal': normal,
+                'tag': tag_data}
 
     return v
 

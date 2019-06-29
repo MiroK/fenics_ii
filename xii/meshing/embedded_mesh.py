@@ -75,10 +75,15 @@ class EmbeddedMesh(df.Mesh):
 
             df.Mesh.__init__(self, submesh)
 
-            # The entity mapping attribute
+            # The entity mapping attribute;
+            # NOTE: At this point there is not reason to use a dict as
+            # a lookup table
             mesh_key = marking_function.mesh().id()
-            self.parent_entity_map = {mesh_key: {0: submesh.data().array('parent_vertex_indices', 0).copy(),
-                                                 tdim: submesh.data().array('parent_cell_indices', tdim).copy()}}
+            mapping_0 = submesh.data().array('parent_vertex_indices', 0)
+
+            mapping_tdim = submesh.data().array('parent_cell_indices', tdim)
+            self.parent_entity_map = {mesh_key: {0: dict(enumerate(mapping_0)),
+                                                 tdim: dict(enumerate(mapping_tdim))}}
             # Finally it remains to preserve the markers
             f = df.MeshFunction('size_t', self, tdim, 0)
             if len(markers) > 1:
@@ -140,8 +145,8 @@ class EmbeddedMesh(df.Mesh):
 
         # The entity mapping attribute
         mesh_key = marking_function.mesh().id()
-        self.parent_entity_map = {mesh_key: {0: np.array(new_vertices, dtype='uintp'),
-                                             tdim: np.array(cell_map, dtype='uintp')}}
+        self.parent_entity_map = {mesh_key: {0: dict(enumerate(new_vertices)),
+                                             tdim: dict(enumerate(cell_map))}}
 
         f = df.MeshFunction('size_t', self, tdim, 0)
         f_ = f.array()
@@ -207,8 +212,15 @@ def InnerNormal(mesh, orientation):
     n.vector()[:] *= -1
     return n
 
+def is_1_sequence(iterable):
+    '''value mathces the index (-offset)'''
+    steps = np.unique(np.diff(np.sort(np.fromiter(iterable, dtype='uintp'))))
+    if not len(steps) == 1:
+        return False
 
-def build_embedding_map(emesh, mesh, tol=1E-14):
+    return steps[0] == 1
+
+def build_embedding_map(emesh, mesh, esubdomains=None, tags=None, tol=1E-14):
     '''
     Operating with the assumption that the emsh consists of entities 
     of mesh we find here a map from emesh vertices and cells to mesh
@@ -218,13 +230,28 @@ def build_embedding_map(emesh, mesh, tol=1E-14):
     assert emesh.topology().dim() < mesh.topology().dim()
     edim = emesh.topology().dim()
 
+    # We have right subdomains, i-e- a cell function
+    assert esubdomains is None or esubdomains.dim() == edim
+
+    # Let's make the inputs consistent
+    if esubdomains is None:
+        assert tags is None
+        esubdomains = df.MeshFunction('size_t', emesh, edim, 0)
+        
+    be_strict = False
+    # All the cells
+    if tags is None:
+        tags = set((0, ))
+        be_strict = True  # Meaning all the emesh cells and vertices need
+                          # need to be found
+
     # We might be lucky and this is a boundary mesh -> extract
     if hasattr(emesh, 'entity_map'):
         # One must be careful here for it is guaranteed that emsh was
         # constructed from mesh. This has to be flagged by the user
         if hasattr(emesh, 'parent_id') and emesh.parent_id == mesh.id():
-            entity_map = {0: emesh.entity_map(0).array().copy(),
-                          edim: emesh.entity_map(edim).array().copy()}
+            entity_map = {0: dict(enumerate(emesh.entity_map(0).array())),
+                          edim: dict(enumerate(emesh.entity_map(edim).array()))}
             df.info('\tDone (Embeddeding map by extracting) %g' % e_timer.stop())
 
             return entity_map
@@ -241,20 +268,21 @@ def build_embedding_map(emesh, mesh, tol=1E-14):
     c2e = mesh.topology()(mesh.topology().dim(), edim)
     e2v = mesh.topology()(edim, 0)
 
+    tagged_cells = chain(*[df.SubsetIterator(esubdomains, tag) for tag in tags])
+
     mesh_x = mesh.coordinates()
     emesh_x = emesh.coordinates()
     # Get som idea of mesh size to make relative comparison of coords
     scale = max(emesh_x.max(axis=0) - emesh_x.min(axis=0))
     # Also build the map for vertices
-    entity_map = {0: [None]*emesh.num_vertices(),
-                  edim: [None]*emesh.num_cells()}
+    entity_map = {0: dict(), edim: dict()}
     vertex_map = entity_map[0]
     cells_with_vertex = dict()
-    for cell in df.cells(emesh):
+    for cell in tagged_cells:
         
         the_entity = set()
         for vertex in cell.entities(0):
-            if vertex_map[vertex] is None:
+            if vertex not in vertex_map:
                 vertex_x = emesh_x[vertex]
                 mcells = tree.compute_entity_collisions(df.Point(*vertex_x))
 
@@ -283,9 +311,14 @@ def build_embedding_map(emesh, mesh, tol=1E-14):
         assert len(the_entity) == 1
         # Insert
         entity_map[edim][cell.index()] = the_entity.pop()
-        
-    assert not any(v is None for v in entity_map[0])
-    assert not any(v is None for v in entity_map[edim])
+
+    if be_strict:
+        # All and continuous
+        assert len(entity_map[0]) == emesh.num_vertices()
+        assert len(entity_map[edim]) == emesh.num_cells()
+        # Continuity
+        assert is_1_sequence(entity_map[0]) 
+        assert is_1_sequence(entity_map[edim])
 
     df.info('\tDone (Embeddeding map) %g' % e_timer.stop())
     return entity_map
@@ -312,6 +345,7 @@ if __name__ == '__main__':
         
         time = df.Timer('map'); time.start()        
         mapping = build_embedding_map(emesh, mesh, tol=1E-14)
+
         # mapping_ = build_embedding_map__(emesh, mesh, tol=1E-14)
 
         # for k in mapping:
@@ -323,11 +357,11 @@ if __name__ == '__main__':
         mesh_x = mesh.coordinates()
         emesh_x = emesh.coordinates()
 
-        assert max(np.linalg.norm(ex - mesh_x[to])
+        assert max(np.linalg.norm(ex - mesh_x[mapping[0][to]])
                    for ex, to in zip(emesh_x, mapping[0])) < 1E-14
 
         assert max(df.Facet(mesh, entity).midpoint().distance(df.Cell(emesh, cell).midpoint())
-                   for cell, entity in enumerate(mapping[1])) < 1E-14
+                   for cell, entity in mapping[1].items()) < 1E-14
 
         if n0 is not None:
             rate = np.log(dt/dt0)/np.log(float(n)/n0)

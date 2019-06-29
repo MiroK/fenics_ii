@@ -4,7 +4,8 @@ from xii.assembler.fem_eval import DegreeOfFreedom, FEBasisFunction
 from xii.meshing.embedded_mesh import build_embedding_map
 from xii.assembler.nonconforming_trace_matrix import nonconforming_trace_mat
 
-from dolfin import Cell, PETScMatrix, warning, info
+from dolfin import Cell, PETScMatrix, warning, info, SubsetIterator
+import itertools, operator
 from petsc4py import PETSc
 import numpy as np
 
@@ -16,7 +17,7 @@ def memoize_trace(trace_mat):
     def cached_trace_mat(V, TV, trace_mesh, data):
         key = ((V.ufl_element(), V.mesh().id()),
                (TV.ufl_element(), TV.mesh().id()),
-               data['restriction'], data['normal'])
+               data['restriction'], data['normal'], tuple(data['tag_data'][1]))
                
         if key not in cache:
             cache[key] = trace_mat(V, TV, trace_mesh, data)
@@ -44,13 +45,15 @@ def trace_mat(V, TV, trace_mesh, data):
 
     restriction = data['restriction']
     normal = data['normal']
+    tag_data = data['tag_data']
     # Restriction is defined using the normal
     if restriction: assert normal is not None, 'R is %s' % restriction
 
     # Typically with CG spaces - any parent cell can set the valeus
     if not restriction:
-        Tmat = trace_mat_no_restrict(V, TV, trace_mesh)
+        Tmat = trace_mat_no_restrict(V, TV, trace_mesh, tag_data=tag_data)
     else:
+        assert tag is None, 'Tags are not implemented for other than no-restrict trace'
         if restriction in ('+', '-'):
             Tmat = trace_mat_one_restrict(V, TV, restriction, normal, trace_mesh)
         else:
@@ -59,7 +62,7 @@ def trace_mat(V, TV, trace_mesh, data):
     return PETScMatrix(Tmat)
                 
 
-def trace_mat_no_restrict(V, TV, trace_mesh=None):
+def trace_mat_no_restrict(V, TV, trace_mesh=None, tag_data=None):
     '''The first cell connected to the facet gets to set the values of TV'''
     mesh = V.mesh()
 
@@ -67,9 +70,14 @@ def trace_mat_no_restrict(V, TV, trace_mesh=None):
 
     fdim = trace_mesh.topology().dim()
 
+    # None means all
+    if tag_data is None: tag_data = (MeshFunction('size_t', trace_mesh, trace_mesh.topology().dim(), 0),
+                                     set((0, )))
+    
+    trace_mesh_subdomains, tags = tag_data
     # Init/extract the mapping
     try:
-        assert get_entity_map(mesh, trace_mesh)
+        assert get_entity_map(mesh, trace_mesh, trace_mesh_subdomains, tags)
     except (AssertionError, IndexError):
         warning('Using non-conforming trace')
         # So non-conforming matrix returns PETSc.Mat
@@ -89,13 +97,19 @@ def trace_mat_no_restrict(V, TV, trace_mesh=None):
     dmap = V.dofmap()
     V_basis_f = FEBasisFunction(V)
 
+    # Only look at tagged cells
+    trace_cells = itertools.chain(*[itertools.imap(operator.methodcaller('index'),
+                                                   SubsetIterator(trace_mesh_subdomains, tag))
+                                    for tag in tags])
+
     # Rows
     visited_dofs = [False]*TV.dim()
     # Column values
     dof_values = np.zeros(V_basis_f.elm.space_dimension(), dtype='double')
     with petsc_serial_matrix(TV, V) as mat:
 
-        for trace_cell in range(TV.mesh().num_cells()):
+        for trace_cell in trace_cells:
+            # We might 
             TV_dof.cell = trace_cell
             trace_dofs = Tdmap.cell_dofs(trace_cell)
 
@@ -309,7 +323,7 @@ def trace_mat_two_restrict(V, TV, restriction, normal, trace_mesh=None):
     return mat
 
 
-def get_entity_map(mesh, trace_mesh):
+def get_entity_map(mesh, trace_mesh, subdomains=None, tags=None):
     '''
     Make sure that trace mesh has with it the data for mapping cells of
     TV to facets of V
@@ -321,13 +335,13 @@ def get_entity_map(mesh, trace_mesh):
         # Check if we have the map embedding into mesh
         if mesh_id not in trace_mesh.parent_entity_map:
             info('\tMissing map for mesh %d' % mesh_id)
-            parent_entity_map = build_embedding_map(trace_mesh, mesh)
+            parent_entity_map = build_embedding_map(trace_mesh, mesh, subdomains, tags)
             trace_mesh.parent_entity_map[mesh_id] = parent_entity_map
     # Compute from scratch and rememeber for future
     else:
         info('\tComputing embedding map for mesh %d' % mesh_id)
 
-        parent_entity_map = build_embedding_map(trace_mesh, mesh)
+        parent_entity_map = build_embedding_map(trace_mesh, mesh, subdomains, tags)
         # If success we attach it to the mesh (to prevent future recomputing)
         trace_mesh.parent_entity_map = {mesh_id: parent_entity_map}
     return True
