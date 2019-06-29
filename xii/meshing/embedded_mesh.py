@@ -13,7 +13,7 @@ class EmbeddedMesh(df.Mesh):
     The output is the mesh with cell function which inherited the markers. 
     and an antribute `parent_entity_map` which is dict with a map of new 
     mesh vertices to the old ones, and new mesh cells to the old mesh entities.
-    Having several maps in the dict is useful for mortating.
+    Having several maps in the dict is useful for mortaring.
     '''
     def __init__(self, marking_function, markers):
         if not isinstance(markers, (list, tuple)): markers = [markers]
@@ -97,9 +97,12 @@ class EmbeddedMesh(df.Mesh):
                             break
             else:
                 f.set_all(markers[0])
-
+            
             self.marking_function = f
-            return None  # https://stackoverflow.com/questions/2491819/how-to-return-a-value-from-init-in-python
+            # Declare which tagged cells are found
+            self.tagged_cells = set(markers)
+            # https://stackoverflow.com/questions/2491819/how-to-return-a-value-from-init-in-python            
+            return None  
 
         # Otherwise the mesh needs to by build from scratch
         base_mesh.init(tdim, 0)
@@ -157,6 +160,8 @@ class EmbeddedMesh(df.Mesh):
             f.set_all(markers[0])
 
         self.marking_function = f
+        # Declare which tagged cells are found
+        self.tagged_cells = set(markers)
 
         
 class OuterNormal(df.Function):
@@ -237,13 +242,11 @@ def build_embedding_map(emesh, mesh, esubdomains=None, tags=None, tol=1E-14):
     if esubdomains is None:
         assert tags is None
         esubdomains = df.MeshFunction('size_t', emesh, edim, 0)
-        
-    be_strict = False
+
+    # Meaning all the emesh cells and vertices need to be found
+    all_check = tags is None
     # All the cells
-    if tags is None:
-        tags = set((0, ))
-        be_strict = True  # Meaning all the emesh cells and vertices need
-                          # need to be found
+    if all_check: tags = set((0, ))
 
     # We might be lucky and this is a boundary mesh -> extract
     if hasattr(emesh, 'entity_map'):
@@ -312,7 +315,7 @@ def build_embedding_map(emesh, mesh, esubdomains=None, tags=None, tol=1E-14):
         # Insert
         entity_map[edim][cell.index()] = the_entity.pop()
 
-    if be_strict:
+    if all_check:
         # All and continuous
         assert len(entity_map[0]) == emesh.num_vertices()
         assert len(entity_map[edim]) == emesh.num_cells()

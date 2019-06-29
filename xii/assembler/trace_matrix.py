@@ -329,14 +329,24 @@ def get_entity_map(mesh, trace_mesh, subdomains=None, tags=None):
     TV to facets of V
     '''
     mesh_id = mesh.id()
+    tags = set((0, )) if tags is None else set(tags)
 
     # There is map but we might be missing entry for the mesh
     if hasattr(trace_mesh, 'parent_entity_map'):
+        assert hasattr(trace_mesh, 'tagged_cells')
         # Check if we have the map embedding into mesh
         if mesh_id not in trace_mesh.parent_entity_map:
             info('\tMissing map for mesh %d' % mesh_id)
             parent_entity_map = build_embedding_map(trace_mesh, mesh, subdomains, tags)
             trace_mesh.parent_entity_map[mesh_id] = parent_entity_map
+        else:
+            info('\tMissing map for tags %r of mesh %d' % (tags, mesh_id))
+            needed_tags = trace_mesh.tagged_cells - tags
+            if needed_tags:
+                parent_entity_map = build_embedding_map(trace_mesh, mesh, subdomains, tags)
+                # Add new
+                for edim in trace_mesh.parent_entity_map[mesh_id]:
+                    trace_mesh.parent_entity_map[mesh_id][edim].update(parent_entity_map[edim])
     # Compute from scratch and rememeber for future
     else:
         info('\tComputing embedding map for mesh %d' % mesh_id)
@@ -344,4 +354,11 @@ def get_entity_map(mesh, trace_mesh, subdomains=None, tags=None):
         parent_entity_map = build_embedding_map(trace_mesh, mesh, subdomains, tags)
         # If success we attach it to the mesh (to prevent future recomputing)
         trace_mesh.parent_entity_map = {mesh_id: parent_entity_map}
+
+        # Just made a map for those tags so attach
+        if hasattr(trace_mesh, 'tagged_cells'):
+            assert not trace_mesh.tagged_cells
+            trace_mesh.tagged_cells.update(tags)
+        else:
+            trace_mesh.tagged_cells = tags
     return True
