@@ -36,7 +36,7 @@ def setup_problem(i, f, eps=None):
     v, q = map(TestFunction, W)
 
     # Averaging surface
-    cylinder = Cylinder(radius=radius, degree=quadrature_degree)
+    cylinder = Circle(radius=radius, degree=quadrature_degree)
 
     Pi_u = Average(u, bmesh, cylinder)
     T_v = Average(v, bmesh, None)  # This is 3d-1d trace

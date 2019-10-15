@@ -139,7 +139,9 @@ def average_matrix(V, TV, shape):
 def trace_3d1d_matrix(V, TV, reduced_mesh):
     '''Trace from 3d to 1d. Makes sense only for CG space'''
     assert reduced_mesh.id() == TV.mesh().id()
-    assert V.ufl_element().family() == 'Lagrange'
+    assert any((V.ufl_element().family() == 'Lagrange',
+                (V.ufl_element().family() == 'Discontinuous Lagrange' and V.ufl_element().degree() == 0)
+                ))
     
     mesh = V.mesh()
     line_mesh = TV.mesh()

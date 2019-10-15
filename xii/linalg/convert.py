@@ -36,7 +36,7 @@ def convert(bmat, algorithm='numpy'):
         row_sizes, col_sizes = bmat_sizes(bmat)
         nrows, ncols = len(row_sizes), len(col_sizes)
         indices = itertools.product(range(nrows), range(ncols))
-        
+
         blocks = np.zeros((nrows, ncols), dtype='object')
         for block, (i, j) in zip(bmat.blocks.flatten(), indices):
             # This might is guaranteed to be matrix or number

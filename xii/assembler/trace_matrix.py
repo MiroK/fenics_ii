@@ -4,7 +4,7 @@ from xii.assembler.fem_eval import DegreeOfFreedom, FEBasisFunction
 from xii.meshing.embedded_mesh import build_embedding_map
 from xii.assembler.nonconforming_trace_matrix import nonconforming_trace_mat
 
-from dolfin import Cell, PETScMatrix, warning, info, SubsetIterator
+from dolfin import Cell, PETScMatrix, warning, info, SubsetIterator, MeshFunction
 import itertools, operator
 from petsc4py import PETSc
 import numpy as np
