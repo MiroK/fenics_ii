@@ -14,6 +14,8 @@ def apply_bc(A, b, bcs):
     '''
     Apply block boundary conditions to block system A, b    
     '''
+    if not any(bcs): return A, b
+    
     # Allow for A, b be simple matrices. To proceed we wrap them as
     # block objects
     has_wrapped_A = False
