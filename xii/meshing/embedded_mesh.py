@@ -20,7 +20,7 @@ class EmbeddedMesh(df.Mesh):
         
         # Convenience option to specify only subdomains
         is_number = lambda m: isinstance(m, int)
-
+        print '????', markers
         new_markers = []
         # Build a new list int list with facet_function marked
         if not all(map(is_number, markers)):
@@ -65,7 +65,7 @@ class EmbeddedMesh(df.Mesh):
             # Submesh works only with one marker so we conform
             color_array = marking_function.array()
             color_cells = dict((m, np.where(color_array == m)[0]) for m in markers)
-
+            print color_cells
             # So everybody is marked as 1
             one_cell_f = df.MeshFunction('size_t', base_mesh, tdim, 0)
             for cells in color_cells.itervalues(): one_cell_f.array()[cells] = 1
@@ -86,15 +86,12 @@ class EmbeddedMesh(df.Mesh):
                                                  tdim: dict(enumerate(mapping_tdim))}}
             # Finally it remains to preserve the markers
             f = df.MeshFunction('size_t', self, tdim, 0)
+            f_values = f.array()
             if len(markers) > 1:
-                # We turn the old cells to set for faster lookup
-                color_cells = {k: set(v) for k, v in color_cells.iteritems()}
-                # And then use the new -> old mapping to color
-                for new_cell, old_cell in enumerate(self.parent_entity_map[mesh_key][tdim]):
-                    for color, cells in color_cells.iteritems():
-                        if old_cell in cells:
-                            f[new_cell] = color
-                            break
+                old2new = dict(zip(mapping_tdim, range(len(mapping_tdim))))
+                for color, old_cells in color_cells.iteritems():
+                    new_cells = np.array([old2new[o] for o in old_cells], dtype='uintp')
+                    f_values[new_cells] = color
             else:
                 f.set_all(markers[0])
             
@@ -155,7 +152,10 @@ class EmbeddedMesh(df.Mesh):
         f_ = f.array()
         # Finally the inherited marking function
         if len(markers) > 1:
-            for marker, cells in cell_colors.iteritems(): f_[cells] = marker
+            print
+            for marker, cells in cell_colors.iteritems():
+                print marker
+                f_[cells] = marker
         else:
             f.set_all(markers[0])
 
