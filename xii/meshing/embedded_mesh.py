@@ -20,7 +20,6 @@ class EmbeddedMesh(df.Mesh):
         
         # Convenience option to specify only subdomains
         is_number = lambda m: isinstance(m, int)
-        print '????', markers
         new_markers = []
         # Build a new list int list with facet_function marked
         if not all(map(is_number, markers)):
@@ -65,7 +64,7 @@ class EmbeddedMesh(df.Mesh):
             # Submesh works only with one marker so we conform
             color_array = marking_function.array()
             color_cells = dict((m, np.where(color_array == m)[0]) for m in markers)
-            print color_cells
+
             # So everybody is marked as 1
             one_cell_f = df.MeshFunction('size_t', base_mesh, tdim, 0)
             for cells in color_cells.itervalues(): one_cell_f.array()[cells] = 1
@@ -152,9 +151,7 @@ class EmbeddedMesh(df.Mesh):
         f_ = f.array()
         # Finally the inherited marking function
         if len(markers) > 1:
-            print
             for marker, cells in cell_colors.iteritems():
-                print marker
                 f_[cells] = marker
         else:
             f.set_all(markers[0])

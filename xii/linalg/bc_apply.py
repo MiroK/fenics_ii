@@ -10,7 +10,7 @@ from petsc4py import PETSc
 import numpy as np
 
 
-def apply_bc(A, b, bcs):
+def apply_bc(A, b, bcs, diag_val=1.):
     '''
     Apply block boundary conditions to block system A, b    
     '''
@@ -76,7 +76,7 @@ def apply_bc(A, b, bcs):
     x.setValues(rows, x_values)
 
     # Apply to monolithic
-    len(rows) and AA.zeroRowsColumns(rows, diag=1., x=x, b=bb)
+    len(rows) and AA.zeroRowsColumns(rows, diag=diag_val, x=x, b=bb)
 
     blocks = []
     for first, last in zip(offsets[:-1], offsets[1:]):
