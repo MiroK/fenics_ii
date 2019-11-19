@@ -2,7 +2,7 @@ from block.block_base import block_base
 from block.object_pool import vec_pool
 from block import block_transpose
 
-from xii.linalg.convert import bmat_sizes, get_dims
+from xii.linalg.convert import bmat_sizes, get_dims, convert
 from xii.linalg.function import as_petsc_nest
 from xii.linalg.matrix_utils import as_petsc
 
@@ -22,9 +22,8 @@ def block_diag_mat(diagonal):
     return block_mat(blocks)
 
 
-def ii_PETScOperator(bmat):
+def ii_PETScOperator(bmat, nullspace):
     '''Return an object with mult method which acts like bmat*'''
-
     if isinstance(bmat, block_base):
         row_sizes, col_sizes = bmat_sizes(bmat)
         is_block = True
@@ -80,6 +79,12 @@ def ii_PETScOperator(bmat):
 
     mat = PETSc.Mat().createPython([[sum(row_sizes), ]*2, [sum(col_sizes), ]*2])
     mat.setPythonContext(Foo(bmat))
+
+    if nullspace is not None:
+        Z = PETSc.NullSpace(constant=True,
+                            vectors=[as_backend_type(v).vec() for v in map(convert, nullspace)],
+                            comm=PETSc.COMM_WORLD)
+        mat.setNullSpace(Z)
     mat.setUp()
 
     return mat
