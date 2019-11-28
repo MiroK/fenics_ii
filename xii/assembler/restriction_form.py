@@ -34,38 +34,35 @@ def Restriction(v, mmesh):
     # Prevent Restriction(grad(u)). But it could be interesting to have this
     assert is_terminal(v)
     assert restriction_cell(v) == mmesh.ufl_cell()
-    assert isinstance(mmesh, SubDomainMesh)
+    # assert isinstance(mmesh, SubDomainMesh)
 
     if isinstance(v, df.Coefficient):
         v =  df.Function(v.function_space(), v.vector())
+    else:
+        # Object copy?
+        v = [df.TestFunction, df.TrialFunction][v.number()](v.function_space())
 
     v.restriction_ = {'mesh': mmesh}
-
+    
     return v
+
+
+def is_restriction(arg):
+    '''Very crude check'''
+    return hasattr(arg, 'restriction_')
+
+
+def is_restriction_integrand(expr):
+    '''Is it?'''
+    return any((is_restriction(arg) for arg in traverse_unique_terminals(expr)))
 
 
 def is_restriction_integral(integral):
     '''
-    A restriction integral here is:
-    1) the measure is defined over a subdomain mesh
-    2) in the parent map of the mesh we find a mesh of at least on argument
-       of the integrand
+    There is a restriction one some of the integrands
     '''
-    # Domain of the measure
-    restriction_domain = integral.ufl_domain().ufl_cargo()
-    if not isinstance(restriction_domain, SubDomainMesh):
-        return False
-    
-    mapping = restriction_domain.parent_entity_map
-
-    for t in traverse_unique_terminals(integral.integrand()):
-        # Of argument
-        domain = t.ufl_domain()
-        if domain is not None:
-            mesh = domain.ufl_cargo()
-            if mesh.id() in mapping:
-                return True
-    return False
+    return all((integral.integral_type() == 'cell',
+                is_restriction_integrand(integral.integrand())))
 
 
 def restriction_integrals(form):
