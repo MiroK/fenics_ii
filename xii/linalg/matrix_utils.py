@@ -1,5 +1,5 @@
 from dolfin import (PETScMatrix, Matrix, IndexMap, PETScVector, Vector,
-                    as_backend_type, mpi_comm_world)
+                    as_backend_type, mpi_comm_world, FunctionSpace)
 from block import block_mat, block_vec
 from scipy.sparse import csr_matrix
 from contextlib import contextmanager
@@ -51,6 +51,17 @@ def diagonal_matrix(size, A=1):
     I.assemble()
 
     return PETScMatrix(I)
+
+
+def identity_matrix(V):
+    '''u -> u for u in V'''
+    if isinstance(V, FunctionSpace):
+        return diagonal_matrix(V.dim(), 1)
+
+    mat = block_mat([[0]*len(V) for _ in range(len(V))])
+    for i in range(len(mat)):
+        mat[i][i] = identity_matrix(V[i])
+    return mat
 
 
 def zero_matrix(nrows, ncols):
