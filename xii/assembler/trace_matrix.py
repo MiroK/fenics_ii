@@ -53,12 +53,11 @@ def trace_mat(V, TV, trace_mesh, data):
     if not restriction:
         Tmat = trace_mat_no_restrict(V, TV, trace_mesh, tag_data=tag_data)
     else:
-        assert tag is None, 'Tags are not implemented for other than no-restrict trace'
         if restriction in ('+', '-'):
-            Tmat = trace_mat_one_restrict(V, TV, restriction, normal, trace_mesh)
+            Tmat = trace_mat_one_restrict(V, TV, restriction, normal, trace_mesh, tag_data)
         else:
             assert restriction in ('avg', 'jump')
-            Tmat = trace_mat_two_restrict(V, TV, restriction, normal, trace_mesh)
+            Tmat = trace_mat_two_restrict(V, TV, restriction, normal, trace_mesh, tag_data)
     return PETScMatrix(Tmat)
                 
 
@@ -143,7 +142,7 @@ def trace_mat_no_restrict(V, TV, trace_mesh=None, tag_data=None):
     return mat
 
 
-def trace_mat_one_restrict(V, TV, restriction, normal, trace_mesh=None):
+def trace_mat_one_restrict(V, TV, restriction, normal, trace_mesh=None, tag_data=None):
     '''
     Compute the trace values using +/- restriction. A + plus is the one 
     for which the vector cell.midpoint - facet.midpoint agrees in orientation
@@ -154,8 +153,19 @@ def trace_mat_one_restrict(V, TV, restriction, normal, trace_mesh=None):
     
     if trace_mesh is None: trace_mesh = TV.mesh()
 
+    # None means all
+    if tag_data is None:
+        tag_data = (MeshFunction('size_t', trace_mesh, trace_mesh.topology().dim(), 0),
+                    set((0, )))
+    trace_mesh_subdomains, tags = tag_data
+
+    # Only look at tagged cells
+    trace_cells = itertools.chain(*[itertools.imap(operator.methodcaller('index'),
+                                                   SubsetIterator(trace_mesh_subdomains, tag))
+                                    for tag in tags])
+        
     # Init/extract entity map
-    assert get_entity_map(mesh, trace_mesh)
+    assert get_entity_map(mesh, trace_mesh, trace_mesh_subdomains, tags)
     # We can get it
     mapping = trace_mesh.parent_entity_map[mesh.id()][fdim]  # Map cell of TV to cells of V
         
@@ -177,7 +187,7 @@ def trace_mat_one_restrict(V, TV, restriction, normal, trace_mesh=None):
     dof_values = np.zeros(V_basis_f.elm.space_dimension(), dtype='double')
     with petsc_serial_matrix(TV, V) as mat:
 
-        for trace_cell in range(trace_mesh.num_cells()):
+        for trace_cell in trace_cells:
             TV_dof.cell = trace_cell
             trace_dofs = Tdmap.cell_dofs(trace_cell)
 
