@@ -6,6 +6,7 @@ from xii.linalg.convert import convert
 from xii.linalg.convert import numpy_to_petsc
 from scipy.sparse import csr_matrix
 from block import block_mat, block_vec
+from block.block_bc import block_rhs_bc
 from petsc4py import PETSc
 import numpy as np
 
@@ -180,7 +181,7 @@ def speed(ncells):
     A0 = block_assemble(a)
     b0 = block_assemble(L)
 
-    # First methog
+    # First method
     bc = DirichletBC(V, Constant((0, 0)), 'on_boundary')
     bcs = [[bc], []]
     t = Timer('first')
@@ -196,6 +197,12 @@ def speed(ncells):
     dt1 = t.stop()
 
     print '>>>', (b - b0).norm()
+
+    # First method
+    A, c = map(block_assemble, (a, L))    
+    block_rhs_bc(bcs, A).apply(c)
+
+    print '>>>', (b - c).norm()
 
     return dimW, dt0, dt1, dt0/dt1
 

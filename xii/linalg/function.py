@@ -61,8 +61,12 @@ class ii_Function(object):
     
     def __getitem__(self, i):
         '''Get the function in the ith subspace'''
-        assert 0 <= i < len(self), (i, len(self))
-        return self.functions[i]
+        if isinstance(i, int):
+            assert 0 <= i < len(self), (i, len(self))
+            return self.functions[i]
+        # So here we are relaxed about things ...
+        else:
+            return self.functions[i]
 
     def __iter__(self):
         for i in range(len(self)): yield self[i]

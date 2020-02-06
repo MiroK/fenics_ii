@@ -235,7 +235,7 @@ class ReductionOperator(block_base):
     This operator reduces block vector into a block vector with 
     at most the same number of blocks. The size of the blocks is specified
     by offsets. Eg (1, 2, 3, 4) is the idenity for vector with 4 block
-    [with components [0:1], [1:2], [2:3], [3:4]], whole (2, 3, 4) would 
+    [with components [0:1], [1:2], [2:3], [3:4]], while (2, 3, 4) would 
     produce a 3 vector from [0:2], [2:3], [3:4]
     '''
     def __init__(self, offsets, W):
