@@ -23,6 +23,9 @@ def apply_bc(A, b, bcs, diag_val=1.):
     if not isinstance(A, block_mat):
         A = block_mat([[A]])
         has_wrapped_A = True
+
+    if b is None:
+        b = A.create_vec()
     
     if not isinstance(b, block_vec):
         assert has_wrapped_A
