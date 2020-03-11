@@ -25,7 +25,7 @@ class RestrictionFormAssembler(ReducedFormAssembler):
         return have_different_mesh
     
     def is_compatible(self, terminal, reduced_mesh):
-        assert all(hasattr(terminal, attr) for attr in self.attributes)
+        assert all(hasattr(terminal, attr) for attr in self.attributes), self.attributes
         assert terminal.restriction_['mesh'].id() == reduced_mesh.id()
         return True
 
