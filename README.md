@@ -41,3 +41,5 @@ session you can achieve this by `source setup.rc`.
     <img src="https://github.com/MiroK/fenics_ii/blob/master/apps/d123/visit0000.png">
   </p>
   
+  ## Citing
+  If you use FEniCS_ii for your work consider citing the arxiv [preprint](https://arxiv.org/abs/1912.09319)
