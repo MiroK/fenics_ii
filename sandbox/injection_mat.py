@@ -102,6 +102,46 @@ def stokes(mesh_c):
     return A, B, W
 
 
+def stokes_ii(mesh_c):
+
+    mesh_f = adapt(mesh_c)
+    Vf = VectorFunctionSpace(mesh_f, 'CG', 1)
+    # Pressure
+    Qc = FunctionSpace(mesh_c, 'CG', 1)
+    Qf = FunctionSpace(mesh_f, 'CG', 1)
+
+    W = [Vf, Qc]
+
+    uf, pc = map(TrialFunction, W)
+    vf, qc = map(TestFunction, W)
+
+    dxf = Measure('dx', domain=mesh_f)
+    pf, qf = Injection(pc, mesh_f), Injection(qc, mesh_f)
+    
+    a = block_form(W, 2)
+    a[0][0] = inner(grad(uf), grad(vf))*dxf
+    a[0][1] = inner(pf, div(vf))*dxf
+    a[1][0] = inner(qf, div(uf))*dxf
+
+    # Auxliary coarse problem
+    A = ii_assemble(a)
+
+    V_bcs = DirichletBC(Vf, Constant((0, 0)), 'near(x[0], 0)')
+    A, b = apply_bc(A, b=None, bcs=[V_bcs, []])
+
+    # Preconditioner
+    V_inner, _ = assemble_system(inner(grad(uf), grad(vf))*dx,
+                                 inner(Constant((0, 0)), vf)*dx,
+                                 bcs=V_bcs)
+
+    pc, qc = TrialFunction(Qc), TestFunction(Qc)
+    Q_inner = assemble(inner(pc, qc)*dx)
+
+    B = block_diag_mat([V_inner, Q_inner])
+
+    return A, B, W
+
+
 # --------------------------------------------------------------------
 
 if __name__ == '__main__':
@@ -129,7 +169,7 @@ if __name__ == '__main__':
     out = None
     for n in (2, 4, 8, 16, 32):
         mesh_c = UnitSquareMesh(n, n)
-        A, B, W = stokes(mesh_c)
+        A, B, W = stokes_ii(mesh_c)
 
         A = ii_convert(A).array()
         B = ii_convert(B).array()

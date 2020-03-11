@@ -2,6 +2,7 @@ import xii.assembler.trace_assembly
 import xii.assembler.average_assembly
 import xii.assembler.restriction_assembly
 import xii.assembler.extension_assembly
+import xii.assembler.injection_assembly
 
 from xii.linalg.matrix_utils import is_number
 from xii.assembler.ufl_utils import form_arity
@@ -21,9 +22,10 @@ def assemble(form):
     modules = (xii.assembler.trace_assembly,        # To Codimension 1
                xii.assembler.average_assembly,      # To Codimension 2 via surface of bding curve
                xii.assembler.extension_assembly,    # From dim 1 to 2
-               xii.assembler.restriction_assembly)  # Between Codimension 0
+               xii.assembler.restriction_assembly,
+               xii.assembler.injection_assembly)  # Between Codimension 0
 
-    names = ('trace', 'average', 'extension', 'restriction')
+    names = ('trace', 'average', 'extension', 'restriction', 'injection')
     
     if isinstance(form, Form):
         arity = form_arity(form)
