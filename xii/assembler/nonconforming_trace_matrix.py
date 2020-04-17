@@ -107,4 +107,4 @@ if __name__ == '__main__':
     mesh = UnitSquareMesh(32, 32)
     V = FunctionSpace(mesh, 'RT', 1)
 
-    print cg_element(V.ufl_element())
+    print(cg_element(V.ufl_element()))

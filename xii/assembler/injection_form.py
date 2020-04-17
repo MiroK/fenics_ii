@@ -81,4 +81,4 @@ def is_injection_integral(integral):
 
 def injection_integrals(form):
     '''Extract injection integrals from the form'''
-    return filter(is_injection_integral, form.integrals())
+    return list(filter(is_injection_integral, form.integrals()))

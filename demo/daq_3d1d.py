@@ -32,8 +32,8 @@ def setup_problem(i, f, eps=None):
     Q = FunctionSpace(bmesh, 'CG', 1)
     W = (V, Q)
 
-    u, p = map(TrialFunction, W)
-    v, q = map(TestFunction, W)
+    u, p = list(map(TrialFunction, W))
+    v, q = list(map(TestFunction, W))
 
     # Averaging surface
     cylinder = Circle(radius=radius, degree=quadrature_degree)

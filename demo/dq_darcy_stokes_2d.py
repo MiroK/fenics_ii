@@ -76,13 +76,13 @@ def setup_problem(i, data, eps=1.):
     M = FunctionSpace(iface_domain, 'DG', 0)
     W = [V1, Q1, Q]
 
-    u1, p1, p = map(TrialFunction, W)
-    v1, q1, q = map(TestFunction, W)
+    u1, p1, p = list(map(TrialFunction, W))
+    v1, q1, q = list(map(TestFunction, W))
     
     dxGamma = Measure('dx', domain=iface_domain)
     # We will need traces of the functions on the boundary
-    Tu1, Tv1 = map(lambda x: Trace(x, iface_domain), (u1, v1))
-    Tp, Tq = map(lambda x: Trace(x, iface_domain), (p, q))
+    Tu1, Tv1 = [Trace(x, iface_domain) for x in (u1, v1)]
+    Tp, Tq = [Trace(x, iface_domain) for x in (p, q)]
 
     n = OuterNormal(iface_domain, [0.5, 0.5])  # Outer of Darcy
     n1 = -n                                  # Outer of Stokes
@@ -165,8 +165,8 @@ def setup_preconditioner(W, which, eps):
         # -ksp_gmres_restart 30
         # -ksp_gmres_modifiedgramschmidt 1
     
-        u1, p1, p = map(TrialFunction, W)
-        v1, q1, q = map(TestFunction, W)
+        u1, p1, p = list(map(TrialFunction, W))
+        v1, q1, q = list(map(TestFunction, W))
 
         b00 = inner(grad(u1), grad(v1))*dx + inner(u1, v1)*dx
         B00 = AMG(ii_assemble(b00))
@@ -184,13 +184,13 @@ def setup_preconditioner(W, which, eps):
         
     M = FunctionSpace(iface_domain, 'DG', 0)
 
-    u1, p1, p = map(TrialFunction, W)
-    v1, q1, q = map(TestFunction, W)
+    u1, p1, p = list(map(TrialFunction, W))
+    v1, q1, q = list(map(TestFunction, W))
     
     dxGamma = Measure('dx', domain=iface_domain)
     # We will need traces of the functions on the boundary
-    Tu1, Tv1 = map(lambda x: Trace(x, iface_domain), (u1, v1))
-    Tp, Tq = map(lambda x: Trace(x, iface_domain), (p, q))
+    Tu1, Tv1 = [Trace(x, iface_domain) for x in (u1, v1)]
+    Tp, Tq = [Trace(x, iface_domain) for x in (p, q)]
 
     n = OuterNormal(iface_domain, [0.5, 0.5])  # Outer of Darcy
     n1 = -n                                  # Outer of Stokes
@@ -293,10 +293,10 @@ def setup_mms(eps):
 
     # NOTE: the multiplier is grad(u).n and with the chosen data this
     # means that it's zero on the interface
-    up = map(as_expression, (u1, p1, p2))  # The flux
-    fg = map(as_expression, (f, f1, f2, u1, u2, T(u1, p1)))
-    fg = dict(zip(['expr_%s' % s for s in ('f', 'f1', 'f2', 'u1', 'u2', 'stokes_stress')],
-                  fg))
+    up = list(map(as_expression, (u1, p1, p2)))  # The flux
+    fg = list(map(as_expression, (f, f1, f2, u1, u2, T(u1, p1))))
+    fg = dict(list(zip(['expr_%s' % s for s in ('f', 'f1', 'f2', 'u1', 'u2', 'stokes_stress')],
+                  fg)))
     
     return up, fg
 

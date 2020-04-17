@@ -127,7 +127,7 @@ if __name__ == '__main__':
     J = InterpolationMatrix(A, M, 0.25)
     K = InterpolationMatrix(A, M, -0.25)
 
-    print np.linalg.norm((inverse(0.1234*I)).array() - ((1./0.1234)*((I**-1).array())))
+    print(np.linalg.norm((inverse(0.1234*I)).array() - ((1./0.1234)*((I**-1).array()))))
 
     num = inverse(2.*I + 3*J + 10*K).array()
 
@@ -143,4 +143,4 @@ if __name__ == '__main__':
 
     true = np.linalg.inv(2*Imat.array() + 3*Jmat.array() + 10*Kmat.array())
 
-    print np.linalg.norm(num - true)
+    print(np.linalg.norm(num - true))

@@ -31,9 +31,9 @@ def setup_domain(n):
     return mesh1, mesh2, mesh12
 
     
-def setup_problem(i, (f1, f2, g), eps=None):
+def setup_problem(i, xxx_todo_changeme, eps=None):
     '''Just showcase, no MMS (yet)'''
-    # I setup the constants arbitraily
+    (f1, f2, g) = xxx_todo_changeme
     Alpha1, Alpha2 = Constant(5), Constant(1)
 
     n = 32*(2**i)
@@ -44,11 +44,11 @@ def setup_problem(i, (f1, f2, g), eps=None):
     Q = FunctionSpace(omega, 'CG', 1)
     W = (V1, V2, Q)
 
-    u1, u2, p = map(TrialFunction, W)
-    v1, v2, q = map(TestFunction, W)
+    u1, u2, p = list(map(TrialFunction, W))
+    v1, v2, q = list(map(TestFunction, W))
 
-    R_u1, R_v1 = map(lambda x: Restriction(x, omega), (u1, v1))
-    R_u2, R_v2 = map(lambda x: Restriction(x, omega), (u2, v2))
+    R_u1, R_v1 = [Restriction(x, omega) for x in (u1, v1)]
+    R_u2, R_v2 = [Restriction(x, omega) for x in (u2, v2)]
 
     dxOmega = Measure('dx', domain=omega)
 

@@ -21,9 +21,9 @@ from dolfin import *
 from xii import *
 
 
-def setup_problem(i, (f, h, u0), eps=1.):
+def setup_problem(i, xxx_todo_changeme, eps=1.):
     '''Just showcase, no MMS (yet)'''
-    # I setup the constants arbitraily
+    (f, h, u0) = xxx_todo_changeme
     n = 16*(2**i)
 
     mesh = UnitSquareMesh(n, n)
@@ -47,8 +47,8 @@ def setup_problem(i, (f, h, u0), eps=1.):
     M = VectorFunctionSpace(bmesh, 'CG', 1, 2)
     W = (V, Vb, Q, M)
 
-    u, ub, p, lambda_ = map(TrialFunction, W)
-    v, vb, q, beta_ = map(TestFunction, W)
+    u, ub, p, lambda_ = list(map(TrialFunction, W))
+    v, vb, q, beta_ = list(map(TestFunction, W))
     # Not trace of bubbles; that's zero anyways
     T_u, T_v = Trace(u, bmesh), Trace(v, bmesh)
 
@@ -85,8 +85,8 @@ def setup_preconditioner(W, which, eps):
     from block import block_transpose
     from hsmg import HsNorm
     
-    u, ub, p, lambda_ = map(TrialFunction, W)
-    v, vb, q, beta_ = map(TestFunction, W)
+    u, ub, p, lambda_ = list(map(TrialFunction, W))
+    v, vb, q, beta_ = list(map(TestFunction, W))
 
     # A block diagonal preconditioner
     if which == 0:
@@ -162,8 +162,8 @@ def setup_mms(eps):
     f = -sp_Div(sp_Grad(u)) + u - sp_grad(p)
     u0 = u
     
-    up = map(as_expression, (u, p, lambda_))
-    fg = map(as_expression, (f, h, u0))
+    up = list(map(as_expression, (u, p, lambda_)))
+    fg = list(map(as_expression, (f, h, u0)))
     
     return up, fg
 

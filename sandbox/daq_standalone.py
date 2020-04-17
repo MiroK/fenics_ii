@@ -29,8 +29,8 @@ V = FunctionSpace(mesh3d, 'CG', 1)
 Q = FunctionSpace(mesh1d, 'CG', 1)
 W = [V, Q]
 
-u, p = map(TrialFunction, W)
-v, q = map(TestFunction, W)
+u, p = list(map(TrialFunction, W))
+v, q = list(map(TestFunction, W))
 
 # Averaging surface is cylinder obtained by sweeping shape along 1d
 shape = Circle(radius=radius, degree=quadrature_degree)
@@ -55,7 +55,7 @@ L[0] = inner(f, T_v)*dxGamma
 L[1] = inner(f, q)*dxGamma
 
 # We assemble now into block_mat objects (not necessarily matrices)
-A, b = map(ii_assemble, (a, L))
+A, b = list(map(ii_assemble, (a, L)))
 # Suppose now that there are also boundary conditions; we specify them
 # as a list for every subspace
 V_bcs = [DirichletBC(V, Constant(0), 'near(x[2], 0)')]
@@ -65,8 +65,8 @@ W_bcs = [V_bcs, Q_bcs]
 A, b = apply_bc(A, b, W_bcs)
 
 # Just checking if the off-diagonal block sane
-print '|A01| and |A10|', A[0][1].norm('linf'), A[1][0].norm('linf')
-print '# Unknowns', sum(Wi.dim() for Wi in W)
+print('|A01| and |A10|', A[0][1].norm('linf'), A[1][0].norm('linf'))
+print('# Unknowns', sum(Wi.dim() for Wi in W))
 
 wh = ii_Function(W)
 # Here A is still a block operator
@@ -75,7 +75,7 @@ solve = 'gmres'
 # If the system is to be solved directly there are some extra steps
 if solve == 'lu':
     # Make the system monolithic
-    A, b = map(ii_convert, (A, b))
+    A, b = list(map(ii_convert, (A, b)))
 
     LUSolver(A).solve(wh.vector(), b)
 # Iterative
@@ -94,8 +94,8 @@ else:
         wh[i].vector()[:] = x[i]
     
 # Hope for no NaN
-print wh[0].vector().norm('l2')
-print wh[1].vector().norm('l2')
+print(wh[0].vector().norm('l2'))
+print(wh[1].vector().norm('l2'))
 
 # Output
 File('uh3d.pvd') << wh[0]

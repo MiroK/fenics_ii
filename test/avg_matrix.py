@@ -1,3 +1,4 @@
+import sys; sys.path.insert(0, '/home/anci/Dropbox/SIMULA/fenics_hazmath/fenics_ii')
 from xii import *
 from dolfin import *
 
@@ -46,4 +47,4 @@ if __name__ == '__main__':
             rate = -1
         h0, e0 = h, e
         
-        print(h, e, rate)
+        print((h, e, rate))

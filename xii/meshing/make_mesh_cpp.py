@@ -1,4 +1,4 @@
-from dolfin import compile_extension_module as compile_cpp
+from dolfin import compile_cpp_code
 from dolfin import Mesh, MeshEditor
 
 code='''
@@ -12,6 +12,7 @@ code='''
 #include <algorithm>
 #include <unordered_set>
 #include <map>
+#include <pybind11/pybind11.h>
 
 namespace dolfin {
   // Fills a SIMPLICIAL mesh
@@ -59,8 +60,13 @@ namespace dolfin {
      editor.close();
   }
 };
+PYBIND11_MODULE(SIGNATURE, m)
+{
+    m.def("fill_mesh", &dolfin::fill_mesh);
+}
 '''
-module = compile_cpp(code)
+# 2019.1.0
+module = compile_cpp_code(code)
 
 
 def make_mesh(coordinates, cells, tdim, gdim, mesh=None):

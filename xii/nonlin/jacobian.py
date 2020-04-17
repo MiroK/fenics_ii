@@ -1,5 +1,5 @@
 from xii.assembler.ufl_utils import replace as ii_replace
-from itertools import ifilter
+
 import dolfin as df
 import ufl
 
@@ -26,7 +26,7 @@ def block_jacobian(bf, foos):
     assert all(isinstance(f, df.Coefficient) for f in foos)
 
     # Each row is supposed to be a function in a non-mixed function space
-    test_functions = map(is_okay_functional, bf)
+    test_functions = list(map(is_okay_functional, bf))
     # Have them ordered the same way as foo
     assert all(t.function_space() == f.function_space()
                for t, f in zip(test_functions, foos))
@@ -54,7 +54,7 @@ def restriction_type(x):
 
 def get_trialfunction(f):
     '''Extract (pointer) to trial function of the object'''
-    return next(ifilter(lambda x: x.number() == 1, f.arguments()))
+    return next(filter(lambda x: x.number() == 1, f.arguments()))
 
 
 def ii_derivative(f, x):
@@ -72,7 +72,7 @@ def ii_derivative(f, x):
     # NOTE: in the following I try to avoid assembly of zero forms because
     # these might not be well-defined for xii assembler. Also, assembling
     # zeros is useless
-    for fi in filter(lambda c: not isinstance(c, df.Constant), f.coefficients()):
+    for fi in [c for c in f.coefficients() if not isinstance(c, df.Constant)]:
         # Short circuit if (partial fi)/(partial x) is 0
         if not ((fi == x) or fi.vector().id() == x.vector().id()): continue
 
@@ -163,7 +163,7 @@ if __name__ == '__main__':
     W = [V, Q]
 
     u, p = interpolate(Constant(2), V), interpolate(Constant(1), Q)
-    v, q = map(TestFunction, W)
+    v, q = list(map(TestFunction, W))
     Tu, Tv = (Trace(x, bmesh) for x in (u, v))
 
     # NOTE in the tests below `is_linear` assigns to u making it nonzero

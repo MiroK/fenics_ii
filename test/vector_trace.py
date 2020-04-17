@@ -23,7 +23,7 @@ Tv = Function(TV)
 Trace.mult(v.vector(), Tv.vector())
 
 Tv0.vector().axpy(-1, Tv.vector())
-print Tv0.vector().norm('linf')
+print(Tv0.vector().norm('linf'))
 
 
 V = VectorFunctionSpace(mesh, 'CG', 2)
@@ -40,4 +40,4 @@ Tv = Function(TV)
 Trace.mult(v.vector(), Tv.vector())
 
 Tv0.vector().axpy(-1, Tv.vector())
-print Tv0.vector().norm('linf')
+print(Tv0.vector().norm('linf'))

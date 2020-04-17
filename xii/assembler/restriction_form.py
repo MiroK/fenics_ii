@@ -67,4 +67,4 @@ def is_restriction_integral(integral):
 
 def restriction_integrals(form):
     '''Extract restriction integrals from the form'''
-    return filter(is_restriction_integral, form.integrals())
+    return list(filter(is_restriction_integral, form.integrals()))

@@ -72,7 +72,7 @@ def Average(v, line_mesh, shape):
         if hasattr(line_mesh, 'parent_entity_map'):
             assert v_family == 'Lagrange', '3d1d trace undefined for %s' % v_family
         # Otherise the hope is that we will eval in cell interior which
-        print '\tUsing 3d-1d trace!!!!'
+        print('\tUsing 3d-1d trace!!!!')
         
     if isinstance(v, df.Coefficient):
         v =  df.Function(v.function_space(), v.vector())
@@ -113,4 +113,4 @@ def is_average_integral(integral):
 
 def average_integrals(form):
     '''Extract trace integrals from the form'''
-    return filter(is_average_integral, form.integrals())
+    return list(filter(is_average_integral, form.integrals()))

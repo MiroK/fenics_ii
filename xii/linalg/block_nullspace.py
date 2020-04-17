@@ -10,7 +10,7 @@ class BlockNullspace(object):
             return
 
         BlockNullspace.__init__(self, W)
-        map(self.add_vector, vectors)
+        list(map(self.add_vector, vectors))
 
     def __len__(self):
         return len(self.vectors)

@@ -14,9 +14,8 @@ from xii.assembler.average_form import average_space
 Quadrature = namedtuple('quadrature', ('points', 'weights'))
 
 
-class BoundingSurface:
+class BoundingSurface(metaclass=ABCMeta):
     '''Shape used for reducing a 3d function to 1d by carrying out integration'''
-    __metaclass__ = ABCMeta
     
     @abstractmethod
     def quadrature(self, x0, n):
@@ -71,10 +70,10 @@ class Square(BoundingSurface):
         wq = wq*size
 
         # 2D
-        wq = map(np.prod, product(wq, wq))
+        wq = list(map(np.prod, product(wq, wq)))
         
-        xq = map(np.array, product(xq, xq))
-        Txq = map(sq, xq)
+        xq = list(map(np.array, product(xq, xq)))
+        Txq = list(map(sq, xq))
         
         return Quadrature(Txq, wq)
 
@@ -132,7 +131,7 @@ class SquareRim(BoundingSurface):
         # One for each side
         wq = np.repeat(wq, 4)
 
-        Txq = sum(map(sq_bdry, xq), [])
+        Txq = sum(list(map(sq_bdry, xq)), [])
 
         return Quadrature(Txq, wq)
 
@@ -175,7 +174,7 @@ class Circle(BoundingSurface):
 
         R = self.radius(x0)
         # Circle viewed from reference
-        Txq = map(Circle.map_from_reference(x0, n, R), xq)
+        Txq = list(map(Circle.map_from_reference(x0, n, R), xq))
         # Scaled weights (R is jac of T, pi is from theta=pi*(-1, 1)
         wq = wq*R*np.pi
 
@@ -223,7 +222,7 @@ class Disk(BoundingSurface):
 
         R = self.radius(x0)
         # Circle viewed from reference
-        Txq = map(Disk.map_from_reference(x0, n, R), xq)
+        Txq = list(map(Disk.map_from_reference(x0, n, R), xq))
         # Scaled weights (R is jac of T, pi is from theta=pi*(-1, 1)
         wq = wq*R**2
 

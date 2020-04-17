@@ -138,7 +138,7 @@ if __name__ == '__main__':
     dofs.cell = cell
     dofs.dof = local_dof
 
-    print dofs.eval(f), dofs.eval(g.as_expression())
+    print(dofs.eval(f), dofs.eval(g.as_expression()))
 
     x = Cell(mesh, cell).midpoint().array()[:2]
-    print f(x), g(x)
+    print(f(x), g(x))

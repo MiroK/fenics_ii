@@ -21,7 +21,7 @@ def memoize_ext(ext_mat):
                data['type'])
 
         if data['data'] is not None:
-            key = sum(data['data'].items(), key)
+            key = sum(list(data['data'].items()), key)
             
         if key not in cache:
             cache[key] = ext_mat(V, TV, extended_mesh, data)
@@ -141,7 +141,7 @@ def harmonic_extension_operator(V, EV, auxiliary_facet_f):
             a = df.inner(df.grad(u), df.grad(v))*df.dx + df.inner(u, v)*df.dx
             L = df.inner(f, Trace(v, gamma_mesh))*df.dx(domain=gamma_mesh)
 
-            A, b = map(xii.assembler.xii_assembly.assemble, (a, L))
+            A, b = list(map(xii.assembler.xii_assembly.assemble, (a, L)))
             # We have boundary conditions to apply
             # bc = df.DirichletBC(V2, df.Constant(0), auxiliary_facet_f, 1)
             # A, b = apply_bc(A, b, bc)
@@ -158,7 +158,7 @@ def harmonic_extension_operator(V, EV, auxiliary_facet_f):
             a = df.inner(p, q)*df.dx
             L = df.inner(f, q)*df.dx(domain=ext_mesh)
 
-            A, b  = map(xii.assembler.xii_assembly.assemble, (a, L))
+            A, b  = list(map(xii.assembler.xii_assembly.assemble, (a, L)))
             # We have boundary conditions to apply
             # FIXME: inherit from uh?
             # bc = df.DirichletBC(Q, uh, 'on_boundary')

@@ -49,4 +49,4 @@ def is_point_trace_integral(integral):
 
 def point_trace_integrals(form):
     '''Extract point trace integrals from the form'''
-    return filter(is_point_trace_integral, form.integrals())
+    return list(filter(is_point_trace_integral, form.integrals()))

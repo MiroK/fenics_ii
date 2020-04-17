@@ -12,8 +12,8 @@ V = FunctionSpace(mesh, 'CG', 1)
 Q = FunctionSpace(bmesh, 'CG', 1)
 W = [V, Q]
 
-u, p = map(TrialFunction, W)
-v, q = map(TestFunction, W)
+u, p = list(map(TrialFunction, W))
+v, q = list(map(TestFunction, W))
 Tu = Trace(u, bmesh)
 Tv = Trace(v, bmesh)
 
@@ -33,9 +33,9 @@ a = [[a00, a01], [a10, 0]]
 L = [L0, L1]
 
 
-AA, bb = map(ii_assemble, (a, L))
+AA, bb = list(map(ii_assemble, (a, L)))
 
-AA, bb = map(ii_convert, (AA, bb))
+AA, bb = list(map(ii_convert, (AA, bb)))
 
 wh = ii_Function(W)
 solve(AA, wh.vector(), bb)

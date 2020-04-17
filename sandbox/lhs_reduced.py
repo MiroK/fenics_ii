@@ -24,7 +24,7 @@ for cell in cells(_mesh):
     else:
         subdomains[cell] = 0
 
-submeshes, interface, _ = mortar_meshes(subdomains, range(2), strict=True, tol=EPS)
+submeshes, interface, _ = mortar_meshes(subdomains, list(range(2)), strict=True, tol=EPS)
 
 
 stokes_domain = submeshes[0]
@@ -49,21 +49,17 @@ W = [Vp, Qp, U, Vf, Qf, X]
 
 
 ## this is where the troubles start
-up, pp, dp, uf, pf, lbd = map(TrialFunction, W)
-vp, wp, ep, vf, wf, mu = map(TestFunction, W)
+up, pp, dp, uf, pf, lbd = list(map(TrialFunction, W))
+vp, wp, ep, vf, wf, mu = list(map(TestFunction, W))
 
-up_prev, pp_prev, dp_prev, uf_prev, pf_prev, lbd_prev = map(Function, W)
+up_prev, pp_prev, dp_prev, uf_prev, pf_prev, lbd_prev = list(map(Function, W))
 # up_prev, pp_prev, dp_prev, uf_prev, pf_prev, lbd_prev = ii_Function(W)
 
 
 
-Tup, Tdp, Tuf = map(lambda x: Trace(x, interface),
-                    [up, dp, uf]
-)
+Tup, Tdp, Tuf = [Trace(x, interface) for x in [up, dp, uf]]
         
-Tvp, Tep, Tvf = map(lambda x: Trace(x, interface),
-                    [vp, ep, vf]
-)
+Tvp, Tep, Tvf = [Trace(x, interface) for x in [vp, ep, vf]]
 
 
 

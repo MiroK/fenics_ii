@@ -24,7 +24,7 @@ Trace.mult(f_.vector(), Tf.vector())
 g_ = interpolate(g, TV)
 ans = assemble(inner(Tf, g_)*dx(domain=bmesh))
 true = true(mesh)
-print (ans - true), ans
+print((ans - true), ans)
 
 # Approximation
 e0, h0 = None, None
@@ -51,4 +51,4 @@ for n in (4, 8, 16, 32):
         rate = None
     e0, h0 = ans-true, h
     
-    print n, '->', abs(ans - true), ans, rate
+    print(n, '->', abs(ans - true), ans, rate)
