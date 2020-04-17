@@ -12,28 +12,39 @@ import numpy as np
 def memoize_inj(inj_mat):
     '''Cached injection'''
     cache = {}
-    def cached_inj_mat(Vc, Vf):
+    def cached_inj_mat(Vc, Vf, fine_mesh, data):
         key = ((Vc.ufl_element(), Vc.mesh().id()),
-               (Vf.ufl_element(), Vf.mesh().id()))
+               (Vf.ufl_element(), Vf.mesh().id()),
+               fine_mesh.id())
                
         if key not in cache:
-            cache[key] = inj_mat(Vc, Vf)
+            cache[key] = inj_mat(Vc, Vf, fine_mesh, data)
         return cache[key]
 
     return cached_inj_mat
 
 
 @memoize_inj
-def injection_matrix(Vc, Vf):
+def injection_matrix(Vc, Vf, fine_mesh, data):
     '''Injection mapping from Vc to Vf'''
     mesh_c = Vc.mesh()
+    assert fine_mesh.id() == Vf.mesh().id()
     mesh_f = Vf.mesh()
 
     assert mesh_f.has_parent() and mesh_c.has_child()
     assert mesh_f.parent().id() == mesh_c.id()
 
-    fine_to_coarse = mesh_f.data().array('parent_cell', mesh_f.topology().dim())
-    
+    tdim = mesh_f.topology().dim()
+    # NOTE: if mesh_f came from adapt of coarse then we can access the
+    # data through API
+    if mesh_f.data().exists('parent_cell', tdim):
+        fine_to_coarse = mesh_f.data().array('parent_cell', tdim)
+    # FIXME: However, I can't do it when I refine myself to as a fall back
+    else:
+        keys, fine_to_coarse = zip(*fine_mesh.parent_entity_map[mesh_c.id()][tdim].items())
+        fine_to_coarse = np.array(fine_to_coarse, dtype='uintp')
+        fine_to_coarse[np.argsort(keys)] = fine_to_coarse
+        
     # The idea is to evaluate Vf's degrees of freedom at basis functions of Vc
     fdmap = Vf.dofmap()
     Vf_dof = DegreeOfFreedom(Vf)
