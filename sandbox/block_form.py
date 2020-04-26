@@ -1,5 +1,8 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from dolfin import FunctionSpace
 import numpy as np
+from six.moves import map
 
 
 def first(iterable):
@@ -19,7 +22,7 @@ def zeros(V, Q=None):
         if elmtype(V) is FunctionSpace:
             return [0]*len(V)
     
-        return map(zeros, V)
+        return list(map(zeros, V))
     else:
         return np.kron(zeros(V), zeros(Q))
 
@@ -52,10 +55,10 @@ if __name__ == '__main__':
     mesh = UnitSquareMesh(32, 32)
     V = FunctionSpace(mesh, 'CG', 1)
 
-    print zeros(V)
-    print zeros([V, V])
-    print zeros([[V, V, V], [V, V]])
+    print(zeros(V))
+    print(zeros([V, V]))
+    print(zeros([[V, V, V], [V, V]]))
 
-    print zeros(V, V)
-    print zeros([V, V], V)
-    print zeros([[V, V, V], [V, V]], [V, V])
+    print(zeros(V, V))
+    print(zeros([V, V], V))
+    print(zeros([[V, V, V], [V, V]], [V, V]))

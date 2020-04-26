@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from xii.linalg.matrix_utils import petsc_serial_matrix, is_number
 from xii.assembler.average_form import average_cell, average_space
 
@@ -5,6 +6,8 @@ from numpy.polynomial.legendre import leggauss
 from dolfin import PETScMatrix, cells, Point, Cell, Function
 from petsc4py import PETSc
 import numpy as np
+from six.moves import range
+from six.moves import zip
 
 
 def memoize_average(average_mat):
@@ -126,7 +129,7 @@ def average_matrix(V, TV, shape):
                             
                 # The thing now that with data we can assign to several
                 # rows of the matrix
-                column_indices = np.array(data.keys(), dtype='int32')
+                column_indices = np.array(list(data.keys()), dtype='int32')
                 for shift in range(value_size):
                     row = scalar_row + shift
                     column_values = np.array([data[col][shift] for col in column_indices])

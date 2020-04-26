@@ -8,8 +8,11 @@
 #  eps(u1 - u2) + grad(u1).n1 = g on \Gamma
 #  grad(u1).n1 = 0 in \partial\Omega_1
 
+from __future__ import absolute_import
+from __future__ import print_function
 from dolfin import *
 from xii import *
+from six.moves import map
 
 
 def setup_domain(n):
@@ -38,8 +41,9 @@ def setup_domain(n):
     return outer_mesh, inner_mesh, gamma_mesh
 
 
-def setup_problem(i, (f1, f2, g), eps):
+def setup_problem(i, xxx_todo_changeme, eps):
     '''EMI like problem with mortaring'''
+    (f1, f2, g) = xxx_todo_changeme
     n = 4*2**i
 
     outer_mesh, inner_mesh, gamma_mesh = setup_domain(n)
@@ -49,13 +53,13 @@ def setup_problem(i, (f1, f2, g), eps):
     Q = FunctionSpace(gamma_mesh, 'CG', 1)
     W = [V1, V2, Q]
 
-    u1, u2, p = map(TrialFunction, W)
-    v1, v2, q = map(TestFunction, W)
+    u1, u2, p = list(map(TrialFunction, W))
+    v1, v2, q = list(map(TestFunction, W))
 
     dxGamma = Measure('dx', domain=gamma_mesh)
     # We will need traces of the functions on the boundary
-    Tu1, Tu2 = map(lambda x: Trace(x, gamma_mesh), (u1, u2))
-    Tv1, Tv2 = map(lambda x: Trace(x, gamma_mesh), (v1, v2))
+    Tu1, Tu2 = [Trace(x, gamma_mesh) for x in (u1, u2)]
+    Tv1, Tv2 = [Trace(x, gamma_mesh) for x in (v1, v2)]
 
     a00 = inner(grad(u1), grad(v1))*dx + inner(u1, v1)*dx
     a01 = 0
@@ -94,7 +98,7 @@ def setup_preconditioner(W, which, eps):
 
     if which == 0:
         # H1
-        print '\tUsing H1 x H1 x (sqrt(1./%g)*L2 \cap H-0.5) preconditioner' % eps
+        print('\tUsing H1 x H1 x (sqrt(1./%g)*L2 \cap H-0.5) preconditioner' % eps)
         u1, v1 = TrialFunction(V1), TestFunction(V1)
         b00 = inner(grad(u1), grad(v1))*dx + inner(u1, v1)*dx
         # Inverted by BoomerAMG
@@ -108,7 +112,7 @@ def setup_preconditioner(W, which, eps):
         # The Q norm via spectral, the norm is inverted exactly
         B22 = inverse((HsNorm(Q, s=-0.5) + (eps**-1)*HsNorm(Q, s=0.0)))
     else:
-        print '\tUsing (H1 \cap H0.5) x (H1 \cap H0.5) x sqrt(%g)*L2 preconditioner' % eps
+        print('\tUsing (H1 \cap H0.5) x (H1 \cap H0.5) x sqrt(%g)*L2 preconditioner' % eps)
 
         iface = Q.mesh()
         dxGamma = dx(domain=iface)
@@ -151,8 +155,8 @@ def setup_mms(eps):
     g = (u1 - u2)*EPS  
     # NOTE: the multiplier is grad(u).n and with the chosen data this
     # means that it's zero on the interface
-    up = map(as_expression, (u1, u2, sp.S(0)))  # The flux
-    f = map(as_expression, (f1, f2))
+    up = list(map(as_expression, (u1, u2, sp.S(0))))  # The flux
+    f = list(map(as_expression, (f1, f2)))
     g = as_expression(g, EPS=eps)  # Prevent recompilation
 
     return up, f+[g]

@@ -1,6 +1,11 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from xii.meshing.make_mesh_cpp import make_mesh
 from itertools import combinations, count
 import numpy as np
+from six.moves import map
+from six.moves import range
+from six.moves import zip
 
 
 def inner_point_refine(mesh, new_pts, strict):
@@ -37,7 +42,7 @@ def inner_point_refine(mesh, new_pts, strict):
     child2parent = np.empty(ncells*nvtx_cell, dtype='uintp')
     fine_cells = np.empty((ncells*nvtx_cell, nvtx_cell), dtype='uintp')
     # How we build new cells
-    basis = map(list, combinations(range(nvtx_cell), nvtx_cell-1))
+    basis = list(map(list, combinations(list(range(nvtx_cell)), nvtx_cell-1)))
 
     fine_coords = np.row_stack([x, xnew])
     
@@ -143,7 +148,7 @@ def simplices(x, cell):
     '''Insert x to cell'''
     # Subdivide interval AB -> AX, BX
     nvtx = len(cell)
-    for other in map(list, combinations(range(nvtx), nvtx-1)):
+    for other in map(list, combinations(list(range(nvtx)), nvtx-1)):
         yield np.row_stack([x, cell[other]])
 
         
@@ -207,7 +212,7 @@ if __name__ == '__main__':
 
     meshes = {}
     for name, refine in refine_ways.items():
-        print '>>>>>>>>>>>>>>>>>>>%s<<<<<<<<<<<<<<<<<<<' % name
+        print('>>>>>>>>>>>>>>>>>>>%s<<<<<<<<<<<<<<<<<<<' % name)
         fine_mesh = refine(mesh)
         meshes[name] = fine_mesh
         assert fine_mesh.has_parent()

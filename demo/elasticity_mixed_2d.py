@@ -7,12 +7,16 @@
 # with the boundary conditions enforced weakly by Lagrange multiplier.
 #
 # Here solved in mixed formulation with lmbda*div(u) = p
+from __future__ import absolute_import
 from dolfin import *
 from xii import *
+from six.moves import map
+from six.moves import range
 
 
-def setup_problem(i, (f, g), eps=None):
+def setup_problem(i, xxx_todo_changeme, eps=None):
     '''Elasticity on [0, 1]^2'''
+    (f, g) = xxx_todo_changeme
     assert len(eps) == 2
     
     n = 4*2**i
@@ -30,8 +34,8 @@ def setup_problem(i, (f, g), eps=None):
     Y = VectorFunctionSpace(bmesh, 'CG', 1)
     W = [V, Q, Y]
 
-    u, p, x = map(TrialFunction, W)
-    v, q, y = map(TestFunction, W)
+    u, p, x = list(map(TrialFunction, W))
+    v, q, y = list(map(TestFunction, W))
     Tu = Trace(u, bmesh)
     Tv = Trace(v, bmesh)
 

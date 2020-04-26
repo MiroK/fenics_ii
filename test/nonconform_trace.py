@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from dolfin import *
 from xii import *
 
@@ -25,7 +27,7 @@ ph = interpolate(p, Q)
 
 Tf = Function(Q).vector()
 B.mult(fh.vector(), Tf)
-print true, ph.vector().inner(Tf)
+print(true, ph.vector().inner(Tf))
 
 # One more
 f, p = Constant(1), Expression('x[0]+x[1]', degree=1)
@@ -36,7 +38,7 @@ ph = interpolate(p, Q)
 
 Tf = Function(Q).vector()
 B.mult(fh.vector(), Tf)
-print true, ph.vector().inner(Tf)
+print(true, ph.vector().inner(Tf))
 
 # And one more
 f, p = Expression('2*x[0]-x[1]', degree=1), Expression('x[0]+x[1]', degree=1)
@@ -47,4 +49,4 @@ ph = interpolate(p, Q)
 
 Tf = Function(Q).vector()
 B.mult(fh.vector(), Tf)
-print true, ph.vector().inner(Tf)
+print(true, ph.vector().inner(Tf))

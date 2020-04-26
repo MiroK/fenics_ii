@@ -10,15 +10,19 @@
 # Here the manifold is taken as (part of) surface of the cube [-inner, inner]^3
 
 
+from __future__ import absolute_import
+from __future__ import print_function
 from xii import *
 from dolfin import *
+from six.moves import map
+from six.moves import range
 
 
 def main(f, mesh_generator):
     '''Coupled 3d-2d-1d Poisson problems driven only by the 1d force f'''
     t = Timer('mesh'); t.start()
     mesh3d, mesh2d, mesh1d = mesh_generator()
-    print '\tGot mesh in %g s' % t.stop()
+    print('\tGot mesh in %g s' % t.stop())
 
     t = Timer('system'); t.start()
     # Temperatures
@@ -28,10 +32,10 @@ def main(f, mesh_generator):
 
     W = (V3, V2, V1, Q2, Q1)
 
-    print 'Total unknowns', sum(Wi.dim() for Wi in W), 'in 1d', V1.dim()
+    print('Total unknowns', sum(Wi.dim() for Wi in W), 'in 1d', V1.dim())
     
-    u3, u2, u1, p2, p1 = map(TrialFunction, W)
-    v3, v2, v1, q2, q1 = map(TestFunction, W)
+    u3, u2, u1, p2, p1 = list(map(TrialFunction, W))
+    v3, v2, v1, q2, q1 = list(map(TestFunction, W))
     # I will refer to the 2d surface as S and the curve as G
     dxS = Measure('dx', domain=mesh2d)
     TS_u3, TS_v3 = (Trace(x, mesh2d) for x in (u3, v3)) 
@@ -64,18 +68,18 @@ def main(f, mesh_generator):
          inner(Constant(0), q2)*dxS,
          inner(f, q1)*dxG]
 
-    AA, bb = map(ii_assemble, (a, L))
-    print '\tPerformed ii_assemble in %g s' % t.stop()
+    AA, bb = list(map(ii_assemble, (a, L)))
+    print('\tPerformed ii_assemble in %g s' % t.stop())
 
     wh = ii_Function(W)
 
     t = Timer('convert'); t.start()
-    AAm, bbm = map(ii_convert, (AA, bb))
-    print '\tPerformed ii_convert in %g s' % t.stop()
+    AAm, bbm = list(map(ii_convert, (AA, bb)))
+    print('\tPerformed ii_convert in %g s' % t.stop())
 
     t = Timer('solve'); t.start()        
     LUSolver('umfpack').solve(AAm, wh.vector(), bbm)
-    print '\tSolved in %g s' % t.stop()
+    print('\tSolved in %g s' % t.stop())
     
     for i, wh_i in enumerate(wh):
         wh_i.rename('u', str(i))

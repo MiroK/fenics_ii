@@ -2,6 +2,9 @@
 # b is not an array of vector object but of numbers! As a workaround
 # we'll do things with lists
 
+from __future__ import absolute_import
+from six.moves import map
+from functools import reduce
 def shape_list(lst):
     '''Shape of a list (of lists of list)'''
     if not isinstance(lst, list) or not lst: return ()

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from xii.assembler.restriction_form import *
 from xii.assembler.ufl_utils import *
 from xii.assembler.restriction_matrix import restriction_mat

@@ -1,6 +1,11 @@
+from __future__ import absolute_import
 import subprocess, os
 import dolfin as df
 from xii import EmbeddedMesh
+import six
+from six.moves import map
+from six.moves import range
+from six.moves import zip
 
 
 def convert(msh_file, h5_file):
@@ -41,11 +46,11 @@ def convert(msh_file, h5_file):
     assert os.path.exists(h5_file)
 
     # Cleanup
-    map(os.remove, [f for f in os.listdir('.')
-                    if f.endswith('.xml') and f.startswith('domain')])
+    list(map(os.remove, [f for f in os.listdir('.')
+                    if f.endswith('.xml') and f.startswith('domain')]))
     
-    map(os.remove, [f for f in os.listdir('.')
-                    if f.endswith('.msh') and f.startswith('domain')])
+    list(map(os.remove, [f for f in os.listdir('.')
+                    if f.endswith('.msh') and f.startswith('domain')]))
     
     return True
 
@@ -128,7 +133,7 @@ def boring(mesh_2d, inner_size):
                        'near(x[1], A, tol) && near(x[0], -A, tol)',
                        'near(x[1], -A, tol) && near(x[0], -A, tol)'])}
              
-    for tag, line in lines.iteritems():
+    for tag, line in six.iteritems(lines):
         # Get candidates
         facets = set(sum((cell.entities(1).tolist()
                           for cell in df.SubsetIterator(mesh_2d.marking_function, tag))
@@ -152,9 +157,9 @@ def fun(mesh2d, nselects):
 
     edge_indices = {tuple(sorted(facet.entities(0).tolist())): f_index
                     for f_index, facet in enumerate(df.facets(mesh2d))}
-    G.add_edges_from(edge_indices.iterkeys())
+    G.add_edges_from(six.iterkeys(edge_indices))
 
-    vertices = range(mesh2d.num_vertices())
+    vertices = list(range(mesh2d.num_vertices()))
     for _ in range(nselects):
         v0, v1 = random.sample(vertices, 2)
         if v0 == v1: continue

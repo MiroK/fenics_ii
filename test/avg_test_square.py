@@ -1,9 +1,12 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from dolfin import *
 from xii.meshing.make_mesh_cpp import make_mesh
 from xii.assembler.average_matrix import curve_average_matrix
 from xii.assembler.average_shape import Square
 from xii import EmbeddedMesh
 import numpy as np
+from six.moves import range
 
 
 surface_average_matrix = lambda V, TV, bdry_curve: curve_average_matrix(V, TV, bdry_curve, which='surface')
@@ -39,7 +42,7 @@ def test(f, n, P, degree=8):
     cylinder = Square(P, degree)
 
     Pi = surface_average_matrix(V, TV, cylinder)
-    print '\t', Pi.norm('linf'), max(len(Pi.getrow(i)[0]) for i in range(TV.dim()))
+    print('\t', Pi.norm('linf'), max(len(Pi.getrow(i)[0]) for i in range(TV.dim())))
     
     Pi_f = Function(TV)
     Pi.mult(f.vector(), Pi_f.vector())
@@ -81,7 +84,7 @@ if __name__ == '__main__':
     e0, n0 = None, None
     for n in (4, 8, 16, 32):
         Pi_f = test(f, n, P)
-        print Pi_f(0, 0, 0.5)
+        print(Pi_f(0, 0, 0.5))
         assert Pi_f.vector().norm('l2') > 0
         e = sqrt(abs(assemble(inner(Pi_f0 - Pi_f, Pi_f0 - Pi_f)*dx)))
 
@@ -90,6 +93,6 @@ if __name__ == '__main__':
         else:
             rate = np.inf
 
-        print 'error %g, rate=%.2f' % (e, rate)
+        print('error %g, rate=%.2f' % (e, rate))
         
         n0, e0 = n, e

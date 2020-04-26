@@ -1,3 +1,4 @@
+from __future__ import print_function
 from . convert import convert as ii_convert
 from . convert import collapse as ii_collapse
 from . convert import set_lg_map
@@ -10,6 +11,6 @@ from . block_nullspace import BlockNullspace
 try:
     from . hsmg_utils import inverse
 except ImportError:
-    print 'Missing HsMG for fract norm computing'
+    print('Missing HsMG for fract norm computing')
     pass
 

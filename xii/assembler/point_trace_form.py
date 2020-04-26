@@ -1,8 +1,10 @@
+from __future__ import absolute_import
 from ufl.corealg.traversal import traverse_unique_terminals
 from xii.assembler.ufl_utils import *
 import dolfin as df
 import numpy as np
 import ufl
+from six.moves import filter
 
 
 def point_trace_cell(o):
@@ -49,4 +51,4 @@ def is_point_trace_integral(integral):
 
 def point_trace_integrals(form):
     '''Extract point trace integrals from the form'''
-    return filter(is_point_trace_integral, form.integrals())
+    return list(filter(is_point_trace_integral, form.integrals()))

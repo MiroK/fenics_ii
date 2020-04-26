@@ -5,12 +5,15 @@
 # To be solved with Lagrange multiplier to enforce bcs rather then
 # enforcing them on the function space level.
 
+from __future__ import absolute_import
 from dolfin import *
 from xii import *
+from six.moves import map
 
 
-def setup_problem(i, (f, g), eps=None):
+def setup_problem(i, xxx_todo_changeme, eps=None):
     '''curl-curl on [0, 1]^2'''
+    (f, g) = xxx_todo_changeme
     n = 4*2**i
     mesh = UnitSquareMesh(*(n, )*2)
     bmesh = BoundaryMesh(mesh, 'exterior')
@@ -19,8 +22,8 @@ def setup_problem(i, (f, g), eps=None):
     Q = FunctionSpace(bmesh, 'DG', 0)
     W = [S, Q]
     
-    sigma, p = map(TrialFunction, W)
-    tau, q = map(TestFunction, W)
+    sigma, p = list(map(TrialFunction, W))
+    tau, q = list(map(TestFunction, W))
 
     dxGamma = dx(domain=bmesh)        
     n_gamma = OuterNormal(bmesh, [0.5, 0.5])
@@ -90,7 +93,7 @@ def setup_mms(eps=None):
     sigma_exact = as_expression(sigma)
     # It's quite nice that you get surface curl as the extra varp
     p_exact = as_expression(sp_curl(sigma))
-    f_rhs, g_rhs = map(as_expression, (f, g))
+    f_rhs, g_rhs = list(map(as_expression, (f, g)))
 
     return (sigma_exact, p_exact), (f_rhs, g_rhs)
 

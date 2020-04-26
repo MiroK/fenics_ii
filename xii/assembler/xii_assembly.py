@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import xii.assembler.trace_assembly
 import xii.assembler.average_assembly
 import xii.assembler.restriction_assembly
@@ -12,6 +13,8 @@ from block import block_vec, block_mat
 from ufl.form import Form
 import dolfin as df
 import numpy as np
+from six.moves import map
+from six.moves import zip
 
 
 def assemble(form):
@@ -42,6 +45,6 @@ def assemble(form):
 
     shape = shape_list(form)
     # Recurse
-    blocks = reshape_list(map(assemble, flatten_list(form)), shape)
+    blocks = reshape_list(list(map(assemble, flatten_list(form))), shape)
     
     return (block_vec if len(shape) == 1 else block_mat)(blocks)

@@ -1,9 +1,12 @@
 # I check here assembly of coupling integrals that are needed in Federica's
 # LM formulation
+from __future__ import absolute_import
+from __future__ import print_function
 from dolfin import *
 from weak_bcs.burman.generation import StraightLineMesh
 import numpy as np
 from xii import *
+from six.moves import map
 
 
 H, n = 4, 10
@@ -21,7 +24,7 @@ V3 = FunctionSpace(mesh, 'CG', 1)          # This
 V1 = FunctionSpace(mesh_1d, 'CG', 1)
 Q = FunctionSpace(mesh, 'DG', 0)           # and this would be different
 
-u3, u1 = map(TrialFunction, (V3, V1))
+u3, u1 = list(map(TrialFunction, (V3, V1)))
 q = TestFunction(Q)
 
 # 3d->1d
@@ -39,4 +42,4 @@ a21 = - inner(u1, Tq)*dx_
 forms = (a20, a21)
 for a in forms:
     A = ii_convert(ii_assemble(a)).array()
-    print np.linalg.norm(A, 2)
+    print(np.linalg.norm(A, 2))

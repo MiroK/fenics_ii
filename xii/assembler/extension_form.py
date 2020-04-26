@@ -1,7 +1,10 @@
+from __future__ import absolute_import
 from ufl.corealg.traversal import traverse_unique_terminals
 from xii.assembler.ufl_utils import *
 import dolfin as df
 import ufl
+from six.moves import filter
+from six.moves import map
 
 
 def extension_cell(o):
@@ -39,7 +42,7 @@ def extension_element(elm):
     # Want exact match here; otherwise VectorElement is MixedElement and while
     # it works I don't find it pretty
     if type(elm) == df.MixedElement:
-        return df.MixedElement(map(extension_element, elm.sub_elements()))
+        return df.MixedElement(list(map(extension_element, elm.sub_elements())))
 
     family = elm.family()
     
@@ -122,4 +125,4 @@ def is_extension_integral(integral):
 
 def extension_integrals(form):
     '''Extract trace integrals from the form'''
-    return filter(is_extension_integral, form.integrals())
+    return list(filter(is_extension_integral, form.integrals()))

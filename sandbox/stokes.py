@@ -1,5 +1,9 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from dolfin import *
 from xii import *
+from six.moves import map
+from six.moves import zip
 
 # We solve the Stokes problem on a unit quare
 #
@@ -37,8 +41,8 @@ def test(n, data, check_stab=0):
     Y = FunctionSpace(gamma, 'DG', 0)  
     W = [V, Q, Y]
 
-    u, p, x = map(TrialFunction, W)
-    v, q, y = map(TestFunction, W)
+    u, p, x = list(map(TrialFunction, W))
+    v, q, y = list(map(TestFunction, W))
 
     Tu, Tv = Trace(u, gamma), Trace(v, gamma)
     # Normal and volume measure of LM
@@ -74,7 +78,7 @@ def test(n, data, check_stab=0):
              [],
              Y_bcs]
 
-    A, b = map(ii_assemble, (a, L))
+    A, b = list(map(ii_assemble, (a, L)))
     A, b = apply_bc(A, b, W_bcs)
 
     # Check inf-sub stability
@@ -96,10 +100,10 @@ def test(n, data, check_stab=0):
 
         B = block_diag_mat([B00, B11, B22])
 
-        A, B = map(ii_convert, (A, B))
-        print RED % ('Solving for %d eigenvalues' % A.size(0))
+        A, B = list(map(ii_convert, (A, B)))
+        print(RED % ('Solving for %d eigenvalues' % A.size(0)))
         lmin, lmax = np.sort(np.abs(eigvalsh(A.array(), B.array())))[[0, -1]]
-        print GREEN % ('lmin = %g, lmax = %g, cond = %g' % (lmin, lmax, lmax/lmin))
+        print(GREEN % ('lmin = %g, lmax = %g, cond = %g' % (lmin, lmax, lmax/lmin)))
 
     wh = ii_Function(W)
     solve(ii_convert(A), wh.vector(), ii_convert(b))
@@ -152,11 +156,11 @@ if __name__ == '__main__':
         else:
             rates = repeat(-1)
 
-        table.append(sum(zip(errors, rates), ()))
+        table.append(sum(list(zip(errors, rates)), ()))
         errors0, h0 = errors, h
 
     # Review
-    print
+    print()
     fmt = '\t'.join(['%.2E(%.2f)']*3)
     for row in table:
-        print fmt % tuple(row)
+        print(fmt % tuple(row))

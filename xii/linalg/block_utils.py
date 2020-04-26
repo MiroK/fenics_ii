@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from block.block_base import block_base
 from block.object_pool import vec_pool
 from block import block_transpose
@@ -8,9 +10,28 @@ from xii.linalg.matrix_utils import as_petsc
 
 from block import block_mat, block_vec
 from dolfin import (PETScVector, as_backend_type, Function, Vector, GenericVector,
-                    mpi_comm_world, Matrix, PETScMatrix)
+                    Matrix, PETScMatrix)
 from petsc4py import PETSc
 import numpy as np
+from six.moves import map
+from six.moves import range
+from six.moves import zip
+
+
+# Compatibility with FEniCS 2017
+try:
+    from dolfin import mpi_comm_world
+
+    def comm4py(comm):
+        return comm.tompi4py()
+except ImportError:
+    from dolfin import MPI
+    
+    def mpi_comm_world():
+        return MPI.comm_world
+
+    def comm4py(comm):
+        return comm
 
 
 def block_diag_mat(diagonal):
@@ -41,7 +62,7 @@ def ii_PETScOperator(bmat, nullspace):
                 y *= 0
                 # Now x shall be comming as a nested vector
                 # Convert
-                x_bvec = block_vec(map(PETScVector, x.getNestSubVecs()))
+                x_bvec = block_vec(list(map(PETScVector, x.getNestSubVecs())))
                 # Apply
                 y_bvec = self.A*x_bvec
                 # Convert back
@@ -54,7 +75,7 @@ def ii_PETScOperator(bmat, nullspace):
                 y *= 0
                 # Now x shall be comming as a nested vector
                 # Convert
-                x_bvec = block_vec(map(PETScVector, x.getNestSubVecs()))
+                x_bvec = block_vec(list(map(PETScVector, x.getNestSubVecs())))
                 # Apply
                 y_bvec = AT*x_bvec
                 # Convert back
@@ -112,7 +133,7 @@ def ii_PETScPreconditioner(bmat, ksp):
                 y *= 0
                 # Now x shall be comming as a nested vector
                 # Convert
-                x_bvec = block_vec(map(PETScVector, x.getNestSubVecs()))
+                x_bvec = block_vec(list(map(PETScVector, x.getNestSubVecs())))
                 # Apply
                 y_bvec = self.A*x_bvec
                 # Convert back
@@ -126,7 +147,7 @@ def ii_PETScPreconditioner(bmat, ksp):
                 y *= 0
                 # Now x shall be comming as a nested vector
                 # Convert
-                x_bvec = block_vec(map(PETScVector, x.getNestSubVecs()))
+                x_bvec = block_vec(list(map(PETScVector, x.getNestSubVecs())))
                 # Apply
                 y_bvec = AT*x_bvec
                 # Convert back
@@ -287,8 +308,8 @@ class ReductionOperator(block_base):
             else:
                 x_petsc = as_backend_type(bi).vec()
 
-                subvecs = map(lambda indices, x=x_petsc: PETScVector(x.getSubVector(indices)),
-                              iset)
+                subvecs = list(map(lambda indices, x=x_petsc: PETScVector(x.getSubVector(indices)),
+                              iset))
 
                 unpacked.extend(subvecs)
         return block_vec(unpacked)
@@ -380,7 +401,7 @@ if __name__ == '__main__':
 
     z = (R.T)*BB_m*(R*bb)
 
-    print (z - z_block).norm()
+    print((z - z_block).norm())
 
     y  = BB_m*(R*bb)
-    print np.linalg.norm(np.hstack([bi.get_local() for bi in z_block])-y.get_local())
+    print(np.linalg.norm(np.hstack([bi.get_local() for bi in z_block])-y.get_local()))

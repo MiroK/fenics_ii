@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from xii.linalg import *
 from xii.assembler import *
 from xii.meshing import *

@@ -1,8 +1,14 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from xii.assembler.ufl_utils import traverse_terminals, replace as ii_replace
 from itertools import dropwhile
 from dolfin import *
 import numpy as np
 import ufl
+from six.moves import filter
+from six.moves import map
+from six.moves import range
+from six.moves import zip
 
 
 def is_trial_function(arg):
@@ -23,15 +29,15 @@ def is_number(form):
 def trial_function(form):
     '''Extract trial function[s] of [block] form'''
     if isinstance(form, ufl.Form):
-        return filter(is_trial_function, form.arguments())
-    return sum(map(trial_function, form), ())
+        return list(filter(is_trial_function, form.arguments()))
+    return sum(list(map(trial_function, form)), ())
 
 
 def test_function(form):
     '''Extract test function[s] of [block] form'''
     if isinstance(form, ufl.Form):
-        return filter(is_test_function, form.arguments())
-    return sum(map(test_function, form), ())
+        return list(filter(is_test_function, form.arguments()))
+    return sum(list(map(test_function, form)), ())
 
 
 def is_bilinear_form(form):
@@ -90,7 +96,7 @@ class _block_form(list):
     def add(self, form):
         '''self[i][j] += form with i, j extracted'''
         if len(form.integrals()) > 1:
-            return map(self.add, [ufl.Form((i, )) for i in form.integrals()])
+            return list(map(self.add, [ufl.Form((i, )) for i in form.integrals()]))
             
         # Linear
         if self.arity == 1:
@@ -99,7 +105,7 @@ class _block_form(list):
             test_f, = test_function(form)  # Only one
             # Look for the index
             V = test_f.function_space()
-            i, _ = next(dropwhile(lambda (i, Vi), V=V: Vi!=V, enumerate(self.V0)))
+            i, _ = next(dropwhile(lambda i_Vi, V=V: i_Vi[1] != V, enumerate(self.V0)))
             
             self[i] += form
             return self
@@ -109,10 +115,10 @@ class _block_form(list):
         trial_f, = trial_function(form)  # Only one
 
         V = trial_f.function_space()
-        col, _ = next(dropwhile(lambda (i, Vi), V=V: Vi!=V, enumerate(self.V0)))
+        col, _ = next(dropwhile(lambda i_Vi, V=V: i_Vi[1] != V, enumerate(self.V0)))
 
         V = test_f.function_space()
-        row, _ = next(dropwhile(lambda (i, Vi), V=V: Vi!=V, enumerate(self.V0)))
+        row, _ = next(dropwhile(lambda i_Vi, V=V: i_Vi[1] != V, enumerate(self.V0)))
 
         self[row][col] += form
         return self
@@ -176,14 +182,14 @@ def form_adjoint(expr):
         return expr
     
     if isinstance(expr, ufl.Form):
-        return ufl.Form(map(form_adjoint, expr.integrals()))
+        return ufl.Form(list(map(form_adjoint, expr.integrals())))
 
     if isinstance(expr, ufl.Integral):
         return expr.reconstruct(integrand=form_adjoint(expr.integrand()))
 
     # For adjoint we need one trial and one test function. The idea is
     # then exchange the two while keeping track of trace attributes
-    arguments = set(filter(lambda f: isinstance(f, Argument), traverse_terminals(expr)))
+    arguments = set([f for f in traverse_terminals(expr) if isinstance(f, Argument)])
 
     ii_attrs = ('trace_', 'restriction_', 'average_')
 
@@ -259,8 +265,8 @@ if __name__ == '__main__':
     W = [V, Q]
 
 
-    u, p = map(TrialFunction, W)
-    v, q = map(TestFunction, W)
+    u, p = list(map(TrialFunction, W))
+    v, q = list(map(TestFunction, W))
         
     L = block_form(W, 1)
 
@@ -278,19 +284,19 @@ if __name__ == '__main__':
     this = block_form(W, 2)
     this.add(a00 + a11)
 
-    print is_upper_triangular(this)
-    print is_lower_triangular(this)
+    print(is_upper_triangular(this))
+    print(is_lower_triangular(this))
     
     that = block_form(W, 2)
     that.add(a10 + a01)
-    print is_upper_triangular(that)
+    print(is_upper_triangular(that))
     
-    print this + that
+    print(this + that)
 
     a = block_form(W, 2)
     a.add(a10)
-    print is_upper_triangular(a)
-    print is_lower_triangular(a)
+    print(is_upper_triangular(a))
+    print(is_lower_triangular(a))
 
 
     a = block_form(W, 2)
@@ -301,16 +307,16 @@ if __name__ == '__main__':
     a.add(a00 + a01 + a10 + a11)
     
 
-    print 
+    print() 
     b = permute(a, [1, 0])
-    print b[0][0].arguments() == a11.arguments()
-    print b[1][0].arguments() == a01.arguments()
-    print b[0][1].arguments() == a10.arguments()
-    print b[1][1].arguments() == a00.arguments()
+    print(b[0][0].arguments() == a11.arguments())
+    print(b[1][0].arguments() == a01.arguments())
+    print(b[0][1].arguments() == a10.arguments())
+    print(b[1][1].arguments() == a00.arguments())
 
     a = permute(b, [V, Q])
 
-    print a[0][0].arguments() == a00.arguments()
-    print a[1][0].arguments() == a10.arguments()
-    print a[0][1].arguments() == a01.arguments()
-    print a[1][1].arguments() == a11.arguments()
+    print(a[0][0].arguments() == a00.arguments())
+    print(a[1][0].arguments() == a10.arguments())
+    print(a[0][1].arguments() == a01.arguments())
+    print(a[1][1].arguments() == a11.arguments())

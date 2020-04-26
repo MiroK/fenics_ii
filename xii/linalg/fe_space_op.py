@@ -1,8 +1,11 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from block.block_base import block_base
 from block.object_pool import vec_pool
 import scipy.sparse as sparse
 from petsc4py import PETSc
 import dolfin as df
+from six.moves import range
 
 
 class FESpaceOperator(block_base):
@@ -89,5 +92,5 @@ if __name__ == '__main__':
     
     A_ = foo.collapse()
 
-    print np.linalg.norm(A.array() - A_.array())
+    print(np.linalg.norm(A.array() - A_.array()))
 

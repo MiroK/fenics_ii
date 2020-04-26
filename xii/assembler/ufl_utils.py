@@ -1,7 +1,14 @@
-from dolfin.functions.function import Argument
+from __future__ import absolute_import
+try:
+    from dolfin.functions.function import Argument
+except ModuleNotFoundError:
+    from dolfin.function.argument import Argument
+    
 from ufl.core.terminal import Terminal
-from itertools import ifilter
+from six.moves import zip
+
 import dolfin as df
+from six.moves import filter
 
 
 def topological_dim(thing):
@@ -34,12 +41,12 @@ def traverse_terminals(expr):
     '''
     Yield all the termnals (can be duplicate) in the UFL expression tree
     '''
-    return ifilter(is_terminal, traverse(expr))
+    return filter(is_terminal, traverse(expr))
 
 
 def traverse_subexpr(expr):
     '''Yield nodes of the UFL expression tree that have arguments'''
-    return ifilter(lambda e: not is_terminal(e), traverse(expr))
+    return filter(lambda e: not is_terminal(e), traverse(expr))
 
 
 def is_equal_terminal(this, that, attributes=None):

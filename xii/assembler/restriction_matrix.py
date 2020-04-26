@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from xii.linalg.matrix_utils import petsc_serial_matrix
 from xii.assembler.restriction_assembly import restriction_cell
 from xii.assembler.fem_eval import DegreeOfFreedom, FEBasisFunction
@@ -5,6 +6,7 @@ from xii.assembler.fem_eval import DegreeOfFreedom, FEBasisFunction
 from dolfin import Cell, PETScMatrix
 from petsc4py import PETSc
 import numpy as np
+from six.moves import range
 
 
 def memoize_restriction(restriction_mat):

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from ufl.corealg.traversal import traverse_unique_terminals
 from ufl.algorithms.transformer import ufl2uflcopy
 from block import block_transpose

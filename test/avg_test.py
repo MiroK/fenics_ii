@@ -1,9 +1,12 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from dolfin import *
 from xii.meshing.make_mesh_cpp import make_mesh
 from xii.assembler.average_matrix import surface_average_matrix
 from xii.assembler.average_shape import Cylinder
 from xii import EmbeddedMesh
 import numpy as np
+from six.moves import range
 
 
 def make_z_mesh(num_vertices, zmin=0, zmax=1):
@@ -36,7 +39,7 @@ def test(f, n, radius, degree=8):
     cylinder = Cylinder(radius, degree)
 
     Pi = surface_average_matrix(V, TV, cylinder)
-    print '\t', Pi.norm('linf'), max(len(Pi.getrow(i)[0]) for i in range(TV.dim()))
+    print('\t', Pi.norm('linf'), max(len(Pi.getrow(i)[0]) for i in range(TV.dim())))
     
     Pi_f = Function(TV)
     Pi.mult(f.vector(), Pi_f.vector())
@@ -75,6 +78,6 @@ if __name__ == '__main__':
         else:
             rate = np.inf
 
-        print 'error %g, rate=%.2f' % (e, rate)
+        print('error %g, rate=%.2f' % (e, rate))
         
         n0, e0 = n, e

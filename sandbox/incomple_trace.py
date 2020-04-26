@@ -1,7 +1,11 @@
 # What happens when we have trace request points outside of mesh
 
+from __future__ import absolute_import
+from __future__ import print_function
 from dolfin import *
 from xii import *
+from six.moves import map
+from six.moves import range
 
 n = 32
 
@@ -42,12 +46,12 @@ f = interpolate(f_, FunctionSpace(mesh, 'CG', 1))
 a = inner(p, q)*dx()
 L = sum(inner(Trace(f, iface_mesh), q)*dx(i) for i in range(1, 5))
 
-A, b = map(ii_assemble, (a, L))
+A, b = list(map(ii_assemble, (a, L)))
 
 uh = Function(Q)
 solve(A, uh.vector(), b)
 
-print sqrt(abs(assemble(inner(f_ - uh, f_ - uh)*dx()))), sqrt(abs(assemble(inner(uh, uh)*dx())))
+print(sqrt(abs(assemble(inner(f_ - uh, f_ - uh)*dx()))), sqrt(abs(assemble(inner(uh, uh)*dx()))))
 
 # --------------------------------------------------------------------
 # What if the interface is not shared
@@ -92,9 +96,9 @@ p, q = TrialFunction(Q), TestFunction(Q)
 a = inner(p, q)*dx_()
 L = inner(vs[0], q)*dx_(1) + inner(vs[1], q)*dx_(2) + inner(vs[2], q)*dx_(3)
 
-A, b = map(ii_assemble, (a, L))
+A, b = list(map(ii_assemble, (a, L)))
 
 uh = Function(Q)
 solve(A, uh.vector(), b)
 
-print sqrt(abs(assemble(inner(f - uh, f - uh)*dx_()))), sqrt(abs(assemble(inner(uh, uh)*dx_())))
+print(sqrt(abs(assemble(inner(f - uh, f - uh)*dx_()))), sqrt(abs(assemble(inner(uh, uh)*dx_()))))

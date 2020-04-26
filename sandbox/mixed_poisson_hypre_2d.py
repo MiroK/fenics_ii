@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from dolfin import *
 from petsc4py import PETSc
 from mpi4py import MPI as pyMPI
@@ -9,6 +11,7 @@ from block import block_assemble, block_mat
 from block.iterative import MinRes
 from block.algebraic.petsc import LU, LumpedInvDiag
 from block.block_base import block_base
+from six.moves import map
 
 # MMS utils
 def expr_body(expr, **kwargs):
@@ -120,7 +123,7 @@ def main(n):
     sigma = sp_grad(u)    
     f = -sp_div(sigma) + u
 
-    sigma_expr, u_expr, f_expr = map(as_expression, (sigma, u, f))
+    sigma_expr, u_expr, f_expr = list(map(as_expression, (sigma, u, f)))
 
     # The discrete problem
     mesh = UnitSquareMesh(n, n)
@@ -129,8 +132,8 @@ def main(n):
     Q = FunctionSpace(mesh, 'DG', 0)
     W = (V, Q)
 
-    sigma, u = map(TrialFunction, W)
-    tau, v = map(TestFunction, W)
+    sigma, u = list(map(TrialFunction, W))
+    tau, v = list(map(TestFunction, W))
 
     a00 = inner(sigma, tau)*dx
     a01 = inner(div(tau), u)*dx
@@ -183,4 +186,4 @@ if __name__ == '__main__':
             rate = -1
         h0, error0 = h, error
 
-        print(msg % (h, ndofs, niters, error, rate))
+        print((msg % (h, ndofs, niters, error, rate)))

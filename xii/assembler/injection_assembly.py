@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from xii.assembler.injection_form import *
 from xii.assembler.ufl_utils import *
 from xii.assembler.injection_matrix import injection_matrix

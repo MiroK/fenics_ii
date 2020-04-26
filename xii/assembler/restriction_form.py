@@ -1,8 +1,10 @@
+from __future__ import absolute_import
 from ufl.corealg.traversal import traverse_unique_terminals
 from xii.assembler.ufl_utils import *
 from xii.meshing.subdomain_mesh import SubDomainMesh
 import dolfin as df
 import ufl
+from six.moves import filter
 
 
 def restriction_cell(o):
@@ -67,4 +69,4 @@ def is_restriction_integral(integral):
 
 def restriction_integrals(form):
     '''Extract restriction integrals from the form'''
-    return filter(is_restriction_integral, form.integrals())
+    return list(filter(is_restriction_integral, form.integrals()))

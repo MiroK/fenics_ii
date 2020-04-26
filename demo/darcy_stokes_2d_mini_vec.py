@@ -26,8 +26,12 @@
 # As a Lagrange multiplier I chose lambda = -t.n1.
 # NOTE: below the solution is such that lambda = 0.
 
+from __future__ import absolute_import
 from dolfin import *
 from xii import *
+from six.moves import map
+from six.moves import range
+from six.moves import zip
 
 
 def setup_domain(n):
@@ -79,13 +83,13 @@ def setup_problem(i, data, eps=1.):
     M = FunctionSpace(iface_domain, 'DG', 0) 
     W = [V1, Q1, V2, Q2, M]
 
-    u1, p1, u2, p2, lambda_ = map(TrialFunction, W)
-    v1, q1, v2, q2, beta_ = map(TestFunction, W)
+    u1, p1, u2, p2, lambda_ = list(map(TrialFunction, W))
+    v1, q1, v2, q2, beta_ = list(map(TestFunction, W))
     
     dxGamma = Measure('dx', domain=iface_domain)
     # We will need traces of the functions on the boundary
-    Tu1, Tu2 = map(lambda x: Trace(x, iface_domain), (u1, u2))
-    Tv1, Tv2 = map(lambda x: Trace(x, iface_domain), (v1, v2))
+    Tu1, Tu2 = [Trace(x, iface_domain) for x in (u1, u2)]
+    Tv1, Tv2 = [Trace(x, iface_domain) for x in (v1, v2)]
 
     n2 = OuterNormal(iface_domain, [0.5, 0.5])  # Outer of Darcy
     n1 = -n2                                  # Outer of Stokes
@@ -136,8 +140,8 @@ def setup_preconditioner(W, which, eps):
     from block.algebraic.petsc import LumpedInvDiag, LU
     from hsmg import HsNorm
 
-    u1, p1, u2, p2, lambda_ = map(TrialFunction, W)
-    v1, q1, v2, q2, beta_ = map(TestFunction, W)
+    u1, p1, u2, p2, lambda_ = list(map(TrialFunction, W))
+    v1, q1, v2, q2, beta_ = list(map(TestFunction, W))
     # This is not spectacular
     b00 = inner(grad(u1), grad(v1))*dx + inner(u1, v1)*dx
     B00 = AMG(ii_assemble(b00))
@@ -208,10 +212,10 @@ def setup_mms(eps):
 
     # NOTE: the multiplier is grad(u).n and with the chosen data this
     # means that it's zero on the interface
-    up = map(as_expression, (u1, p1, u2, p2, lambda_))  # The flux
-    fg = map(as_expression, (f, f1, f2, u1, u2, T(u1, p1)))
-    fg = dict(zip(['expr_%s' % s for s in ('f', 'f1', 'f2', 'u1', 'u2', 'stokes_stress')],
-                  fg))
+    up = list(map(as_expression, (u1, p1, u2, p2, lambda_)))  # The flux
+    fg = list(map(as_expression, (f, f1, f2, u1, u2, T(u1, p1))))
+    fg = dict(list(zip(['expr_%s' % s for s in ('f', 'f1', 'f2', 'u1', 'u2', 'stokes_stress')],
+                  fg)))
     
     return up, fg
 

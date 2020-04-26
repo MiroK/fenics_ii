@@ -1,7 +1,12 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from collections import defaultdict
 from xii.meshing.embedded_mesh import EmbeddedMesh
 import dolfin as df
 import numpy as np
+from six.moves import map
+from six.moves import range
+from six.moves import zip
 
 
 def mortar_meshes(subdomains, markers, ifacet_iter=None, strict=True, tol=1E-14):
@@ -32,7 +37,7 @@ def mortar_meshes(subdomains, markers, ifacet_iter=None, strict=True, tol=1E-14)
     
     mesh.init(tdim-1, tdim)
     for facet in ifacet_iter:
-        cells = map(int, facet.entities(tdim))
+        cells = list(map(int, facet.entities(tdim)))
 
         if len(cells) > 1:
             c0, c1 = cells
@@ -50,17 +55,17 @@ def mortar_meshes(subdomains, markers, ifacet_iter=None, strict=True, tol=1E-14)
                 tagged_iface[key][facet.index()] = value
 
     # order -> tagged keys
-    color_to_tag_map = tagged_iface.keys()
+    color_to_tag_map = list(tagged_iface.keys())
     # Set to color which won't be encounred
     interface = df.MeshFunction('size_t', mesh, tdim-1, len(color_to_tag_map))
     values = interface.array()
 
     # Mark facets corresponding to tagged pair by a color
     for color, tags in enumerate(color_to_tag_map):
-        values[tagged_iface[tags].keys()] = color
+        values[list(tagged_iface[tags].keys())] = color
 
     # Finally create an interface mesh for all the colors
-    interface_mesh = EmbeddedMesh(interface, range(len(color_to_tag_map)))
+    interface_mesh = EmbeddedMesh(interface, list(range(len(color_to_tag_map))))
 
     # Try to recogninze the meshes which violates assumptions by counting
     assert not strict or is_continuous(interface_mesh)
@@ -116,7 +121,7 @@ def mortar_meshes(subdomains, markers, ifacet_iter=None, strict=True, tol=1E-14)
 
     # Collapse to list; I want list indexing
     subdomain_meshes = np.array([subdomain_meshes[m] for m in markers]) 
-    color_map = [map(markers.index, tags) for tags in color_to_tag_map]
+    color_map = [list(map(markers.index, tags)) for tags in color_to_tag_map]
 
     # Parent in the sense that the colored piece of interface
     # could have been created from mesh
@@ -151,7 +156,7 @@ def is_continuous(mesh):
         for e in range(mesh.num_entities(tdim-1)):
             cells = sorted(e2c(e))
 
-            graph_edges.update(zip(cells[:-1], cells[1:]))
+            graph_edges.update(list(zip(cells[:-1], cells[1:])))
         G.add_edges_from(graph_edges)
         
     return nx.number_connected_components(G) == 1
@@ -184,7 +189,7 @@ if __name__ == '__main__':
         
         timer = Timer('x'); timer.start()
         submeshes, interface, colormap = mortar_meshes(subdomains, (0, 1), ifacet_iter)
-        print '\t', timer.stop()
+        print('\t', timer.stop())
     x = interface.parent_entity_map
 
     maps = [build_embedding_map(interface, meshi) for meshi in submeshes]
@@ -272,7 +277,7 @@ if __name__ == '__main__':
         return select
 
     import itertools
-    fs = map(domain, itertools.product(*[[-0.25, 0.25]]*3))
+    fs = list(map(domain, itertools.product(*[[-0.25, 0.25]]*3)))
     
     subdomains = MeshFunction('size_t', outer_mesh, outer_mesh.topology().dim(), 0)
     # Awkward marking
@@ -283,7 +288,7 @@ if __name__ == '__main__':
                 subdomains[cell] = tag
                 break
 
-    submeshes, interface, colormap = mortar_meshes(subdomains, range(9))
+    submeshes, interface, colormap = mortar_meshes(subdomains, list(range(9)))
 
     # Subdomains
     for cell in cells(submeshes[0]):

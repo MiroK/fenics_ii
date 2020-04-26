@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from dolfin import *
 from xii.assembler.trace_matrix import trace_mat
 from xii import EmbeddedMesh
@@ -23,7 +25,7 @@ Tv = Function(TV)
 Trace.mult(v.vector(), Tv.vector())
 
 Tv0.vector().axpy(-1, Tv.vector())
-print Tv0.vector().norm('linf')
+print(Tv0.vector().norm('linf'))
 
 
 V = VectorFunctionSpace(mesh, 'CG', 2)
@@ -40,4 +42,4 @@ Tv = Function(TV)
 Trace.mult(v.vector(), Tv.vector())
 
 Tv0.vector().axpy(-1, Tv.vector())
-print Tv0.vector().norm('linf')
+print(Tv0.vector().norm('linf'))

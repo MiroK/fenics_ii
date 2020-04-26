@@ -1,7 +1,11 @@
+from __future__ import absolute_import
 from dolfin import Function, as_backend_type, PETScVector
 import dolfin as df
 from block import block_vec
 from petsc4py import PETSc
+from six.moves import map
+from six.moves import range
+from six.moves import zip
 
 
 first = lambda iterable: next(iter(iterable))
@@ -18,7 +22,7 @@ class ii_Function(object):
     '''Really a list of functions where each is in some W[i]'''
     def __init__(self, W, components=None):
         if components is None:
-            self.functions = map(Function, W)
+            self.functions = list(map(Function, W))
         else:
             assert len(components) == len(W)
             # Functions them selves

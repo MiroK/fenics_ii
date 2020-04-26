@@ -1,6 +1,10 @@
+from __future__ import absolute_import
 import sympy as sp
 import dolfin as df
 import numpy as np
+from six.moves import map
+from six.moves import range
+from six.moves import zip
 
 
 def is_vector(f): return len(f.shape) == 2 and 1 in f.shape
@@ -24,7 +28,7 @@ def Grad(f, X=sp.symbols('x[0], x[1]')):
 def Div(f, X=sp.symbols('x[0], x[1]')):
     '''Divergence of vector/tensor in 2d'''
     if is_vector(f):
-        return sum(fi.diff(xi, 1) for fi, xi in zip(f.values(), X))
+        return sum(fi.diff(xi, 1) for fi, xi in zip(list(f.values()), X))
 
     assert is_2tensor(f)
     return sp.Matrix([Div(f.row(i)) for i in range(f.rows)])
@@ -39,7 +43,7 @@ def asExpr(f, degree=6):
                 shape = (max(f.shape), )
             else:
                 shape = f.shape
-            code = np.array(map(ccode, f.values())).reshape(shape)
+            code = np.array(list(map(ccode, list(f.values())))).reshape(shape)
             return df.Expression(code.tolist(), degree=degree)
     except AttributeError:
         return df.Expression(ccode(f), degree=degree)

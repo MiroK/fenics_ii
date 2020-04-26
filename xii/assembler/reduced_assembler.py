@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from ufl.corealg.traversal import traverse_unique_terminals
 from ufl.algorithms.transformer import ufl2uflcopy
 from block import block_transpose
@@ -8,6 +9,7 @@ import operator
 from xii.assembler.trace_form import *
 from xii.assembler.ufl_utils import *
 import xii.assembler.xii_assembly
+from functools import reduce
 
 
 class ReducedFormAssembler(object):

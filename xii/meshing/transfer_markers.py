@@ -1,4 +1,6 @@
+from __future__ import absolute_import
 from dolfin import MeshFunction
+from six.moves import range
 
 
 def transfer_markers(mesh, f, markers=None):

@@ -1,8 +1,10 @@
+from __future__ import absolute_import
 from collections import defaultdict
 import dolfin as df
 import numpy as np
 
 from xii.meshing.embedded_mesh import EmbeddedMesh
+from six.moves import zip
 
 
 class SubDomainMesh(EmbeddedMesh):

@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from xii import *
 from dolfin import *
 
@@ -46,4 +48,4 @@ if __name__ == '__main__':
             rate = -1
         h0, e0 = h, e
         
-        print(h, e, rate)
+        print((h, e, rate))

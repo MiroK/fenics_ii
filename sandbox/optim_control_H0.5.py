@@ -5,6 +5,8 @@
 # -\Delta u + u + f = 0 in Omega
 #         grad(u).n = 0 on \partial\Omega
 #
+from __future__ import absolute_import
+from __future__ import print_function
 from dolfin import *
 from xii import *
 from hsmg import HsNorm
@@ -13,6 +15,10 @@ from block.algebraic.petsc import AMG
 from block.algebraic.petsc import LumpedInvDiag
 from xii.assembler.trace_matrix import trace_mat_no_restrict
 from xii.linalg.convert import collapse
+import six
+from six.moves import map
+from six.moves import range
+from six.moves import zip
 
 
 
@@ -29,8 +35,8 @@ def solve_problem(ncells, eps, solver_params):
     B = FunctionSpace(mesh, 'CG', 1)
     W = [Q, V, B]
 
-    p, u, lmbda = map(TrialFunction, W)
-    q, v, beta = map(TestFunction, W)
+    p, u, lmbda = list(map(TrialFunction, W))
+    q, v, beta = list(map(TestFunction, W))
     Tu = Trace(u, bmesh)
     Tv = Trace(v, bmesh)
 
@@ -53,7 +59,7 @@ def solve_problem(ncells, eps, solver_params):
          inner(Constant(0), v)*dx,  # Same replacement idea here
          inner(Constant(0), beta)*dx]
     # All but (1, 1) and 1 are final
-    AA, bb = map(ii_assemble, (a, L))
+    AA, bb = list(map(ii_assemble, (a, L)))
 
     # Now I want and operator which corresponds to (Tv, (-Delta^{0.5} T_u))_bdry
     TV = FunctionSpace(bmesh, 'CG', 1)
@@ -72,7 +78,7 @@ def solve_problem(ncells, eps, solver_params):
     wh = ii_Function(W)
     # Direct solve
     if not solver_params:
-        AAm, bbm = map(ii_convert, (AA, bb))
+        AAm, bbm = list(map(ii_convert, (AA, bb)))
         LUSolver('umfpack').solve(AAm, wh.vector(), bbm)
         return wh, -1
 
@@ -117,7 +123,7 @@ def solve_problem(ncells, eps, solver_params):
     if '-ksp_type' not in solver_params: solver_params['-ksp_type'] = 'minres'
             
     opts = PETSc.Options()
-    for key, value in solver_params.iteritems():
+    for key, value in six.iteritems(solver_params):
         opts.setValue(key, None if value == 'none' else value)
         
     ksp = PETSc.KSP().create()
@@ -171,16 +177,16 @@ if __name__ == '__main__':
         wh, niters = solve_problem(ncells, eps, solver_params)
 
         ndofs = sum(whi.function_space().dim() for whi in wh)
-        print eps, ndofs, niters
+        print(eps, ndofs, niters)
         
         results[eps].append(niters)
         dofs.add(ndofs)
 
     cols = sorted(results.keys())
     rows = [sorted(dofs)] + [results[c] for c in cols]
-    print '\t eps=', cols
-    for values in itertools.izip(*rows):
-        print values
+    print('\t eps=', cols)
+    for values in zip(*rows):
+        print(values)
 
     # Only send the final
     if args.save_dir:

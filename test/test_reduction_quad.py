@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from xii.assembler.average_shape import Circle, Square, SquareRim, Disk
 from xii.assembler.average_form import Average, average_space
 from xii.meshing.embedded_mesh import EmbeddedMesh

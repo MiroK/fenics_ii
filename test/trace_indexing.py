@@ -1,5 +1,7 @@
+from __future__ import absolute_import
 from dolfin import *
 from xii import *
+from six.moves import range
 
 n = 4
 

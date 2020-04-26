@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from xii import *
 from dolfin import *
 import numpy as np
@@ -26,7 +28,7 @@ true = assemble(foo*bar*ds(domain=mesh_fine))
 
 num = interpolate(bar, V).vector().inner(A*interpolate(foo, Q).vector())
 
-print abs(true - num)
+print(abs(true - num))
 
 # ---------
 
@@ -56,10 +58,10 @@ for n in (8, 16, 32):
     q = Function(Q, T*v.vector())
 
     L = inner(bar[0] - q[0], bar[0] - q[0])*dx
-    print sqrt(abs(assemble(L)))
+    print(sqrt(abs(assemble(L))))
 
     L = inner(bar[1] - q[1], bar[1] - q[1])*dx
-    print sqrt(abs(assemble(L)))
+    print(sqrt(abs(assemble(L))))
 
     q0, q1 = q.split(deepcopy=True)
 
@@ -100,7 +102,7 @@ for n in (8, 16, 32):
 
     num = interpolate(bar, V).vector().inner(A*interpolate(foo, Q).vector())
     
-    print abs(true - num)
+    print(abs(true - num))
 
 
 for n in (8, 16, 32):
@@ -132,4 +134,4 @@ for n in (8, 16, 32):
 
     num = interpolate(bar, V).vector().inner(A*interpolate(foo, Q).vector())
     
-    print abs(true - num)
+    print(abs(true - num))

@@ -1,6 +1,11 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from dolfin import *
 from xii import *
 from block import block_bc
+from six.moves import map
+from six.moves import range
+from six.moves import zip
 
 
 def setup_problem(radius, mesh_gen):
@@ -13,7 +18,7 @@ def setup_problem(radius, mesh_gen):
     
     mesh3d, mesh1d, bdry_vertex = mesh_gen()
     # There is a 3d/1d/iface/bdry conductiity; made up
-    k3d, k1d, kG, kbdry = map(Constant, (0.1, 1, 0.5, 0.2))
+    k3d, k1d, kG, kbdry = list(map(Constant, (0.1, 1, 0.5, 0.2)))
     
     # f is made up
     f = Expression('pow(x[0]-0.5, 2)+(x[1]-0.5, 2)+(x[2]-0.5, 2)', degree=2)
@@ -30,8 +35,8 @@ def setup_problem(radius, mesh_gen):
     Q = FunctionSpace(mesh1d, 'CG', 1)
 
     W = (V3, V, Q)
-    u3, u, p = map(TrialFunction, W)
-    v3, v, q = map(TestFunction, W)
+    u3, u, p = list(map(TrialFunction, W))
+    v3, v, q = list(map(TestFunction, W))
 
     averaging_shape = Circle(radius, 10)
     Pi_u3, Pi_v3 = (Average(x, mesh1d, averaging_shape) for x in (u3, v3))
@@ -56,7 +61,7 @@ def setup_problem(radius, mesh_gen):
          inner(kbdry*g, v)*dxG,
          inner(Constant(0), q)*dxG]
 
-    AA, bb = map(ii_assemble, (a, L))
+    AA, bb = list(map(ii_assemble, (a, L)))
 
     # Return the block system
     return AA, bb, W, p_const
@@ -67,8 +72,8 @@ def setup_preconditioner(W, p_constant):
     from block.algebraic.petsc import AMG
     from hsmg import HsNorm
     
-    u3, u, p = map(TrialFunction, W)
-    v3, v, q = map(TestFunction, W)
+    u3, u, p = list(map(TrialFunction, W))
+    v3, v, q = list(map(TestFunction, W))
     
     b00 = inner(grad(u3), grad(v3))*dx + inner(u3, v3)*ds
     B00 = assemble(b00)
@@ -111,7 +116,7 @@ if __name__ == '__main__':
 
     timer = Timer('setup'); timer.start()
     AA, bb, W, p_const = setup_problem(args.radius, mesh_gen)
-    print '\tProblem setup took %g s\n \tNumber of unknowns %d ' %  (timer.stop(), sum(Wi.dim() for Wi in W))
+    print('\tProblem setup took %g s\n \tNumber of unknowns %d ' %  (timer.stop(), sum(Wi.dim() for Wi in W)))
 
     x = AA*bb
     y = AA.transpmult(bb)
@@ -122,7 +127,7 @@ if __name__ == '__main__':
     timer = Timer('solver'); timer.start()
     if args.solver == 'direct':
         # Convert
-        AAm, bbm = map(ii_convert, (AA, bb))
+        AAm, bbm = list(map(ii_convert, (AA, bb)))
         niters = LUSolver('umfpack').solve(AAm, wh.vector(), bbm)
     else:
         # Here we define a Krylov solver using PETSc
@@ -144,7 +149,7 @@ if __name__ == '__main__':
         ksp.solve(as_petsc_nest(bb), wh.petsc_vec())
         niters = ksp.getIterationNumber()
 
-    print '\tSolver took %g s. Niters %d' % (timer.stop(), niters)
+    print('\tSolver took %g s. Niters %d' % (timer.stop(), niters))
     
     for i, wh_i in enumerate(wh):
         # Renaming to make it easier to save state in Visit/Pareview

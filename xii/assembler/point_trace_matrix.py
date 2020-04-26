@@ -1,8 +1,11 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from xii.linalg.matrix_utils import petsc_serial_matrix
 
 from dolfin import PETScMatrix, Point, Cell
 from petsc4py import PETSc
 import numpy as np
+from six.moves import map
 
 
 def point_trace_mat(V, TV, trace_mesh, data):
@@ -59,7 +62,7 @@ def point_trace_matrix(V, TV, x0):
         for row in map(int, TV.dofmap().cell_dofs(cell)):  # R^n components
             sub_dofs = component_dofs(row)
             sub_dofs_local = [all_dofs.index(dof) for dof in sub_dofs]
-            print row, sub_dofs, sub_dofs_local, basis_values[sub_dofs_local]
+            print(row, sub_dofs, sub_dofs_local, basis_values[sub_dofs_local])
             
             mat.setValues([row], sub_dofs, basis_values[sub_dofs_local],
                           PETSc.InsertMode.INSERT_VALUES)
@@ -76,8 +79,8 @@ if __name__ == '__main__':
     Q = VectorFunctionSpace(mesh, 'R', 0)
     W = [V, Q]
 
-    u, p = map(TrialFunction, W)
-    v, q = map(TestFunction, W)
+    u, p = list(map(TrialFunction, W))
+    v, q = list(map(TestFunction, W))
     # Point Constraints
     x0 = (0.33, 0.66)
     Du, Dv = PointTrace(u, x0), PointTrace(v, x0)
@@ -91,4 +94,4 @@ if __name__ == '__main__':
     f.vector().set_local(x.get_local())
     f.vector().apply('insert')
 
-    print f(*x0)
+    print(f(*x0))

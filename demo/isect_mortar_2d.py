@@ -18,8 +18,10 @@
 #
 # This is formulated with Lagrange multiplier p = u1 + eps*grad(u1).n1
 # and the constraint u1 - u2 = g is enforced weakly
+from __future__ import absolute_import
 from dolfin import *
 from xii import *
+from six.moves import map
 
 
 def setup_domain(n):
@@ -54,8 +56,9 @@ def setup_domain(n):
     return outer_mesh, inner_mesh, gamma_mesh
 
 
-def setup_problem(i, (f1, f2, h2, h, g), eps):
+def setup_problem(i, xxx_todo_changeme, eps):
     '''EMI like problem with mortaring'''
+    (f1, f2, h2, h, g) = xxx_todo_changeme
     n = 4*2**i
 
     outer_mesh, inner_mesh, gamma_mesh = setup_domain(n)
@@ -65,8 +68,8 @@ def setup_problem(i, (f1, f2, h2, h, g), eps):
     Q = FunctionSpace(gamma_mesh, 'CG', 1)
     W = [V1, V2, Q]
 
-    u1, u2, p = map(TrialFunction, W)
-    v1, v2, q = map(TestFunction, W)
+    u1, u2, p = list(map(TrialFunction, W))
+    v1, v2, q = list(map(TestFunction, W))
 
     dxGamma = Measure('dx', domain=gamma_mesh)
     ds_out = Measure('ds', domain=outer_mesh,
@@ -75,8 +78,8 @@ def setup_problem(i, (f1, f2, h2, h, g), eps):
     n2 = FacetNormal(outer_mesh)
     
     # We will need traces of the functions on the boundary
-    Tu1, Tu2 = map(lambda x: Trace(x, gamma_mesh), (u1, u2))
-    Tv1, Tv2 = map(lambda x: Trace(x, gamma_mesh), (v1, v2))
+    Tu1, Tu2 = [Trace(x, gamma_mesh) for x in (u1, u2)]
+    Tv1, Tv2 = [Trace(x, gamma_mesh) for x in (v1, v2)]
 
     eps = eps[0]
     
@@ -117,11 +120,11 @@ def setup_preconditioner(W, which, eps):
     gamma_mesh = Q.mesh()
     dxGamma = Measure('dx', domain=gamma_mesh)
 
-    u1, u2 = map(TrialFunction, (V1, V2))
-    v1, v2 = map(TestFunction, (V1, V2))
+    u1, u2 = list(map(TrialFunction, (V1, V2)))
+    v1, v2 = list(map(TestFunction, (V1, V2)))
         
-    Tu1, Tu2 = map(lambda x: Trace(x, gamma_mesh), (u1, u2))
-    Tv1, Tv2 = map(lambda x: Trace(x, gamma_mesh), (v1, v2))
+    Tu1, Tu2 = [Trace(x, gamma_mesh) for x in (u1, u2)]
+    Tv1, Tv2 = [Trace(x, gamma_mesh) for x in (v1, v2)]
 
     if eps > 1:
         b00 = Constant(eps)*inner(grad(u1), grad(v1))*dx+inner(u1, v1)*dx
@@ -168,8 +171,8 @@ def setup_mms(eps):
     h = u1 + u2
     g = u1 - u2
 
-    up = map(as_expression, (u1, u2, p))
-    fg = [as_expression(f1, EPS=eps[0])] + map(as_expression, (f2, h2, h, g))
+    up = list(map(as_expression, (u1, u2, p)))
+    fg = [as_expression(f1, EPS=eps[0])] + list(map(as_expression, (f2, h2, h, g)))
 
     return up, fg
 

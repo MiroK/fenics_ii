@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from xii.assembler.extension_form import *
 from xii.assembler.ufl_utils import *
 from xii.assembler.extension_matrix import extension_mat

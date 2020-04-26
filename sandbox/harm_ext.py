@@ -1,7 +1,9 @@
+from __future__ import absolute_import
 from dolfin import *
 from xii import (EmbeddedMesh, ii_assemble, Extension, Trace, ii_assemble,
                  StraightLineMesh, apply_bc)
 import numpy as np
+from six.moves import map
 
 
 # This is how the "harmonic extension could work"
@@ -47,7 +49,7 @@ u2, v2 = TrialFunction(V2), TestFunction(V2)
 a = inner(grad(u2), grad(v2))*dx + inner(u2, v2)*dx
 L = inner(f, Trace(v2, gamma_mesh))*dx(domain=gamma_mesh)
 
-A, b = map(ii_assemble, (a, L))
+A, b = list(map(ii_assemble, (a, L)))
 
 # We have boundary conditions to apply
 # bc = DirichletBC(V2, Constant(0), facet_f, 1)
@@ -63,7 +65,7 @@ f = Trace(u2h, ext_mesh)
 a = inner(p, q)*dx
 L = inner(f, q)*dx(domain=ext_mesh)
 
-A, b = map(ii_assemble, (a, L))
+A, b = list(map(ii_assemble, (a, L)))
 
 # We have boundary conditions to apply
 # bc = DirichletBC(Q, u2h, 'on_boundary')

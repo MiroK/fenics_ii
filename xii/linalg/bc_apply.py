@@ -1,4 +1,6 @@
 # What is the fast way to apply bcs
+from __future__ import absolute_import
+from __future__ import print_function
 from block import block_bc, block_assemble
 from dolfin import *
 
@@ -9,6 +11,25 @@ from block import block_mat, block_vec
 from block.block_bc import block_rhs_bc
 from petsc4py import PETSc
 import numpy as np
+from six.moves import map
+from six.moves import range
+from six.moves import zip
+
+
+# Compatibility with FEniCS 2017
+try:
+    from dolfin import mpi_comm_world
+
+    def comm4py(comm):
+        return comm.tompi4py()
+except ImportError:
+    from dolfin import MPI
+    
+    def mpi_comm_world():
+        return MPI.comm_world
+
+    def comm4py(comm):
+        return comm
 
 
 def apply_bc(A, b, bcs, diag_val=1.):
@@ -47,7 +68,7 @@ def apply_bc(A, b, bcs, diag_val=1.):
     if not bcs or not any(bcs): return A, b
 
     # Obtain a monolithic matrix
-    AA, bb = map(convert, (A, b))
+    AA, bb = list(map(convert, (A, b)))
     # PETSc guys
     AA, bb = as_backend_type(AA).mat(), as_backend_type(bb).vec()
 
@@ -69,8 +90,8 @@ def apply_bc(A, b, bcs, diag_val=1.):
             # the dict
             if isinstance(bc, DirichletBC): bc = bc.get_boundary_values()
             # Dofs and values for rhs
-            rows.extend(shift + np.array(bc.keys(), dtype='int32'))
-            x_values.extend(bc.values())
+            rows.extend(shift + np.array(list(bc.keys()), dtype='int32'))
+            x_values.extend(list(bc.values()))
             
     rows = np.hstack(rows)
     x_values = np.array(x_values)
@@ -92,7 +113,7 @@ def apply_bc(A, b, bcs, diag_val=1.):
     for bi in b:
         bi.assemblyBegin()
         bi.assemblyEnd()
-    b = block_vec(map(PETScVector, b))
+    b = block_vec(list(map(PETScVector, b)))
 
     # PETSc 3.7.x
     try:
@@ -122,8 +143,8 @@ def identity(ncells):
     Q = FunctionSpace(mesh, 'CG', 1)
     W = [V, Q]
 
-    u, p = map(TrialFunction, W)
-    v, q = map(TestFunction, W)
+    u, p = list(map(TrialFunction, W))
+    v, q = list(map(TestFunction, W))
 
     a = [[0]*len(W) for _ in range(len(W))]
     a[0][0] = inner(grad(u), grad(v))*dx
@@ -157,7 +178,7 @@ def identity(ncells):
             y = Aij*x
             y0 = A0[i][j]*x
 
-            print i, j, '>>>', (y - y0).norm('linf')
+            print(i, j, '>>>', (y - y0).norm('linf'))
     return eb
 
     
@@ -169,8 +190,8 @@ def speed(ncells):
     Q = FunctionSpace(mesh, 'CG', 1)
     W = [V, Q]
 
-    u, p = map(TrialFunction, W)
-    v, q = map(TestFunction, W)
+    u, p = list(map(TrialFunction, W))
+    v, q = list(map(TestFunction, W))
 
     a = [[0]*len(W) for _ in range(len(W))]
     a[0][0] = inner(grad(u), grad(v))*dx
@@ -193,19 +214,19 @@ def speed(ncells):
 
     dimW = sum(Wi.dim() for Wi in W)
 
-    A, b = map(block_assemble, (a, L))
+    A, b = list(map(block_assemble, (a, L)))
     
     t = Timer('second')
     A, b = apply_bc(A, b, bcs)
     dt1 = t.stop()
 
-    print '>>>', (b - b0).norm()
+    print('>>>', (b - b0).norm())
 
     # First method
-    A, c = map(block_assemble, (a, L))    
+    A, c = list(map(block_assemble, (a, L)))    
     block_rhs_bc(bcs, A).apply(c)
 
-    print '>>>', (b - c).norm()
+    print('>>>', (b - c).norm())
 
     return dimW, dt0, dt1, dt0/dt1
 
@@ -219,7 +240,7 @@ if __name__ == '__main__':
     # Now speed
     msg = 'dim(W) = %d, block = %g s, petsc = %g s, speedup %.2f'
     for ncells in [4, 8, 16, 32, 64, 128]:
-        print msg % speed(ncells) 
+        print(msg % speed(ncells)) 
 
 
 

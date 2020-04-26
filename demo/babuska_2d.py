@@ -5,12 +5,16 @@
 #            u = g on boundary
 #
 # with the boundary conditions enforced weakly by Lagrange multiplier.
+from __future__ import absolute_import
+from __future__ import print_function
 from dolfin import *
 from xii import *
+from six.moves import map
 
 
-def setup_problem(i, (f, g), eps=None):
+def setup_problem(i, xxx_todo_changeme, eps=None):
     '''Babuska on [0, 1]^2'''
+    (f, g) = xxx_todo_changeme
     n = 4*2**i
     mesh = UnitSquareMesh(*(n, )*2)
     bmesh = BoundaryMesh(mesh, 'exterior')
@@ -19,8 +23,8 @@ def setup_problem(i, (f, g), eps=None):
     Q = FunctionSpace(bmesh, 'CG', 1)
     W = [V, Q]
 
-    u, p = map(TrialFunction, W)
-    v, q = map(TestFunction, W)
+    u, p = list(map(TrialFunction, W))
+    v, q = list(map(TestFunction, W))
     Tu = Trace(u, bmesh)
     Tv = Trace(v, bmesh)
 
@@ -53,7 +57,7 @@ def setup_preconditioner(W, which, eps=None):
     V, Q = W
 
     if which == 0:
-        print 'Using H1 x H-0.5 preconditioner'
+        print('Using H1 x H-0.5 preconditioner')
         # H1
         u, v = TrialFunction(V), TestFunction(V)
         b00 = inner(grad(u), grad(v))*dx + inner(u, v)*dx
@@ -62,7 +66,7 @@ def setup_preconditioner(W, which, eps=None):
         # The Q norm via spectral
         B11 = inverse(HsNorm(Q, s=-0.5))  # The norm is inverted exactly
     else:
-        print 'Using (H1 \cap H0.5) x L2 preconditioner'
+        print('Using (H1 \cap H0.5) x L2 preconditioner')
         bdry = Q.mesh()
         dxGamma = dx(domain=bdry)
         # Cap space
@@ -94,8 +98,8 @@ def setup_mms(eps=None):
     f = -u.diff(x, 2) - u.diff(y, 2) + u
     g = u
 
-    up = map(as_expression, (u, p))
-    fg = map(as_expression, (f, g))
+    up = list(map(as_expression, (u, p)))
+    fg = list(map(as_expression, (f, g)))
 
     return up, fg
 

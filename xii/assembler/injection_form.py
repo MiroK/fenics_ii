@@ -1,7 +1,9 @@
+from __future__ import absolute_import
 from ufl.corealg.traversal import traverse_unique_terminals
 from xii.assembler.ufl_utils import *
 import dolfin as df
 import ufl
+from six.moves import filter
 
 
 def injection_cell(o):
@@ -81,4 +83,4 @@ def is_injection_integral(integral):
 
 def injection_integrals(form):
     '''Extract injection integrals from the form'''
-    return filter(is_injection_integral, form.integrals())
+    return list(filter(is_injection_integral, form.integrals()))

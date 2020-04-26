@@ -5,12 +5,15 @@
 # where sigma(u) = 2*mu*eps(u) + lmbda*div(u)*I
 #
 # with the boundary conditions enforced weakly by Lagrange multiplier.
+from __future__ import absolute_import
 from dolfin import *
 from xii import *
+from six.moves import map
 
 
-def setup_problem(i, (f, g), eps=None):
+def setup_problem(i, xxx_todo_changeme, eps=None):
     '''Elasticity on [0, 1]^2. Eps = (mu, lmbda)'''
+    (f, g) = xxx_todo_changeme
     assert len(eps) == 2
             
     n = 4*2**i
@@ -21,8 +24,8 @@ def setup_problem(i, (f, g), eps=None):
     Q = VectorFunctionSpace(bmesh, 'CG', 1)
     W = [V, Q]
 
-    u, p = map(TrialFunction, W)
-    v, q = map(TestFunction, W)
+    u, p = list(map(TrialFunction, W))
+    v, q = list(map(TestFunction, W))
     Tu = Trace(u, bmesh)
     Tv = Trace(v, bmesh)
 

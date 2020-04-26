@@ -1,6 +1,12 @@
-from make_mesh_cpp import make_mesh
+from __future__ import absolute_import
+from __future__ import print_function
+from .make_mesh_cpp import make_mesh
 import dolfin as df
 import numpy as np
+from six.moves import map
+from six.moves import range
+from six.moves import zip
+from functools import reduce
 
 
 class DualMesh(df.Mesh):
@@ -66,13 +72,13 @@ class DualMesh(df.Mesh):
         v2c = mesh.topology()(0, 2)
 
         cells, macro_map = [], [0]
-        for vtx in xrange(nv):
+        for vtx in range(nv):
             offset = macro_map[-1]
             # Each cell yields two new one
             for cell in v2c(vtx):
                 cell_mid = cell + nv + nf
                 # Give me the two facets of the cell connected to vertex
-                f0, f1 = filter(lambda f: vtx in f2v(f), c2f(cell))
+                f0, f1 = [f for f in c2f(cell) if vtx in f2v(f)]
 
                 cells.append([vtx, f0 + nv, cell_mid])
                 cells.append([vtx, cell_mid, f1 + nv])
@@ -123,7 +129,7 @@ if __name__ == '__main__':
     c2v = dual_mesh.topology()(2, 0)
     for idx_old, (f, l) in enumerate(zip(mapping[:-1], mapping[1:])):
         # f:l are cells of the patch
-        idx_new, = reduce(operator.and_, map(set, (c2v(c) for c in range(f, l))))
+        idx_new, = reduce(operator.and_, list(map(set, (c2v(c) for c in range(f, l)))))
         patch_vertices.append(idx_new)
 
         assert np.linalg.norm(x_old[idx_old] - x_new[idx_new]) < 1E-13
@@ -150,12 +156,12 @@ if __name__ == '__main__':
         timer = df.Timer('f')
         dual_mesh = DualMesh(mesh)
         time = timer.stop()
-        print n, time, mesh.num_vertices(), '->', dual_mesh.num_vertices()
+        print(n, time, mesh.num_vertices(), '->', dual_mesh.num_vertices())
         times.append(time)
-    nvertices, times = map(np.array, (nvertices, times))
+    nvertices, times = list(map(np.array, (nvertices, times)))
     
     slope, shift = np.polyfit(np.log2(nvertices), np.log2(times), deg=1)
-    print slope
+    print(slope)
     
     plt.figure()
     plt.xlabel('N (number of vertices)')

@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from dolfin import *
 from xii import *
 from xii.assembler.trace_matrix import trace_mat_no_restrict
@@ -56,4 +58,4 @@ for n in (8, 16, 32, 64, 128):
 errors = np.array(errors)
 
 assert np.all(np.log(errors[1:]/errors[:-1])/np.log(1./2) > 1.5)
-print errors
+print(errors)

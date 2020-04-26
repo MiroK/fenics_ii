@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from xii.linalg.matrix_utils import petsc_serial_matrix
 from xii.assembler.fem_eval import DegreeOfFreedom, FEBasisFunction
 from xii.meshing.cross_grid_refine import cross_grid_refine
@@ -7,6 +9,8 @@ from dolfin import PETScMatrix
 from collections import defaultdict
 from petsc4py import PETSc
 import numpy as np
+from six.moves import map
+from six.moves import range
 
 
 def injection_matrix(Vc, Vf):
@@ -71,8 +75,8 @@ def stokes(mesh_c):
     W = [Vf, Qc]
 
     Wf = [Vf, Qf]
-    uf, pf = map(TrialFunction, Wf)
-    vf, qf = map(TestFunction, Wf)
+    uf, pf = list(map(TrialFunction, Wf))
+    vf, qf = list(map(TestFunction, Wf))
 
     a = [[0]*2 for i in range(2)]
     a[0][0] = inner(grad(uf), grad(vf))*dx
@@ -113,8 +117,8 @@ def stokes_ii(mesh_c):
 
     W = [Vf, Qc]
 
-    uf, pc = map(TrialFunction, W)
-    vf, qc = map(TestFunction, W)
+    uf, pc = list(map(TrialFunction, W))
+    vf, qc = list(map(TestFunction, W))
 
     dxf = Measure('dx', domain=mesh_f)
     pf, qf = Injection(pc, mesh_f), Injection(qc, mesh_f)
@@ -153,8 +157,8 @@ def stokes_iir(mesh_c):
 
     W = [Vf, Qc]
 
-    uf, pc = map(TrialFunction, W)
-    vf, qc = map(TestFunction, W)
+    uf, pc = list(map(TrialFunction, W))
+    vf, qc = list(map(TestFunction, W))
 
     dxf = Measure('dx', domain=mesh_f)
     pf, qf = Injection(pc, mesh_f), Injection(qc, mesh_f)
@@ -216,7 +220,7 @@ if __name__ == '__main__':
         B = ii_convert(B).array()
 
         lmin, lmax = np.sort(np.abs(my_eigvalsh(A, B)))[[0, -1]]
-        print sum(Wi.dim() for Wi in W), '->', lmin, lmax, lmax/lmin
+        print(sum(Wi.dim() for Wi in W), '->', lmin, lmax, lmax/lmin)
 
         # Vf, _ = W
         # mesh_f = Vf.mesh()

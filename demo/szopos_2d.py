@@ -8,13 +8,15 @@
 #  u x n = 0 and p = p0
 #
 
+from __future__ import absolute_import
 from dolfin import *
 from xii import *
+from six.moves import map
 
 
-def setup_problem(i, (f, p0), eps):
+def setup_problem(i, xxx_todo_changeme, eps):
     '''Just showcase, no MMS (yet)'''
-    # I setup the constants arbitraily
+    (f, p0) = xxx_todo_changeme
     n = 16*(2**i)
 
     mesh = UnitSquareMesh(n, n)
@@ -31,8 +33,8 @@ def setup_problem(i, (f, p0), eps):
     M = FunctionSpace(bmesh, 'CG', 1)
     W = (V, Q, M)
 
-    u, p, lambda_ = map(TrialFunction, W)
-    v, q, beta_ = map(TestFunction, W)
+    u, p, lambda_ = list(map(TrialFunction, W))
+    v, q, beta_ = list(map(TestFunction, W))
 
     T_u, T_v = Trace(u, bmesh), Trace(v, bmesh)
 
@@ -66,8 +68,8 @@ def setup_preconditioner(W, which, eps):
     from block.algebraic.petsc import AMG
     from hsmg import HsNorm
     
-    u, p, lambda_ = map(TrialFunction, W)
-    v, q, beta_ = map(TestFunction, W)
+    u, p, lambda_ = list(map(TrialFunction, W))
+    v, q, beta_ = list(map(TestFunction, W))
 
     b00 = Constant(eps)*inner(grad(u), grad(v))*dx + inner(u, v)*dx
     B00 = AMG(ii_assemble(b00))

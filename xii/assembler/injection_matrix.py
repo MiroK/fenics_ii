@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from xii.linalg.matrix_utils import petsc_serial_matrix
 from xii.assembler.fem_eval import DegreeOfFreedom, FEBasisFunction
 from xii import *
@@ -5,6 +6,7 @@ from xii import *
 from dolfin import PETScMatrix
 from petsc4py import PETSc
 import numpy as np
+from six.moves import zip
 
 
 # Restriction operators are potentially costly so we memoize the results.
@@ -41,7 +43,7 @@ def injection_matrix(Vc, Vf, fine_mesh, data):
         fine_to_coarse = mesh_f.data().array('parent_cell', tdim)
     # FIXME: However, I can't do it when I refine myself to as a fall back
     else:
-        keys, fine_to_coarse = zip(*fine_mesh.parent_entity_map[mesh_c.id()][tdim].items())
+        keys, fine_to_coarse = list(zip(*list(fine_mesh.parent_entity_map[mesh_c.id()][tdim].items())))
         fine_to_coarse = np.array(fine_to_coarse, dtype='uintp')
         fine_to_coarse[np.argsort(keys)] = fine_to_coarse
         

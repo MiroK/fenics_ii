@@ -1,4 +1,6 @@
+from __future__ import absolute_import
 from dolfin import *
+from six.moves import zip
 
 template=r'''
 \documentclass{standalone}
@@ -85,8 +87,8 @@ def load_mesh(h5_file, data_sets):
     Read in mesh and mesh functions from the data set in HDF5File.
     Data set is a tuple of (topological dim of entities, data-set-name)
     '''
-    h5 = HDF5File(mpi_comm_world(), h5_file, 'r')
-    mesh = Mesh()
+    mesh = Mesh()    
+    h5 = HDF5File(mesh.mpi_comm(), h5_file, 'r')
     h5.read(mesh, 'mesh', False)
 
     mesh_functions = []
@@ -110,7 +112,7 @@ if __name__ == '__main__':
     mesh, [subdomains, bdries] = load_mesh(path, data_sets=((dim, 'volumes'), (dim-1, 'surfaces'), ))
 
     # style_map = dict(zip(set(bdries.array()), repeat('black!50!white, very thin')))
-    style_map = dict(zip(set(bdries.array()), repeat(None)))
+    style_map = dict(list(zip(set(bdries.array()), repeat(None))))
     style_map[1] = 'red, very thin'
 
     code = tikzify_2d_mesh(bdries, style_map)

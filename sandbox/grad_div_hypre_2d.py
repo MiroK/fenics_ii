@@ -1,8 +1,11 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from dolfin import *
 from petsc4py import PETSc
 from mpi4py import MPI as pyMPI
 from sympy.printing import ccode
 import sympy as sp
+from six.moves import map
 
 # MMS utils
 def expr_body(expr, **kwargs):
@@ -42,7 +45,7 @@ def main(n):
     
     f = -sp_grad(sp_div(sigma)) + sigma
 
-    sigma_expr, f_expr = map(as_expression, (sigma, f))
+    sigma_expr, f_expr = list(map(as_expression, (sigma, f)))
 
     # The discrete problem
     mesh = UnitSquareMesh(n, n)
@@ -114,4 +117,4 @@ if __name__ == '__main__':
             rate = -1
         h0, error0 = h, error
 
-        print(msg % (h, ndofs, niters, error, rate))
+        print((msg % (h, ndofs, niters, error, rate)))

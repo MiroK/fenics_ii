@@ -1,6 +1,9 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from dolfin import *
 from xii import EmbeddedMesh, ii_assemble, Extension, Trace
 import numpy as np
+from six.moves import map
 
 
 mesh = UnitCubeMesh(16, 16, 16)
@@ -24,8 +27,8 @@ Q = FunctionSpace(Emesh, 'CG', 1)
     
 W = [V3d, V1d, Q]
 
-u3d, u1d, p = map(TrialFunction, W)
-v3d, v1d, q = map(TestFunction, W)
+u3d, u1d, p = list(map(TrialFunction, W))
+v3d, v1d, q = list(map(TestFunction, W))
 
 Tu3d, Tv3d = (Trace(f, Emesh) for f in (u3d, v3d))
 Eu1d, Ev1d = (Extension(f, Emesh, type='uniform') for f in (u1d, v1d))
@@ -46,14 +49,14 @@ p_func = interpolate(p_expr, Q)
 v_func = interpolate(v_expr, V1d)
 # Quadrature
 num = v_func.vector().inner(A*p_func.vector())
-print '>', abs(num - true), (true, num)
+print('>', abs(num - true), (true, num))
 
 # Check the transpose as well
 a = inner(Eu1d, q)*dxLM
 A = ii_assemble(a)
 # Quadrature
 num = p_func.vector().inner(A*v_func.vector())
-print '>>', abs(num - true), (true, num)
+print('>>', abs(num - true), (true, num))
 
 # Maybe at some point we want something like this
 a = inner(Tu3d, Ev1d)*dxLM
@@ -61,4 +64,4 @@ A = ii_assemble(a)
 
 u_func = interpolate(p_expr, V3d)
 num = v_func.vector().inner(A*u_func.vector())
-print '>>>', abs(num - true), (true, num)
+print('>>>', abs(num - true), (true, num))

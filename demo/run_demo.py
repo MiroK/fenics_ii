@@ -1,5 +1,7 @@
 # Driver for demos
 
+from __future__ import absolute_import
+from __future__ import print_function
 from xii import (ii_Function, ii_assemble, ii_convert, ii_PETScOperator,
                  ii_PETScPreconditioner, as_petsc_nest)
 from runpy import run_module
@@ -7,6 +9,10 @@ from dolfin import solve, File, Timer, LUSolver, interpolate
 import matplotlib.pyplot as plt
 
 import os
+import six
+from six.moves import map
+from six.moves import range
+from six.moves import zip
 
 def main(module_name, ncases, params, petsc_params):
     '''
@@ -19,7 +25,7 @@ def main(module_name, ncases, params, petsc_params):
     for k, v in params.items(): exec(k + '=v', locals())
 
     RED = '\033[1;37;31m%s\033[0m'
-    print RED % ('\tRunning %s with %d preconditioner' % (module_name, precond))
+    print(RED % ('\tRunning %s with %d preconditioner' % (module_name, precond)))
 
     module = __import__(module_name)  # no importlib in python2.7
 
@@ -48,16 +54,16 @@ def main(module_name, ncases, params, petsc_params):
     else:
         transform = lambda i, x: x
 
-    print '='*79
-    print '\t\t\tProblem eps = %r' % eps
-    print '='*79
+    print('='*79)
+    print('\t\t\tProblem eps = %r' % eps)
+    print('='*79)
     for i in ncases:
         a, L, W = module.setup_problem(i, rhs_data, eps=eps)
         
         # Assemble blocks
         t = Timer('assembly'); t.start()
-        AA, bb = map(ii_assemble, (a, L))
-        print '\tAssembled blocks in %g s' % t.stop()
+        AA, bb = list(map(ii_assemble, (a, L)))
+        print('\tAssembled blocks in %g s' % t.stop())
 
         # Check the symmetry
         wh = ii_Function(W)
@@ -67,12 +73,12 @@ def main(module_name, ncases, params, petsc_params):
         if solver == 'direct':
             # Turn into a (monolithic) PETScMatrix/Vector
             t = Timer('conversion'); t.start()        
-            AAm, bbm = map(ii_convert, (AA, bb))
-            print '\tConversion to PETScMatrix/Vector took %g s' % t.stop()
+            AAm, bbm = list(map(ii_convert, (AA, bb)))
+            print('\tConversion to PETScMatrix/Vector took %g s' % t.stop())
 
             t = Timer('solve'); t.start()
             LUSolver('umfpack').solve(AAm, wh.vector(), bbm)
-            print '\tSolver took %g s' % t.stop()
+            print('\tSolver took %g s' % t.stop())
 
             niters = 1
 
@@ -87,7 +93,7 @@ def main(module_name, ncases, params, petsc_params):
             if '-ksp_type' not in petsc_params: petsc_params['-ksp_type'] = 'minres'
             
             opts = PETSc.Options()
-            for key, value in petsc_params.iteritems():
+            for key, value in six.iteritems(petsc_params):
                 opts.setValue(key, None if value == 'none' else value)
 
             ksp.setOperators(ii_PETScOperator(AA))
@@ -100,7 +106,7 @@ def main(module_name, ncases, params, petsc_params):
             
             ksp.setFromOptions()
             
-            print ksp.getTolerances()
+            print(ksp.getTolerances())
             
             # Want the iterations to start from random
             wh.block_vec().randomize()
@@ -108,7 +114,7 @@ def main(module_name, ncases, params, petsc_params):
             # Solve, note the past object must be PETSc.Vec
             t = Timer('solve'); t.start()            
             ksp.solve(as_petsc_nest(bb), wh.petsc_vec())
-            print '\tSolver took %g s' % t.stop(), ksp.getConvergedReason()
+            print('\tSolver took %g s' % t.stop(), ksp.getConvergedReason())
             
 
             niters = ksp.getIterationNumber()
@@ -179,7 +185,7 @@ if __name__ == '__main__':
 
     args, petsc_args = parser.parse_known_args()
 
-    print args.problem_eps
+    print(args.problem_eps)
     if petsc_args:
         petsc_args = dict((k, v) for k, v in zip(petsc_args[::2], petsc_args[1::2]))
     else:
@@ -206,4 +212,4 @@ if __name__ == '__main__':
     for module in modules:
         for eps in parse_eps(args.problem_eps):
             params['eps'] = eps
-            main(module, ncases=range(args.ncases), params=params, petsc_params=petsc_args)
+            main(module, ncases=list(range(args.ncases)), params=params, petsc_params=petsc_args)

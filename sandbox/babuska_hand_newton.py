@@ -6,10 +6,14 @@
 # or with ksp('preonly') together with LU preconditioner
 #
 
+from __future__ import absolute_import
+from __future__ import print_function
 from dolfin import *
 from xii import *
 from ulfy import Expression
 from petsc4py import PETSc
+from six.moves import map
+from six.moves import range
 
 
 def nonlinear_babuska(N, u_exact, p_exact):
@@ -24,7 +28,7 @@ def nonlinear_babuska(N, u_exact, p_exact):
     up = ii_Function(W)
     u, p = up  # Split
 
-    v, q = map(TestFunction, W)
+    v, q = list(map(TestFunction, W))
     Tu, Tv = (Trace(x, bmesh) for x in (u, v))
 
     dxGamma = Measure('dx', domain=bmesh)
@@ -82,9 +86,9 @@ def nonlinear_babuska(N, u_exact, p_exact):
         
         eps = sqrt(sum(x.norm('l2')**2 for x in dup.vectors()))
         
-        print '\t%d |du| = %g |A|= %g |b| = %g | niters %d' % (
+        print('\t%d |du| = %g |A|= %g |b| = %g | niters %d' % (
             niter, eps, A.norm('linf'), b.norm('l2'), niters
-        )
+        ))
 
         # FIXME: Update
         for i in range(len(W)):
@@ -128,7 +132,7 @@ if __name__ == '__main__':
         data = (eu, rate_u, ep, rate_p, Vh.dim() + Qh.dim())
         
         msg = '|e|_1 = %.4E[%.2f] |p|_0 = %.4E[%.2f] | ndofs = %d' % data
-        print(RED % msg)
+        print((RED % msg))
     
     File('./nl_results/babuska_uh.pvd') << uh
     File('./nl_results/babuska_ph.pvd') << ph

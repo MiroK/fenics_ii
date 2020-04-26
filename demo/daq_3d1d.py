@@ -5,8 +5,10 @@
 # -beta(q, Pi u)_1      + a1(grad(p), grad(q))_1 + (a0+beta)(p, q)_1 = (f, q)_1
 #
 
+from __future__ import absolute_import
 from dolfin import *
 from xii import *
+from six.moves import map
 
 
 def setup_problem(i, f, eps=None):
@@ -32,8 +34,8 @@ def setup_problem(i, f, eps=None):
     Q = FunctionSpace(bmesh, 'CG', 1)
     W = (V, Q)
 
-    u, p = map(TrialFunction, W)
-    v, q = map(TestFunction, W)
+    u, p = list(map(TrialFunction, W))
+    v, q = list(map(TestFunction, W))
 
     # Averaging surface
     cylinder = Circle(radius=radius, degree=quadrature_degree)

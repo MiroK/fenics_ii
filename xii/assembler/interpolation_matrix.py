@@ -1,8 +1,11 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from xii.linalg.matrix_utils import petsc_serial_matrix
 from xii.assembler.fem_eval import DegreeOfFreedom, FEBasisFunction
 from petsc4py import PETSc
 import dolfin as df
 import numpy as np
+from six.moves import range
 
 
 def memoize_interp(f):
@@ -42,7 +45,7 @@ def interpolation_mat(V, Q):
     column_values = np.zeros(V_basis_f.elm.space_dimension(), dtype='double')
     with petsc_serial_matrix(Q, V) as mat:
 
-        for cell in xrange(V.mesh().num_cells()):
+        for cell in range(V.mesh().num_cells()):
             Q_dof.cell = cell
             V_basis_f.cell = cell
 
@@ -82,4 +85,4 @@ if __name__ == '__main__':
 
     q = Function(Q, I*v.vector())
 
-    print sqrt(abs(assemble(inner(q - f, q - f)*dx)))
+    print(sqrt(abs(assemble(inner(q - f, q - f)*dx))))

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from xii.assembler.average_form import Average
 from xii.assembler.average_matrix import MeasureFunction
 from xii.assembler.average_shape import Circle, Square, SquareRim, Disk

@@ -1,10 +1,17 @@
-from make_mesh_cpp import make_mesh
+from __future__ import absolute_import
+from __future__ import print_function
+from .make_mesh_cpp import make_mesh
 from collections import defaultdict
 from scipy.spatial import cKDTree
 from itertools import chain
 import dolfin as df
 import numpy as np
 import operator
+import six
+from six.moves import filter
+from six.moves import map
+from six.moves import range
+from six.moves import zip
 
 
 class EmbeddedMesh(df.Mesh):
@@ -24,7 +31,7 @@ class EmbeddedMesh(df.Mesh):
         # Build a new list int list with facet_function marked
         if not all(map(is_number, markers)):
             
-            numbers = filter(is_number, markers)
+            numbers = list(filter(is_number, markers))
             next_int_marker = max(numbers) if numbers else 0
             for marker in markers:
                 if is_number(marker):
@@ -67,7 +74,7 @@ class EmbeddedMesh(df.Mesh):
 
             # So everybody is marked as 1
             one_cell_f = df.MeshFunction('size_t', base_mesh, tdim, 0)
-            for cells in color_cells.itervalues(): one_cell_f.array()[cells] = 1
+            for cells in six.itervalues(color_cells): one_cell_f.array()[cells] = 1
             
             # The Embedded mesh now steals a lot from submesh
             submesh = df.SubMesh(base_mesh, one_cell_f, 1)
@@ -87,8 +94,8 @@ class EmbeddedMesh(df.Mesh):
             f = df.MeshFunction('size_t', self, tdim, 0)
             f_values = f.array()
             if len(markers) > 1:
-                old2new = dict(zip(mapping_tdim, range(len(mapping_tdim))))
-                for color, old_cells in color_cells.iteritems():
+                old2new = dict(list(zip(mapping_tdim, list(range(len(mapping_tdim))))))
+                for color, old_cells in six.iteritems(color_cells):
                     new_cells = np.array([old2new[o] for o in old_cells], dtype='uintp')
                     f_values[new_cells] = color
             else:
@@ -151,7 +158,7 @@ class EmbeddedMesh(df.Mesh):
         f_ = f.array()
         # Finally the inherited marking function
         if len(markers) > 1:
-            for marker, cells in cell_colors.iteritems():
+            for marker, cells in six.iteritems(cell_colors):
                 f_[cells] = marker
         else:
             f.set_all(markers[0])
@@ -367,7 +374,7 @@ if __name__ == '__main__':
             rate = np.log(dt/dt0)/np.log(float(n)/n0)
         else:
             rate = np.nan
-        print n, dt, rate
+        print(n, dt, rate)
         n0, dt0 = n, dt
         
     # Check creation

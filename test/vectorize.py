@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from dolfin import *
 from xii import inverse, VectorizedOperator
 from hsmg import HsNorm
@@ -21,7 +23,7 @@ Mj = assemble(inner(u, v)*dx)
 X = VectorizedOperator(Mj, VV)
 y0 = X*x
 
-print x.norm('l2'), (y - y0).norm('linf')
+print(x.norm('l2'), (y - y0).norm('linf'))
 
 I = HsNorm(V, s=0.5)
 II = VectorizedOperator(I, VV)
@@ -29,4 +31,4 @@ II = VectorizedOperator(I, VV)
 foo = II*x
 x0 = inverse(II)*foo
 
-print (x - x0).norm('linf')
+print((x - x0).norm('linf'))

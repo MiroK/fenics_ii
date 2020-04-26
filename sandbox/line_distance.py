@@ -1,4 +1,6 @@
+from __future__ import absolute_import
 import numpy as np
+from six.moves import map
 
 
 def segment_distance(P, A, B):
@@ -41,7 +43,7 @@ if __name__ == '__main__':
     distance += 3
 
     for d in ds:
-        distance = np.minimum(distance, map(d, dofs_x))
+        distance = np.minimum(distance, list(map(d, dofs_x)))
 
     f.vector().set_local(distance)
 

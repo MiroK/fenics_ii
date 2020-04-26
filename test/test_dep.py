@@ -1,8 +1,11 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from block.block_bc import block_rhs_bc
 from block.algebraic.petsc import LU
 from dolfin import *
 from xii import *
 import sympy as sp
+from six.moves import map
 
 
 def test(dt, ncells, w_exact):
@@ -25,8 +28,8 @@ def test(dt, ncells, w_exact):
     Q = FunctionSpace(bmesh, 'CG', 1)
     W = [V, Q]
 
-    u, p = map(TrialFunction, W)
-    v, q = map(TestFunction, W)
+    u, p = list(map(TrialFunction, W))
+    v, q = list(map(TestFunction, W))
     Tu, Tv = Trace(u, bmesh), Trace(v, bmesh)
     dx_ = Measure('dx', domain=bmesh)
 
@@ -48,17 +51,17 @@ def test(dt, ncells, w_exact):
     bcs = [[DirichletBC(V, u_exact, boundaries, 2)],
            [DirichletBC(Q, Constant(0), 'on_boundary')]]
 
-    A, b = map(ii_assemble, (a, L))
+    A, b = list(map(ii_assemble, (a, L)))
     b_bc = block_rhs_bc(bcs, A)
     # Apply bcs to the system
     A_bc, _ = apply_bc(A, b, bcs)
     # Solver is setup based on monolithic
     A_mono = ii_convert(A_bc)
 
-    print('Setting up solver %d' % sum(Wi.dim() for Wi in W))
+    print(('Setting up solver %d' % sum(Wi.dim() for Wi in W)))
     time_Ainv = Timer('Ainv')
     A_inv = PETScLUSolver(A_mono, 'umfpack')  # Setup once
-    print('Done in %g s' % time_Ainv.stop())
+    print(('Done in %g s' % time_Ainv.stop()))
 
     time = 0;
     while time < 0.5:
@@ -113,6 +116,6 @@ if __name__ == '__main__':
             p_errors[row][col] = ep
 
 
-    print u_errors
-    print
-    print p_errors
+    print(u_errors)
+    print()
+    print(p_errors)

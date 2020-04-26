@@ -1,6 +1,9 @@
+from __future__ import absolute_import
 from xii.meshing.make_mesh_cpp import make_mesh
 from itertools import combinations, count
 import numpy as np
+from six.moves import map
+from six.moves import range
 
 
 def cross_grid_refine(mesh):
@@ -27,7 +30,7 @@ def cross_grid_refine(mesh):
     child2parent = np.empty(ncells*nvtx_cell, dtype='uintp')
     fine_cells = np.empty((ncells*nvtx_cell, nvtx_cell), dtype='uintp')
     # How we build new cells
-    basis = map(list, combinations(range(nvtx_cell), nvtx_cell-1))
+    basis = list(map(list, combinations(list(range(nvtx_cell)), nvtx_cell-1)))
 
     fc, center = 0, len(x)
     for pc, cell in enumerate(cells):

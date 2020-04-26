@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from dolfin import *
 from xii import (EmbeddedMesh, ii_assemble, Extension, Trace, ii_assemble,
                  StraightLineMesh)
@@ -55,4 +57,4 @@ fLM_ = interpolate(fLM, Q)
 
 mine = fLM_.vector().inner(T*f2d_.vector() - E*f1d_.vector())
 
-print abs(true - mine)
+print(abs(true - mine))
