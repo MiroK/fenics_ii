@@ -382,7 +382,7 @@ def set_lg_map(mat):
         blocks = np.array(list(map(set_lg_map, mat.blocks.flatten()))).reshape(mat.blocks.shape)
         return block_mat(blocks)
 
-    comm = MPI.comm_world().tompi4py()
+    comm = MPI.comm_world
     # Work with matrix
     rowmap, colmap = list(range(mat.size(0))), list(range(mat.size(1)))
 
