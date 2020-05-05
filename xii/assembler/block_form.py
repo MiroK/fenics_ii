@@ -2,6 +2,7 @@ from xii.assembler.ufl_utils import traverse_terminals, replace as ii_replace
 from itertools import dropwhile
 from dolfin import *
 import numpy as np
+from dolfin.function.argument import Argument
 import ufl
 
 
@@ -82,7 +83,7 @@ class _block_form(list):
             assert is_number(value) or ((Argument(self.V0[index], 0), ), None) == (test_function(value), None)
             return list.__setitem__(self, index, value)
 
-        assert is_number(value) or (Argument(self.V1, 0), ) == test_function(value)
+        assert is_number(value) or (Argument(self.V1, 0), ) == test_function(value), (value, Argument(self.V1, 0))
         assert is_number(value) or (Argument(self.V0[index], 1), ) == trial_function(value)
         
         return list.__setitem__(self, index, value)
@@ -142,8 +143,14 @@ def block_form(W, arity):
     assert isinstance(W, (list, tuple))
     
     if arity == 1:
-        return _block_form([inner(null(V), TestFunction(V))*dx for V in W], W)
-    return _block_form([[0]*len(W) for _ in range(len(W))], W)
+        return [inner(null(V), TestFunction(V))*dx for V in W]
+    return [[0]*len(W) for _ in range(len(W))]
+
+
+    # FIXME
+    # if arity == 1:
+    #     return _block_form([inner(null(V), TestFunction(V))*dx for V in W], W)
+    # return _block_form([[0]*len(W) for _ in range(len(W))], W)
 
 
 def is_null(thing):

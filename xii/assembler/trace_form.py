@@ -95,7 +95,7 @@ def Trace(v, mmesh, restriction='', normal=None, tag=None):
     # not work this way.
     # FIXME: should Trace(coeffcient) be a coefficient in the trace space right
     # away, what would be changes to the assembler etc?
-    if isinstance(v, df.Coefficient):
+    if isinstance(v, ufl.Coefficient):
         v =  df.Function(v.function_space(), v.vector())
     else:
         # Object copy?

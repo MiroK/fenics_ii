@@ -1,4 +1,7 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from dolfin import Cell, Expression
+import dolfin as df
 import numpy as np
 
 
@@ -43,11 +46,17 @@ class DegreeOfFreedom(object):
         self.__cell = cell_
 
     def eval(self, f):
-        return self.elm.evaluate_dof(self.dof,
-                                     f.as_expression() if isinstance(f, FEBasisFunction) else f,
-                                     self.__cell_vertex_x,
-                                     self.__cell_orientation,
-                                     self.__cell)
+        if hasattr(self.elm, 'evaluate_dof'):
+            return self.elm.evaluate_dof(self.dof,
+                                         f.as_expression() if isinstance(f, FEBasisFunction) else f,
+                                         self.__cell_vertex_x,
+                                         self.__cell_orientation,
+                                         self.__cell)
+        else:
+            return self.elm.evaluate_dofs(f.as_expression() if isinstance(f, FEBasisFunction) else f,
+                                          self.__cell_vertex_x,
+                                          self.__cell_orientation,
+                                          self.__cell)[self.dof]
 
 # NOTE: this is a very silly construction. Basically the problem is
 # that Function cannot be properly overloaded beacsue SWIG does not 
@@ -63,7 +72,7 @@ class FEBasisFunction(object):
 
         # A fake instanc to talk to with the world
         adapter = type('MiroHack',
-                       (Expression, ),
+                       (Expression if not hasattr(df, 'UserExpression') else df.UserExpression, ),
                        {'value_shape': lambda self_, : shape,
                         'eval': lambda self_, values, x: self.eval(values, x)})
         self.__adapter = adapter(degree=degree)
@@ -99,11 +108,17 @@ class FEBasisFunction(object):
         self.__cell = cell_
 
     def eval(self, values, x):
-        self.elm.evaluate_basis(self.dof,
-                                values[:], 
-                                x,
-                                self.__cell_vertex_x,
-                                self.__cell_orientation)
+        if hasattr(self.elm, 'evaluate_dof'):
+            self.elm.evaluate_basis(self.dof,
+                                    values[:], 
+                                    x,
+                                    self.__cell_vertex_x,
+                                    self.__cell_orientation)
+        else:
+            values[:] = self.elm.evaluate_basis(self.dof,
+                                                x,
+                                                self.__cell_vertex_x,
+                                                self.__cell_orientation)
 
     def __call__(self, x):
         self.eval(self.__values, x)

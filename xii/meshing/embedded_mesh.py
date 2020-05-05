@@ -139,8 +139,7 @@ class EmbeddedMesh(df.Mesh):
         # With acquired data build the mesh
         df.Mesh.__init__(self)
         # Fill
-        make_mesh(coordinates=vertex_coordinates, cells=new_cells, tdim=tdim, gdim=gdim,
-                  mesh=self)
+        make_mesh(coordinates=vertex_coordinates, cells=new_cells, tdim=tdim, gdim=gdim, mesh=self)
 
         # The entity mapping attribute
         mesh_key = marking_function.mesh().id()
