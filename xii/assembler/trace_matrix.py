@@ -350,9 +350,9 @@ def get_entity_map(mesh, trace_mesh, subdomains=None, tags=None):
             parent_entity_map = build_embedding_map(trace_mesh, mesh, subdomains, tags)
             trace_mesh.parent_entity_map[mesh_id] = parent_entity_map
         else:
-            info('\tMissing map for tags %r of mesh %d' % (tags, mesh_id))
             needed_tags = trace_mesh.tagged_cells - tags
             if needed_tags:
+                info('\tMissing map for tags %r of mesh %d' % (needed_tags, mesh_id))
                 parent_entity_map = build_embedding_map(trace_mesh, mesh, subdomains, tags)
                 # Add new
                 for edim in trace_mesh.parent_entity_map[mesh_id]:
