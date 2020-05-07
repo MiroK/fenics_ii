@@ -5,11 +5,12 @@ from math import pi, sqrt
 import numpy as np
 
 from numpy.polynomial.legendre import leggauss
+import dolfin as df
 import quadpy
 
 from xii.linalg.matrix_utils import is_number
 from xii.assembler.average_form import average_space
-
+from xii.meshing.make_mesh_cpp import make_mesh
 
 Quadrature = namedtuple('quadrature', ('points', 'weights'))
 
@@ -406,15 +407,29 @@ if __name__ == '__main__':
 
     u = df.Function(df.FunctionSpace(mesh, 'CG', 1))
     op = Average(u, line_mesh, sq)
+
+
+    from scipy.spatial import Delaunay
+    from dolfin import File
         
     surface = render_avg_surface(op)
+
+    nodes = np.row_stack(surface)
+    tri = Delaunay(nodes)
+
+    cells = np.fromiter(tri.simplices.flatten(), dtype='uintp').reshape(tri.simplices.shape)
+    
+    bounded_volume = make_mesh(nodes, cells, tdim=2, gdim=3)
+    File('foo.pvd') << bounded_volume
+    
+    # for points in surface
     
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
         
     for plane in surface:
         ax.plot3D(plane[:, 0], plane[:, 1], plane[:, 2], marker='o', linestyle='none')
-
+        
     sq_integrate = lambda f, shape=sq, n=n, x0=x0: shape_integrate(f, shape, x0, n)
 
     # Sanity

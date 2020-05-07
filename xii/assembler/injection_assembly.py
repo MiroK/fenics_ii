@@ -37,7 +37,7 @@ class InjectionFormAssembler(ReducedFormAssembler):
 
     def reduction_matrix(self, Vc, Vf, fine_mesh, data):
         '''Algebraic representation of injection'''
-        return injection_matrix(Vc, Vf)
+        return injection_matrix(Vc, Vf, fine_mesh, data)
 
 # Expose
     

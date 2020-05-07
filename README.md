@@ -35,7 +35,7 @@ session you can achieve this by `source setup.rc`.
   examples. Please note that the demos/apps often include mesh independent 
   preconditioners or nontrivial physics problem formulations which the authors devolop as 
   part of their research. Much like this code they are in various stages of getting/being
-  published. Please contact us about citing and credits.
+  published. For citing see below.
   
   <p align="center">
     <img src="https://github.com/MiroK/fenics_ii/blob/master/apps/d123/visit0000.png">

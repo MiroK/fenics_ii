@@ -8,7 +8,7 @@ from block import block_mat, block_vec
 from dolfin import PETScVector, PETScMatrix, MPI
 from dolfin import Vector, GenericVector, Matrix
 from scipy.sparse import bmat as numpy_block_mat
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, vstack as sp_vstack
 from petsc4py import PETSc
 import numpy as np
 import itertools
@@ -118,6 +118,16 @@ def collapse(bmat):
     elif hasattr(bmat, 'collapse'):
         return bmat.collapse()
 
+    elif hasattr(bmat, 'create_vec'):
+        x = bmat.create_vec()
+        columns = []
+        for ei in Rn_basis(x):
+            y = bmat*ei
+            columns.append(csr_matrix(convert(y).get_local()))
+        bmat = (sp_vstack(columns).T).tocsr()
+
+        return numpy_to_petsc(bmat)
+    
     raise ValueError('Do not know how to collapse %r' % type(bmat))
 
 
@@ -393,6 +403,20 @@ def set_lg_map(mat):
 
     return mat
 
+
+def Rn_basis(vec):
+    if not isinstance(vec, block_vec):
+        vec = Vector(mpi_comm_world(), vec.local_size())
+        values = np.zeros(vec.local_size())
+        for i in range(len(values)):
+            values[i] = 1.
+            
+            vec.set_local(values)
+            yield vec
+
+            values[:] *= 0.
+    else:
+        assert False
 
 # -------------------------------------------------------------------
 

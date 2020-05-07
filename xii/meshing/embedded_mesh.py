@@ -102,39 +102,43 @@ class EmbeddedMesh(df.Mesh):
 
         # Otherwise the mesh needs to by build from scratch
         base_mesh.init(tdim, 0)
-        # Collect unique vertices based on their new-mesh indexing, the cells
-        # of the embedded mesh are defined in terms of their embedded-numbering
-        new_vertices, new_cells = [], []
-        # NOTE: new_vertices is actually new -> old vertex map
-        # Map from cells of embedded mesh to tdim entities of base mesh, and
-        cell_map = []
-        cell_colors = defaultdict(list)  # Preserve the markers
-
-        new_cell_index, new_vertex_index = 0, 0
+        t2v = base_mesh.topology()(tdim, 0)
+        # Collect unique vertices based on their new-mesh indexing
+        vertex_map, seen, = dict(), set()
+        # The cells of the embedded mesh are defined in terms of their embedded-numbering
+        new_cells, new_vertices = [], []
+        # We want the cells to inherit the colors of entities
+        color_map, cell_map = {}, []
+        
+        mf_array = marking_function.array()
+        cell_idx = 0  # New one
         for marker in markers:
-            for entity in df.SubsetIterator(marking_function, marker):
-                vs = entity.entities(0)
-                cell = []
-                # Vertex lookup
-                for v in vs:
-                    try:
-                        local = new_vertices.index(v)
-                    except ValueError:
-                        local = new_vertex_index
-                        new_vertices.append(v)
-                        new_vertex_index += 1
-                    # Cell, one by one in terms of vertices
-                    cell.append(local)
-                # The cell
-                new_cells.append(cell)
-                # Into map
-                cell_map.append(entity.index())
-                # Colors
-                cell_colors[marker].append(new_cell_index)
+            entities_of_marker, = np.where(mf_array == marker)
 
-                new_cell_index += 1
+            cell_map.extend(entities_of_marker)
+            # Represent entities in terms of their vertices (vertices are of base mesh)
+            entities_old_vertex = np.row_stack([t2v(e) for e in entities_of_marker])
+            marker_vertices = set(entities_old_vertex.flat)
+            # See if these have been seen with the previous color and rebuild
+            # mapping of old to new vertices
+            new_marker_vertices = marker_vertices - seen
+            new_vertices.extend(new_marker_vertices)
+
+            # Mapping from new mesh where entities are cell
+            vertex_map.update({old: new for new, old in enumerate(new_marker_vertices, len(vertex_map))})
+
+            # The mapping is then used to encode entities as new cells
+            marker_cells = np.fromiter(map(vertex_map.__getitem__, entities_old_vertex.flat),
+                                       dtype='uintp').reshape(entities_old_vertex.shape)
+            new_cells.append(marker_cells)
+            # For colors
+            color_map[marker] = (cell_idx, cell_idx + len(marker_cells))
+            # For next round
+            seen.update(new_vertices)
+            cell_idx += len(marker_cells)
+
         vertex_coordinates = base_mesh.coordinates()[new_vertices]
-        new_cells = np.array(new_cells, dtype='uintp')
+        new_cells = np.row_stack(new_cells)
         
         # With acquired data build the mesh
         df.Mesh.__init__(self)
@@ -150,8 +154,8 @@ class EmbeddedMesh(df.Mesh):
         f_ = f.array()
         # Finally the inherited marking function
         if len(markers) > 1:
-            for marker, cells in cell_colors.items():
-                f_[cells] = marker
+            for marker, (c0, c1) in color_map.iteritems():
+                f_[np.arange(c0, c1)] = marker
         else:
             f.set_all(markers[0])
 
@@ -337,7 +341,7 @@ def build_embedding_map(emesh, mesh, esubdomains=None, tags=None, tol=1E-14):
 if __name__ == '__main__':
     # Embedding map
     n0, dt0 = None, None
-    for n in [8, 16, 32, 64, 128, 256, 512, 1024]:
+    for n in []: #8, 16, 32, 64, 128, 256, 512, 1024]:
 
         mesh = df.UnitSquareMesh(n, n)
         emesh = df.BoundaryMesh(mesh, 'exterior')
@@ -370,42 +374,85 @@ if __name__ == '__main__':
         n0, dt0 = n, dt
         
     # Check creation
-    mesh = df.UnitCubeMesh(10, 10, 10)
-
-    f = df.MeshFunction('size_t', mesh, mesh.topology().dim()-1, 0)
-    chi = df.CompiledSubDomain('near(x[i], 0.5)', i=0) 
-    for i in range(3):
-        chi.i=i
-        chi.mark(f, i+1)
-
-    mesh = EmbeddedMesh(f, [1, 2, 3])
-
-    volume = lambda c: df.Cell(mesh, c.index()).volume()
+    df.set_log_level(df.WARNING)
+    chi = df.CompiledSubDomain('near(x[i], 0.5)', i=0)
     
-    assert df.near(sum(volume(c) for c in df.SubsetIterator(mesh.marking_function, 1)), 1, 1E-10)
-    assert df.near(sum(volume(c) for c in df.SubsetIterator(mesh.marking_function, 2)), 1, 1E-10)
-    assert df.near(sum(volume(c) for c in df.SubsetIterator(mesh.marking_function, 3)), 1, 1E-10)
+    for n in (2, 4, 8, 16, 32, 64):
+        mesh = df.UnitCubeMesh(n, n, n)
 
-    # Check normla computation
-    mesh = df.UnitCubeMesh(10, 10, 10)
-    bmesh = df.BoundaryMesh(mesh, 'exterior')
+        f = df.MeshFunction('size_t', mesh, mesh.topology().dim()-1, 0)
 
-    n = OuterNormal(bmesh, [0.5, 0.5, 0.5])
+        for i in range(3):
+            chi.i=i
+            chi.mark(f, i+1)
 
-    for cell in df.cells(bmesh):
-        x = cell.midpoint().array()
-        if df.near(x[0], 0):
-            assert np.linalg.norm(n(x) - np.array([-1, 0, 0])) < 1E-10
-        elif df.near(x[0], 1.):
-            assert np.linalg.norm(n(x) - np.array([1, 0, 0])) < 1E-10
-        elif df.near(x[1], 0.):
-            assert np.linalg.norm(n(x) - np.array([0, -1, 0])) < 1E-10
-        elif df.near(x[1], 1.):
-            assert np.linalg.norm(n(x) - np.array([0, 1, 0])) < 1E-10
-        elif df.near(x[2], 0):
-            assert np.linalg.norm(n(x) - np.array([0, 0, -1])) < 1E-10
-        else:
-            assert np.linalg.norm(n(x) - np.array([0, 0, 1])) < 1E-10
+        timer = df.Timer('embedding')
+        emesh = EmbeddedMesh(f, [1, 2, 3])
+        print(n, '->', timer.stop(), emesh.num_cells())
+
+        volume = lambda c: df.Cell(emesh, c.index()).volume()
+
+        # Crude check
+        assert df.near(sum(volume(c) for c in df.SubsetIterator(emesh.marking_function, 1)), 1, 1E-10), sum(volume(c) for c in df.SubsetIterator(emesh.marking_function, 1))
+        assert df.near(sum(volume(c) for c in df.SubsetIterator(emesh.marking_function, 2)), 1, 1E-10), sum(volume(c) for c in df.SubsetIterator(emesh.marking_function, 2))
+        assert df.near(sum(volume(c) for c in df.SubsetIterator(emesh.marking_function, 3)), 1, 1E-10), sum(volume(c) for c in df.SubsetIterator(emesh.marking_function, 3))
+
+        # Finer vertices
+        new, old = map(list, zip(*emesh.parent_entity_map[mesh.id()][0].items()))
+        # Coordinates mesh
+        x = emesh.coordinates()[new]
+        y = mesh.coordinates()[old]
+
+        assert np.linalg.norm(x-y) < 1E-13
+
+        # Finer entities
+        tdim = emesh.topology().dim()
+        mesh.init(tdim, 0)
+        t2v = mesh.topology()(tdim, 0)
+        
+        new, old = map(list, zip(*emesh.parent_entity_map[mesh.id()][tdim].items()))
+
+        # Midpoint coordinates of cells of embedded mesh
+        x_mid = np.mean(emesh.coordinates()[emesh.cells()[new]], axis=1)
+        # Obtain entities of embedding mesh as vertices
+        entities_v = np.row_stack([t2v(e) for e in old])
+        y = mesh.coordinates()[entities_v]
+        # Their centroids ...
+        y_mid = np.mean(y, axis=1)
+        # ... match
+        assert np.linalg.norm(x_mid - y_mid) < 1E-13
+
+        mapping = emesh.parent_entity_map[mesh.id()][tdim]
+        # Check colors
+        color_values = emesh.marking_function.array()        
+        colors = set(color_values)
+        for color in colors:
+            cells_new, = np.where(color_values == color)
+            entities_old, = np.where(f.array() == color)
+
+            assert set(mapping[cn] for cn in cells_new) == set(entities_old)
+        
+    # Check vertex
+    # # Check normla computation
+    # mesh = df.UnitCubeMesh(10, 10, 10)
+    # bmesh = df.BoundaryMesh(mesh, 'exterior')
+
+    # n = OuterNormal(bmesh, [0.5, 0.5, 0.5])
+
+    # for cell in df.cells(bmesh):
+    #     x = cell.midpoint().array()
+    #     if df.near(x[0], 0):
+    #         assert np.linalg.norm(n(x) - np.array([-1, 0, 0])) < 1E-10
+    #     elif df.near(x[0], 1.):
+    #         assert np.linalg.norm(n(x) - np.array([1, 0, 0])) < 1E-10
+    #     elif df.near(x[1], 0.):
+    #         assert np.linalg.norm(n(x) - np.array([0, -1, 0])) < 1E-10
+    #     elif df.near(x[1], 1.):
+    #         assert np.linalg.norm(n(x) - np.array([0, 1, 0])) < 1E-10
+    #     elif df.near(x[2], 0):
+    #         assert np.linalg.norm(n(x) - np.array([0, 0, -1])) < 1E-10
+    #     else:
+    #         assert np.linalg.norm(n(x) - np.array([0, 0, 1])) < 1E-10
 
     # EmbeddedMesh with cell_f
     mesh = df.BoxMesh(df.Point(*(-1, )*3), df.Point(*(1, )*3), 10, 10, 10)
