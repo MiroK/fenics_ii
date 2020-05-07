@@ -37,8 +37,9 @@ def setup_domains(n):
     return mesh, bmesh
 
 
-def setup_problem(i, (f1, f2, g), eps):
+def setup_problem(i, xxx_todo_changeme, eps):
     '''EMI like problem without mortaring'''
+    (f1, f2, g) = xxx_todo_changeme
     n = 4*2**i
     mesh, bmesh = setup_domains(n)
 
@@ -47,8 +48,8 @@ def setup_problem(i, (f1, f2, g), eps):
     Q = FunctionSpace(bmesh, 'DG', 0)       # p
     W = [S, V, Q]
 
-    sigma, u, p = map(TrialFunction, W)
-    tau, v, q = map(TestFunction, W)
+    sigma, u, p = list(map(TrialFunction, W))
+    tau, v, q = list(map(TestFunction, W))
 
     dX = Measure('dx', domain=mesh, subdomain_data=mesh.subdomains)
     dxGamma = dx(domain=bmesh)
@@ -159,9 +160,9 @@ def setup_mms(eps):
 
     g = EPS*(u1 - u2) # + grad(u1).n1 # But the flux is 0
 
-    up = map(as_expression, (sigma1, sigma2, u1, u2, u1 - u2))
+    up = list(map(as_expression, (sigma1, sigma2, u1, u2, u1 - u2)))
     # The last gut is the u1 trace value but here is is 0
-    fg = map(as_expression, (f1, f2)) + [as_expression(g, EPS=eps)]
+    fg = list(map(as_expression, (f1, f2))) + [as_expression(g, EPS=eps)]
     
     return up, fg
 

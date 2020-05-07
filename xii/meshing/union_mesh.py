@@ -1,5 +1,5 @@
 from dolfin import DomainBoundary, MeshFunction, SubsetIterator
-from make_mesh_cpp import make_mesh
+from .make_mesh_cpp import make_mesh
 import numpy as np
 
 
@@ -27,8 +27,8 @@ def union_mesh(meshes, tol=1E-12):
     [m.init(fdim) for m in meshes]
     [m.init(fdim, 0) for m in meshes]
 
-    bdry_vertices0, bdry_vertices1 = map(list, (set(np.concatenate([f.entities(0) for f in SubsetIterator(bdry, 1)]))
-                                                for bdry in bdries))
+    bdry_vertices0, bdry_vertices1 = list(map(list, (set(np.concatenate([f.entities(0) for f in SubsetIterator(bdry, 1)]))
+                                                for bdry in bdries)))
     
     x0, x1 = [m.coordinates() for m in meshes]
 
@@ -58,7 +58,7 @@ def union_mesh(meshes, tol=1E-12):
     lg1 = {k: v for v, k in enumerate(unshared, offset)}
     lg1.update(shared_vertices)
     # Collapse to list
-    _, lg1 = zip(*sorted(lg1.items(), key=lambda v: v[0]))
+    _, lg1 = list(zip(*sorted(list(lg1.items()), key=lambda v: v[0])))
     lg1 = np.array(lg1)
     
     mapped_cells = np.fromiter((lg1[v] for v in np.concatenate(mesh1.cells())),
@@ -115,5 +115,5 @@ if __name__ == '__main__':
                 
         x = mesh.coordinates()
 
-        print m_id, np.linalg.norm(x - y[m_map])
+        print(m_id, np.linalg.norm(x - y[m_map]))
     File('fff.pvd') << union

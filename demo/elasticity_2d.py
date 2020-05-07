@@ -9,8 +9,9 @@ from dolfin import *
 from xii import *
 
 
-def setup_problem(i, (f, g), eps=None):
+def setup_problem(i, xxx_todo_changeme, eps=None):
     '''Elasticity on [0, 1]^2. Eps = (mu, lmbda)'''
+    (f, g) = xxx_todo_changeme
     assert len(eps) == 2
             
     n = 4*2**i
@@ -21,8 +22,8 @@ def setup_problem(i, (f, g), eps=None):
     Q = VectorFunctionSpace(bmesh, 'CG', 1)
     W = [V, Q]
 
-    u, p = map(TrialFunction, W)
-    v, q = map(TestFunction, W)
+    u, p = list(map(TrialFunction, W))
+    v, q = list(map(TestFunction, W))
     Tu = Trace(u, bmesh)
     Tv = Trace(v, bmesh)
 

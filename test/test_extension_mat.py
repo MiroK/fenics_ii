@@ -40,13 +40,13 @@ E.mult(fV.vector(), Ef.vector())
 E_ = E.array()
 
 # The questions is about the nullspace of this operator
-dofs_by_height = list(enumerate(map(lambda x: x[-1], EV.tabulate_dof_coordinates().reshape((EV.dim(), -1)))))
+dofs_by_height = list(enumerate([x[-1] for x in EV.tabulate_dof_coordinates().reshape((EV.dim(), -1))]))
 dofs_by_height = iter(sorted(dofs_by_height, key=lambda p: p[1]))
 
 dofs = []
 height = None
 for dof, h in dofs_by_height:
-    print dof
+    print(dof)
     if height is None:
         height = h
         dofs_height = [dof]
@@ -64,10 +64,10 @@ values = xx.vector().get_local()
 for i, d in enumerate(dofs[0]):
     values[d] = (-1)**i
 
-print np.dot(values, E_)
+print(np.dot(values, E_))
 
-print '>>>', sum(svdvals(E_.dot(E_.T)) < 1E-10)
-print V.dim(), EV.dim()
+print('>>>', sum(svdvals(E_.dot(E_.T)) < 1E-10))
+print(V.dim(), EV.dim())
 
 #
 #
@@ -85,7 +85,7 @@ exit()
 
 e = inner(Ef - f, Ef - f)*dx(domain=Emesh)
 n = inner(Ef, Ef)*dx(domain=Emesh)
-print sqrt(abs(assemble(e))), sqrt(abs(assemble(n))) 
+print(sqrt(abs(assemble(e))), sqrt(abs(assemble(n)))) 
 
 # Check vector
 V = VectorFunctionSpace(Vmesh, 'CG', 1)
@@ -103,12 +103,12 @@ E.mult(fV.vector(), Ef.vector())
 
 e = inner(Ef - f, Ef - f)*dx(domain=Emesh)
 n = inner(Ef, Ef)*dx(domain=Emesh)
-print sqrt(abs(assemble(e))), sqrt(abs(assemble(n)))
+print(sqrt(abs(assemble(e))), sqrt(abs(assemble(n))))
 
 
 # -------------------------------------------------------------------
 
-print 
+print() 
 # 2d test idea: if the extension mounts to shift it should be exact
 n = 4
 
@@ -151,8 +151,8 @@ x = Function(Q, E*f1d_.vector())
 File('foo.pvd') << x
 
 # Check invariance
-print '>>>>', assemble(inner(x-f1d, x-f1d)*dxLM)
+print('>>>>', assemble(inner(x-f1d, x-f1d)*dxLM))
 # Then this should be automatic
 mine = assemble(inner(fLM_, x)*dxLM)
 
-print abs(true - mine)
+print(abs(true - mine))

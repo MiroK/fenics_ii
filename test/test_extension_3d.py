@@ -52,4 +52,4 @@ fLM_ = interpolate(fLM, Q)
 
 mine = fLM_.vector().inner(T*f2d_.vector() - E*f1d_.vector())
 
-print abs(true - mine)
+print(abs(true - mine))

@@ -10,6 +10,6 @@ from . block_nullspace import BlockNullspace
 try:
     from . hsmg_utils import inverse
 except ImportError:
-    print 'Missing HsMG for fract norm computing'
+    print('Missing HsMG for fract norm computing')
     pass
 

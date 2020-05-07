@@ -23,7 +23,7 @@ def nonlinear_babuska(N, u_exact, p_exact):
     up = ii_Function(W)
     u, p = up  # Split
 
-    v, q = map(TestFunction, W)
+    v, q = list(map(TestFunction, W))
     Tu, Tv = (Trace(x, bmesh) for x in (u, v))
 
     dxGamma = Measure('dx', domain=bmesh)
@@ -55,7 +55,7 @@ class NLProblem(NonlinearProblem):
         self.Fcount, self.Jcount = 0, 0
 
     def F(self, b, x):
-        print 'F, enter', x.size()
+        print('F, enter', x.size())
         b_ = ii_convert(ii_assemble(self.lhs_form))
         self.Fcount += 0
         if b.empty():
@@ -64,32 +64,32 @@ class NLProblem(NonlinearProblem):
             b.setUp()
             b.assemble()
 
-        print 'F, enter', b_.size(), b.size
+        print('F, enter', b_.size(), b.size)
                     
         b.zeroEntries()
         b.axpy(1, as_backend_type(b_).vec())
         b.assemble()
-        print '6', self.Fcount
+        print('6', self.Fcount)
 
     def J(self, A, x):
-        print 'J, enter', x.size()
+        print('J, enter', x.size())
         A_ = ii_convert(ii_assemble(self.jac_form))
-        print '1'
+        print('1')
         self.Jcount += 0
         if A.empty():
             A = as_backend_type(A).mat()
             A.setSizes((A_.size(0), A_.size(1)))
-            print '2'
+            print('2')
             A.setUp()
             A.assemble()
-        print '3'
+        print('3')
         A.zeroEntries()
-        print '4'
+        print('4')
         A.axpy(1, as_backend_type(A_).mat(), PETSc.Mat.Structure.DIFFERENT_NONZERO_PATTERN)
         A.assemble()
 
-        print (PETScMatrix(A).array() - A_.array())
-        print '5', self.Jcount
+        print((PETScMatrix(A).array() - A_.array()))
+        print('5', self.Jcount)
 
         
 # --------------------------------------------------------------------

@@ -126,7 +126,7 @@ def average_matrix(V, TV, shape):
                             
                 # The thing now that with data we can assign to several
                 # rows of the matrix
-                column_indices = np.array(data.keys(), dtype='int32')
+                column_indices = np.array(list(data.keys()), dtype='int32')
                 for shift in range(value_size):
                     row = scalar_row + shift
                     column_values = np.array([data[col][shift] for col in column_indices])

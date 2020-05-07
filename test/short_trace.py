@@ -19,4 +19,4 @@ cf = CellFunction('size_t', bmesh, 0)
 CompiledSubDomain('x[0] < 0.5+DOLFIN_EPS').mark(cf, 1)
 dxGamma = Measure('dx', domain=bmesh, subdomain_data=cf)
 
-print ii_assemble(inner(Trace(u, bmesh), q)*dxGamma(1))
+print(ii_assemble(inner(Trace(u, bmesh), q)*dxGamma(1)))

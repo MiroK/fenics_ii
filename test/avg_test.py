@@ -36,7 +36,7 @@ def test(f, n, radius, degree=8):
     cylinder = Cylinder(radius, degree)
 
     Pi = surface_average_matrix(V, TV, cylinder)
-    print '\t', Pi.norm('linf'), max(len(Pi.getrow(i)[0]) for i in range(TV.dim()))
+    print('\t', Pi.norm('linf'), max(len(Pi.getrow(i)[0]) for i in range(TV.dim())))
     
     Pi_f = Function(TV)
     Pi.mult(f.vector(), Pi_f.vector())
@@ -75,6 +75,6 @@ if __name__ == '__main__':
         else:
             rate = np.inf
 
-        print 'error %g, rate=%.2f' % (e, rate)
+        print('error %g, rate=%.2f' % (e, rate))
         
         n0, e0 = n, e

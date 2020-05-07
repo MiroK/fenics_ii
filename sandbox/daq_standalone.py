@@ -29,8 +29,8 @@ V = FunctionSpace(mesh3d, 'CG', 1)
 Q = FunctionSpace(mesh1d, 'CG', 1)
 W = [V, Q]
 
-u, p = map(TrialFunction, W)
-v, q = map(TestFunction, W)
+u, p = list(map(TrialFunction, W))
+v, q = list(map(TestFunction, W))
 
 # Averaging surface is cylinder obtained by sweeping shape along 1d
 shape = Circle(radius=radius, degree=quadrature_degree)
@@ -55,27 +55,7 @@ L[0] = inner(f, T_v)*dxGamma
 L[1] = inner(f, q)*dxGamma
 
 # We assemble now into block_mat objects (not necessarily matrices)
-A, b = map(ii_assemble, (a, L))
-
-# After the assembler pass; the block of A that involve coupling are not
-# represented as matrices. Instead they are matrix expressions. For example
-# the a[1][0] block is a product of M * Pi where Pi is the matrix representation
-# of the averaging operator from V to PiV space and M is the mass matrix
-# between PiV and Q
-_, PiMat = A[1][0].chain
-# Check that Pi really goes from V
-assert PiMat.size(1) == V.dim()
-# The PiV space is inferred by the assembler. If you are not happy with
-# it you can always get the matrix representation your self
-from xii.assembler.average_matrix import average_matrix
-# Here we get it map to DG0 on the line
-MyPiMat = average_matrix(V,
-                         FunctionSpace(mesh1d, 'DG', 0),
-                         shape=shape)
-# Whily before DG1 was used
-print 'inferred', PiMat.size(0), 'manual', MyPiMat.size(0)
-
-
+A, b = list(map(ii_assemble, (a, L)))
 # Suppose now that there are also boundary conditions; we specify them
 # as a list for every subspace
 V_bcs = [DirichletBC(V, Constant(0), 'near(x[2], 0)')]
@@ -85,8 +65,8 @@ W_bcs = [V_bcs, Q_bcs]
 A, b = apply_bc(A, b, W_bcs)
 
 # Just checking if the off-diagonal block sane
-print '|A01| and |A10|', A[0][1].norm('linf'), A[1][0].norm('linf')
-print '# Unknowns', sum(Wi.dim() for Wi in W)
+print('|A01| and |A10|', A[0][1].norm('linf'), A[1][0].norm('linf'))
+print('# Unknowns', sum(Wi.dim() for Wi in W))
 
 wh = ii_Function(W)
 # Here A is still a block operator
@@ -95,7 +75,7 @@ solve = 'gmres'
 # If the system is to be solved directly there are some extra steps
 if solve == 'lu':
     # Make the system monolithic
-    A, b = map(ii_convert, (A, b))
+    A, b = list(map(ii_convert, (A, b)))
 
     LUSolver(A).solve(wh.vector(), b)
 # Iterative
@@ -114,8 +94,8 @@ else:
         wh[i].vector()[:] = x[i]
     
 # Hope for no NaN
-print wh[0].vector().norm('l2')
-print wh[1].vector().norm('l2')
+print(wh[0].vector().norm('l2'))
+print(wh[1].vector().norm('l2'))
 
 # Output
 File('uh3d.pvd') << wh[0]

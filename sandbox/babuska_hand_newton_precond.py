@@ -27,7 +27,7 @@ def nonlinear_babuska(N, u_exact, p_exact):
     up = ii_Function(W)
     u, p = up  # Split
 
-    v, q = map(TestFunction, W)
+    v, q = list(map(TestFunction, W))
     Tu, Tv = (Trace(x, bmesh) for x in (u, v))
 
     dxGamma = Measure('dx', domain=bmesh)
@@ -90,7 +90,7 @@ def nonlinear_babuska(N, u_exact, p_exact):
         
         eps = sqrt(sum(x.norm('l2')**2 for x in dup.vectors()))
         
-        print '\t%d |du| = %g | niters %d' % (niter, eps, niters)
+        print('\t%d |du| = %g | niters %d' % (niter, eps, niters))
 
         # FIXME: Update
         for i in range(len(W)):
@@ -135,7 +135,7 @@ if __name__ == '__main__':
         data = data + (len(niters), min(niters), np.mean(niters), max(niters))
         
         msg = '|e|_1 = %.4E[%.2f] |p|_0 = %.4E[%.2f] | ndofs = %d | newton_iters = %d | inner_iters = (%d, %.2f %d)' % data
-        print(RED % msg)
+        print((RED % msg))
     
     File('./nl_results/babuska_uh.pvd') << uh
     File('./nl_results/babuska_ph.pvd') << ph

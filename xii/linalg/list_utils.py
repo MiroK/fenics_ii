@@ -1,3 +1,4 @@
+from functools import reduce
 # Newly, b = np.array([Vector]) will for some reason call .array of vector
 # b is not an array of vector object but of numbers! As a workaround
 # we'll do things with lists
