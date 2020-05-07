@@ -154,7 +154,7 @@ class EmbeddedMesh(df.Mesh):
         f_ = f.array()
         # Finally the inherited marking function
         if len(markers) > 1:
-            for marker, (c0, c1) in color_map.iteritems():
+            for marker, (c0, c1) in color_map.items():
                 f_[np.arange(c0, c1)] = marker
         else:
             f.set_all(markers[0])
