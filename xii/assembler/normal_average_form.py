@@ -1,0 +1,94 @@
+from xii.assembler.ufl_utils import *
+from xii.linalg.matrix_utils import is_number
+
+from ufl.corealg.traversal import traverse_unique_terminals
+import dolfin as df
+import ufl
+
+
+def average_cell(o):
+    '''
+    UFL cell corresponding to restriction of o[cell] to its edges, performing
+    this restriction on o[function-like], or objects in o[function space]
+    '''
+    # Space
+    if hasattr(o, 'ufl_cell'):
+        return average_cell(o.ufl_cell())
+    # Foo like
+    if hasattr(o, 'ufl_element'):
+        return average_cell(o.ufl_element().cell())
+
+    # Another cell
+    cell_name = {'tetrahedron': 'interval'}[o.cellname()]
+    
+    return ufl.Cell(cell_name, o.geometric_dimension())
+
+
+def average_space(V, mesh):
+    '''Construct a space over mesh where surface averages of V should live'''
+    # Sanity
+    assert mesh.ufl_cell() == average_cell(V)
+
+    elm = V.ufl_element()
+    degree = elm.degree()
+    # Since tangent of a mesh cell/segment is uniquely defined only inside
+    # the cell it is natural to represent everything in DG
+    family = 'Discontinuous Lagrange'
+    # Only scalars
+    return df.FunctionSpace(mesh, FiniteElement(family, mesh.ufl_cell(), degree))
+
+
+def NormalAverage(v, line_mesh, shape):
+    '''
+    Anoteate v for being a reduction of v obtained by integrating dot(v, normal) 
+    over the shape.
+    '''
+    # Prevent Trace(grad(u)). But it could be interesting to have this
+    assert is_terminal(v)
+    assert average_cell(v) == line_mesh.ufl_cell()
+    assert shape is not None
+    assert hasattr(shape, 'normal')
+
+    # FIXME: temporary
+    assert len(v.function_space().ufl_element().value_shape()) == 1
+
+    if isinstance(v, df.Coefficient):
+        v =  df.Function(v.function_space(), v.vector())
+    else:
+        # Object copy?
+        v = [df.TestFunction, df.TrialFunction][v.number()](v.function_space())
+
+    v.naverage_ = {'mesh': line_mesh, 'shape': shape}
+
+    return v
+
+# Consider now assembly of form, form is really a sum of integrals
+# and here we want to assembly only the average integrals. An average integral
+# is one where 
+#
+# 0) the measure is the average measure
+#
+# 1) all the Arguments are associated with a cell whose average_cell is
+#    a cell of the measure
+#
+# 2) all the Arguments are associated either with a cell that matches
+#    the cell of the measure (do not need restriction) and those whose
+#    average_cell is that of the measure
+#
+# NOTE these are suspects. What I will check in the assembler is that
+# each arg above was created by Average
+def is_average_integrand(expr, tdim):
+    '''Some of the arguments need restriction'''
+    return any((topological_dim(arg) == tdim + 2) for arg in traverse_unique_terminals(expr))
+
+
+def is_average_integral(integral):
+    '''Volume integral over an embedded line cell'''
+    return all((integral.integral_type() == 'cell',  # 0
+                (topological_dim(integral) + 2) == geometric_dim(integral),
+                is_average_integrand(integral.integrand(), topological_dim(integral))))
+
+
+def average_integrals(form):
+    '''Extract trace integrals from the form'''
+    return filter(is_average_integral, form.integrals())

@@ -1,5 +1,6 @@
 import xii.assembler.trace_assembly
 import xii.assembler.average_assembly
+import xii.assembler.normal_average_assembly
 import xii.assembler.restriction_assembly
 import xii.assembler.extension_assembly
 import xii.assembler.injection_assembly
@@ -21,6 +22,7 @@ def assemble(form):
     # dolfin can handle (hopefully)
     modules = (xii.assembler.trace_assembly,        # To Codimension 1
                xii.assembler.average_assembly,      # To Codimension 2 via surface of bding curve
+               xii.assembler.normal_average_assembly,      # To Codimension 2 via surface of bding curve               
                xii.assembler.extension_assembly,    # From dim 1 to 2
                xii.assembler.restriction_assembly,
                xii.assembler.injection_assembly)  # Between Codimension 0

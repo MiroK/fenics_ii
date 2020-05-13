@@ -182,6 +182,18 @@ class Circle(BoundingSurface):
 
         return Quadrature(Txq, wq)
 
+    def normal(self, x0, n):
+        def normal_(x):
+            dx = x - x0
+            # Check that point is in the plane
+            assert np.abs(np.dot(dx, n)) < 1E-10
+            # And on surface
+            R = self.radius(x0)
+            assert R - 1E-10 < np.linalg.norm(dx, 2) < R + 1E-10
+
+            return dx/R
+        return normal_
+
 
 class Disk(BoundingSurface):
     '''Disk in plane(x0, n) with radius given by radius(x0)'''
