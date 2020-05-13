@@ -176,73 +176,64 @@ if __name__ == '__main__':
         assert is_close(Tf0.vector().norm('linf')), Tf0.vector().norm('linf')
 
     # One more that is in place but orthogonal to normal
+    if True:
+        V = VectorFunctionSpace(mesh, 'CG', 2)
+        TV = FunctionSpace(bmesh, 'DG', 1)
+    
+        f = interpolate(Expression(('-(x[1]-0.5)',
+                                    '(x[0]-0.5)',
+                                    'x[1]+x[2]'), degree=1), V)
+        Tf0 = interpolate(Constant(0), TV)
+        
+        Trace = normal_avg_mat(V, TV, bmesh, {'shape': shape})
+        Tf = Function(TV)
+        Trace.mult(f.vector(), Tf.vector())
+        Tf0.vector().axpy(-1, Tf.vector())
+        assert is_close(Tf0.vector().norm('linf')), Tf0.vector().norm('linf')
+    
     # One when we check quadrature
-    # High level where we declare and integrate
+    if True:
+        V = VectorFunctionSpace(mesh, 'CG', 2)
+        TV = FunctionSpace(bmesh, 'DG', 1)
     
+        f = interpolate(Expression(('(x[0]-0.5)',
+                                    '(x[1]-0.5)',
+                                    'x[1]+x[2]'), degree=1), V)
+        Tf0 = interpolate(Constant(radius), TV)
+        
+        Trace = normal_avg_mat(V, TV, bmesh, {'shape': shape})
+        Tf = Function(TV)
+        Trace.mult(f.vector(), Tf.vector())
+        Tf0.vector().axpy(-1, Tf.vector())
+        assert is_close(Tf0.vector().norm('linf')), (Tf0.vector().norm('linf'), Tf.vector().norm('linf'))
 
-    if False:
-        # Simple scalar
-        V = FunctionSpace(mesh, 'CG', 3)
-        Q = FunctionSpace(bmesh, 'DG', 3)
         
-        f = Expression('x[2]*((x[0]-0.5)*(x[0]-0.5) + (x[1]-0.5)*(x[1]-0.5))', degree=3)
-        Pif = Expression('x[2]*A*A', A=radius, degree=1)
-        
-        f = interpolate(f, V)
-        Pi_f0 = interpolate(Pif, Q)
-        
-        Pi_f = Function(Q)
-        
-        Pi = avg_mat(V, Q, bmesh, {'shape': shape})
-        Pi.mult(f.vector(), Pi_f.vector())
-        
-        Pi_f0.vector().axpy(-1, Pi_f.vector())
-        assert is_close(Pi_f0.vector().norm('linf'))
-
-
-    if False:
-        V = VectorFunctionSpace(mesh, 'CG', 3)
-        Q = VectorFunctionSpace(bmesh, 'DG', 3)
-
-        f = Expression(('x[2]*((x[0]-0.5)*(x[0]-0.5) + (x[1]-0.5)*(x[1]-0.5))',
-                        '2*x[2]*((x[0]-0.5)*(x[0]-0.5) + (x[1]-0.5)*(x[1]-0.5))',
-                        '-3*x[2]*((x[0]-0.5)*(x[0]-0.5) + (x[1]-0.5)*(x[1]-0.5))'),
-                       degree=3)
-        Pif = Expression(('x[2]*A*A',
-                          '2*x[2]*A*A',
-                          '-3*x[2]*A*A'), A=radius, degree=1)
+    if True:
+        V = VectorFunctionSpace(mesh, 'CG', 2)
+        TV = FunctionSpace(bmesh, 'DG', 1)
     
-        f = interpolate(f, V)
-        Pi_f0 = interpolate(Pif, Q)
+        f = interpolate(Expression(('(x[0]-0.5)*x[2]',
+                                    '(x[1]-0.5)*x[2]',
+                                    'x[1]+x[2]'), degree=1), V)
+        Tf0 = interpolate(Expression('x[2]*A', A=radius, degree=1), TV)
+        
+        Trace = normal_avg_mat(V, TV, bmesh, {'shape': shape})
+        Tf = Function(TV)
+        Trace.mult(f.vector(), Tf.vector())
+        Tf0.vector().axpy(-1, Tf.vector())
+        assert is_close(Tf0.vector().norm('linf')), (Tf0.vector().norm('linf'), Tf.vector().norm('linf'))
 
-        Pi_f = Function(Q)
-
-        Pi = avg_mat(V, Q, bmesh, {'shape': shape})
-        Pi.mult(f.vector(), Pi_f.vector())
-
-        Pi_f0.vector().axpy(-1, Pi_f.vector())
-        assert is_close(Pi_f0.vector().norm('linf'))
-
-    if False:
-        # Can we do Hdiv?
-        V = FunctionSpace(mesh, 'RT', 4)
-        Q = VectorFunctionSpace(bmesh, 'DG', 3)
+    if True:
+        V = FunctionSpace(mesh, 'RT', 3)
+        TV = FunctionSpace(bmesh, 'DG', 1)
+    
+        f = interpolate(Expression(('(x[0]-0.5)*x[2]',
+                                    '(x[1]-0.5)*x[2]',
+                                    'x[1]+x[2]'), degree=1), V)
+        Tf0 = interpolate(Expression('x[2]*A', A=radius, degree=1), TV)
         
-        f = Expression(('x[2]*((x[0]-0.5)*(x[0]-0.5) + (x[1]-0.5)*(x[1]-0.5))',
-                        '2*x[2]*((x[0]-0.5)*(x[0]-0.5) + (x[1]-0.5)*(x[1]-0.5))',
-                        '-3*x[2]*((x[0]-0.5)*(x[0]-0.5) + (x[1]-0.5)*(x[1]-0.5))'),
-                       degree=3)
-        Pif = Expression(('x[2]*A*A',
-                          '2*x[2]*A*A',
-                          '-3*x[2]*A*A'), A=radius, degree=1)
-        
-        f = interpolate(f, V)
-        Pi_f0 = interpolate(Pif, Q)
-        
-        Pi_f = Function(Q)
-        
-        Pi = avg_mat(V, Q, bmesh, {'shape': shape})
-        Pi.mult(f.vector(), Pi_f.vector())
-        
-        Pi_f0.vector().axpy(-1, Pi_f.vector())
-        assert is_close(Pi_f0.vector().norm('linf')), Pi_f0.vector().norm('linf')
+        Trace = normal_avg_mat(V, TV, bmesh, {'shape': shape})
+        Tf = Function(TV)
+        Trace.mult(f.vector(), Tf.vector())
+        Tf0.vector().axpy(-1, Tf.vector())
+        assert is_close(Tf0.vector().norm('linf')), (Tf0.vector().norm('linf'), Tf.vector().norm('linf'))

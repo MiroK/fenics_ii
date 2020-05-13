@@ -190,7 +190,6 @@ class Circle(BoundingSurface):
             # And on surface
             R = self.radius(x0)
             assert R - 1E-10 < np.linalg.norm(dx, 2) < R + 1E-10
-
             return dx/R
         return normal_
 
