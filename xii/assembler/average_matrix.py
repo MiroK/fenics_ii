@@ -1,6 +1,6 @@
 from xii.linalg.matrix_utils import petsc_serial_matrix, is_number
 from xii.assembler.average_form import average_cell, average_space
-
+from xii.assembler.fem_eval import DegreeOfFreedom, FEBasisFunction
 from numpy.polynomial.legendre import leggauss
 from dolfin import PETScMatrix, cells, Point, Cell, Function
 from petsc4py import PETSc
@@ -65,9 +65,6 @@ def average_matrix(V, TV, shape):
     # Its measure is |L(s)|.
     
     mesh_x = TV.mesh().coordinates()
-    # The idea for point evaluation/computing dofs of TV is to minimize
-    # the number of evaluation. I mean a vector dof if done naively would
-    # have to evaluate at same x number of component times.
     value_size = TV.ufl_element().value_size()
 
     mesh = V.mesh()
@@ -80,24 +77,27 @@ def average_matrix(V, TV, shape):
     
     TV_dm = TV.dofmap()
     V_dm = V.dofmap()
-    # For non scalar we plan to make compoenents by shift
-    if value_size > 1:
-        TV_dm = TV.sub(0).dofmap()
 
-    Vel = V.element()               
+    TV_dof = DegreeOfFreedom(TV)
+
+    Vel = V.element()
     basis_values = np.zeros(V.element().space_dimension()*value_size)
     with petsc_serial_matrix(TV, V) as mat:
 
         for line_cell in cells(line_mesh):
+            TV_dof.cell = line_cell.index()
+            
             # Get the tangent (normal of the plane which cuts the virtual
             # surface to yield the bdry curve
             v0, v1 = mesh_x[line_cell.entities(0)]
             n = v0 - v1
 
             # The idea is now to minimize the point evaluation
-            scalar_dofs = TV_dm.cell_dofs(line_cell.index())
-            scalar_dofs_x = TV_coordinates[scalar_dofs]
-            for scalar_row, avg_point in zip(scalar_dofs, scalar_dofs_x):
+            TV_dofs = TV_dm.cell_dofs(line_cell.index())
+            TV_dofs_x = TV_coordinates[TV_dofs]
+            for ldof, (row, avg_point) in enumerate(zip(TV_dofs, TV_dofs_x)):
+                TV_dof.dof = ldof
+                
                 # Avg point here has the role of 'height' coordinate
                 quadrature = shape.quadrature(avg_point, n)
                 integration_points = quadrature.points
@@ -127,10 +127,8 @@ def average_matrix(V, TV, shape):
                 # The thing now that with data we can assign to several
                 # rows of the matrix
                 column_indices = np.array(data.keys(), dtype='int32')
-                for shift in range(value_size):
-                    row = scalar_row + shift
-                    column_values = np.array([data[col][shift] for col in column_indices])
-                    mat.setValues([row], column_indices, column_values, PETSc.InsertMode.INSERT_VALUES)
+                column_values = np.array([TV_dof.eval(Constant(data[col])) for col in column_indices])
+                mat.setValues([row], column_indices, column_values, PETSc.InsertMode.INSERT_VALUES)
             # On to next avg point
         # On to next cell
     return PETScMatrix(mat)
@@ -274,67 +272,97 @@ if __name__ == '__main__':
 
     f = MeshFunction('size_t', mesh, 1, 0)
     CompiledSubDomain('near(x[0], 0.5) && near(x[1], 0.5)').mark(f, 1)
-
+    
     bmesh = EmbeddedMesh(f, 1)
 
-    # Trace
-    V = FunctionSpace(mesh, 'CG', 2)
-    TV = FunctionSpace(bmesh, 'DG', 1)
     
-    f = interpolate(Expression('x[0]+x[1]+x[2]', degree=1), V)
-    Tf0 = interpolate(f, TV)
+    if True:
+        # Trace
+        V = FunctionSpace(mesh, 'CG', 2)
+        TV = FunctionSpace(bmesh, 'DG', 1)
+        
+        f = interpolate(Expression('x[0]+x[1]+x[2]', degree=1), V)
+        Tf0 = interpolate(f, TV)
+        
+        Trace = avg_mat(V, TV, bmesh, {'shape': None})
+        Tf = Function(TV)
+        Trace.mult(f.vector(), Tf.vector())
+        Tf0.vector().axpy(-1, Tf.vector())
+        assert is_close(Tf0.vector().norm('linf'))
 
-    Trace = avg_mat(V, TV, bmesh, {'shape': None})
-    Tf = Function(TV)
-    Trace.mult(f.vector(), Tf.vector())
-    Tf0.vector().axpy(-1, Tf.vector())
-    assert is_close(Tf0.vector().norm('linf'))
-
-    V = VectorFunctionSpace(mesh, 'CG', 2)
-    TV = VectorFunctionSpace(bmesh, 'DG', 1)
+    if True:
+        V = VectorFunctionSpace(mesh, 'CG', 2)
+        TV = VectorFunctionSpace(bmesh, 'DG', 1)
     
-    f = interpolate(Expression(('x[0]+x[1]+x[2]',
-                                'x[0]-x[1]',
-                                'x[1]+x[2]'), degree=1), V)
-    Tf0 = interpolate(f, TV)
+        f = interpolate(Expression(('x[0]+x[1]+x[2]',
+                                    'x[0]-x[1]',
+                                    'x[1]+x[2]'), degree=1), V)
+        Tf0 = interpolate(f, TV)
+        
+        Trace = avg_mat(V, TV, bmesh, {'shape': None})
+        Tf = Function(TV)
+        Trace.mult(f.vector(), Tf.vector())
+        Tf0.vector().axpy(-1, Tf.vector())
+        assert is_close(Tf0.vector().norm('linf'))
 
-    Trace = avg_mat(V, TV, bmesh, {'shape': None})
-    Tf = Function(TV)
-    Trace.mult(f.vector(), Tf.vector())
-    Tf0.vector().axpy(-1, Tf.vector())
-    assert is_close(Tf0.vector().norm('linf'))
 
     radius = 0.01
     quad_degree = 10
+
     # PI
     shape = Circle(radius=radius, degree=quad_degree)
-
-    # Simple scalar
-    V = FunctionSpace(mesh, 'CG', 3)
-    Q = FunctionSpace(bmesh, 'DG', 3)
-
-    f = Expression('x[2]*((x[0]-0.5)*(x[0]-0.5) + (x[1]-0.5)*(x[1]-0.5))', degree=3)
-    Pif = Expression('x[2]*A*A', A=radius, degree=1)
     
-    f = interpolate(f, V)
-    Pi_f0 = interpolate(Pif, Q)
+    if True:
+        # Simple scalar
+        V = FunctionSpace(mesh, 'CG', 3)
+        Q = FunctionSpace(bmesh, 'DG', 3)
+        
+        f = Expression('x[2]*((x[0]-0.5)*(x[0]-0.5) + (x[1]-0.5)*(x[1]-0.5))', degree=3)
+        Pif = Expression('x[2]*A*A', A=radius, degree=1)
+        
+        f = interpolate(f, V)
+        Pi_f0 = interpolate(Pif, Q)
+        
+        Pi_f = Function(Q)
+        
+        Pi = avg_mat(V, Q, bmesh, {'shape': shape})
+        Pi.mult(f.vector(), Pi_f.vector())
+        
+        Pi_f0.vector().axpy(-1, Pi_f.vector())
+        assert is_close(Pi_f0.vector().norm('linf'))
 
-    Pi_f = Function(Q)
 
-    Pi = avg_mat(V, Q, bmesh, {'shape': shape})
-    Pi.mult(f.vector(), Pi_f.vector())
+    if True:
+        V = VectorFunctionSpace(mesh, 'CG', 3)
+        Q = VectorFunctionSpace(bmesh, 'DG', 3)
 
-    Pi_f0.vector().axpy(-1, Pi_f.vector())
-    assert is_close(Pi_f0.vector().norm('linf'))
-
+        f = Expression(('x[2]*((x[0]-0.5)*(x[0]-0.5) + (x[1]-0.5)*(x[1]-0.5))',
+                        '2*x[2]*((x[0]-0.5)*(x[0]-0.5) + (x[1]-0.5)*(x[1]-0.5))',
+                        '-3*x[2]*((x[0]-0.5)*(x[0]-0.5) + (x[1]-0.5)*(x[1]-0.5))'),
+                       degree=3)
+        Pif = Expression(('x[2]*A*A',
+                          '2*x[2]*A*A',
+                          '-3*x[2]*A*A'), A=radius, degree=1)
     
-    V = VectorFunctionSpace(mesh, 'CG', 3)
+        f = interpolate(f, V)
+        Pi_f0 = interpolate(Pif, Q)
+
+        Pi_f = Function(Q)
+
+        Pi = avg_mat(V, Q, bmesh, {'shape': shape})
+        Pi.mult(f.vector(), Pi_f.vector())
+
+        Pi_f0.vector().axpy(-1, Pi_f.vector())
+        assert is_close(Pi_f0.vector().norm('linf'))
+
+    # Can we do Hdiv?
+    V = FunctionSpace(mesh, 'RT', 4)
     Q = VectorFunctionSpace(bmesh, 'DG', 3)
 
     f = Expression(('x[2]*((x[0]-0.5)*(x[0]-0.5) + (x[1]-0.5)*(x[1]-0.5))',
                     '2*x[2]*((x[0]-0.5)*(x[0]-0.5) + (x[1]-0.5)*(x[1]-0.5))',
                     '-3*x[2]*((x[0]-0.5)*(x[0]-0.5) + (x[1]-0.5)*(x[1]-0.5))'),
-                    degree=3)
+                   degree=3)
     Pif = Expression(('x[2]*A*A',
                       '2*x[2]*A*A',
                       '-3*x[2]*A*A'), A=radius, degree=1)
@@ -343,9 +371,9 @@ if __name__ == '__main__':
     Pi_f0 = interpolate(Pif, Q)
 
     Pi_f = Function(Q)
-
+    
     Pi = avg_mat(V, Q, bmesh, {'shape': shape})
     Pi.mult(f.vector(), Pi_f.vector())
-
+        
     Pi_f0.vector().axpy(-1, Pi_f.vector())
-    assert is_close(Pi_f0.vector().norm('linf'))
+    assert is_close(Pi_f0.vector().norm('linf')), Pi_f0.vector().norm('linf')
