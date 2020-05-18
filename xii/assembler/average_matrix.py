@@ -2,7 +2,7 @@ from xii.linalg.matrix_utils import petsc_serial_matrix, is_number
 from xii.assembler.average_form import average_cell, average_space
 from xii.assembler.fem_eval import DegreeOfFreedom, FEBasisFunction
 from numpy.polynomial.legendre import leggauss
-from dolfin import PETScMatrix, cells, Point, Cell, Function
+from dolfin import PETScMatrix, cells, Point, Cell, Function, Constant
 from petsc4py import PETSc
 import numpy as np
 
