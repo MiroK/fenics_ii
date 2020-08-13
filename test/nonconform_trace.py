@@ -1,10 +1,11 @@
 from dolfin import *
 from xii import *
 
+n = 64
 # D mesh
-mesh = UnitSquareMesh(32, 32)
+mesh = UnitSquareMesh(n, n)
 # Now construct mesh for the multiplier
-bmesh = BoundaryMesh(UnitSquareMesh(16, 16), 'exterior')
+bmesh = BoundaryMesh(UnitSquareMesh(n/2, n/2), 'exterior')
 
 V = FunctionSpace(mesh, 'CG', 1)
 Q = FunctionSpace(bmesh, 'CG', 1)

@@ -354,6 +354,7 @@ def bmat_sizes(bmat):
             size = set([dim[0]
                         for dim in [get_dims(A) for A in row]
                         if dim is not None])
+
             if len(size) == 1:
                 # Moreover all the things should agree on the row size
                 # (since they are in the same row)

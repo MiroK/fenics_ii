@@ -88,33 +88,68 @@ def apply_bc(A, b, bcs, diag_val=1.):
     for first, last in zip(offsets[:-1], offsets[1:]):
         blocks.append(PETSc.IS().createStride(last-first, first, 1))
 
-    # Reasamble
-    comm = mpi_comm_world()
-    b = [PETSc.Vec().createWithArray(bb.getValues(block), comm=comm) for block in blocks]
-    for bi in b:
-        bi.assemblyBegin()
-        bi.assemblyEnd()
-    b = block_vec(map(PETScVector, b))
+    # Reasamble into block shape
+    b = as_block(bb, blocks)
+    A = as_block(AA, blocks)
+    
+    if has_wrapped_A: return A[0][0], b[0]
+    
+    return A, b
 
-    # PETSc 3.7.x
+
+def element_types(iterable):
+    '''Element types in the container'''
+    return set(map(type, iterable))
+
+
+def as_block(monolithic, blocks):
+    '''Turn monolithic operator into block-structured one with indices specified in blocks'''
+    comm = mpi_comm_world()
+
+    # We want list of PETSc.IS-es
+    elm_type, = element_types(blocks)
+    if elm_type is FunctionSpace:
+        offsets = np.cumsum(np.r_[0, [Wi.dim() for Wi in blocks]])
+
+        idx = []
+        for first, last in zip(offsets[:-1], offsets[1:]):
+            idx.append(PETSc.IS().createStride(last-first, first, 1))
+        return as_block(monolithic, idx)
+            
+    elif elm_type in (list, np.ndarray):
+        return as_block(monolithic, [PETSc.IS().createGeneral(np.asarray(block, dtype='int32')) for block in blocks])
+
+    assert elm_type is PETSc.IS
+
+    # Break up Vector to block-vec
+    if isinstance(monolithic, (GenericVector, Vector)):
+        return as_block(as_backend_type(monolithic).vec(), blocks)
+
+    if isinstance(monolithic, (GenericMatrix, Matrix)):
+        return as_block(as_backend_type(monolithic).mat(), blocks)
+
+    if isinstance(monolithic, PETSc.Vec):
+        b = [PETSc.Vec().createWithArray(monolithic.getValues(block), comm=comm) for block in blocks]
+        for bi in b:
+            bi.assemblyBegin()
+            bi.assemblyEnd()
+        return block_vec(map(PETScVector, b))
+
+    # Otherwise we have a Matrix
     try:
-        AA.getSubMatrix
-        A = [[PETScMatrix(AA.getSubMatrix(block_row, block_col)) for block_col in blocks]
+        monolithic.getSubMatrix
+        A = [[PETScMatrix(monolithic.getSubMatrix(block_row, block_col)) for block_col in blocks]
              for block_row in blocks]
     # NOTE: 3.8+ does not ahve getSubMatrix, there is getLocalSubMatrix
     # but cannot get that to work - petsc error 73. So for now everything
     # is done with scipy    
     except AttributeError:
-        AA = csr_matrix(AA.getValuesCSR()[::-1], shape=AA.size)
+        monolithic = csr_matrix(monolithic.getValuesCSR()[::-1], shape=monolithic.size)
 
-        A = [[numpy_to_petsc(AA[block_row.array, :][:, block_col.array]) for block_col in blocks]
+        A = [[numpy_to_petsc(monolithic[block_row.array, :][:, block_col.array]) for block_col in blocks]
              for block_row in blocks]
-    # Block mat
-    A = block_mat(A)
-
-    if has_wrapped_A: return A[0][0], b[0]
-    
-    return A, b
+    # Done
+    return block_mat(A)
 
 
 def identity(ncells):
@@ -163,7 +198,6 @@ def identity(ncells):
     return eb
 
     
-
 def speed(ncells):
     mesh = UnitSquareMesh(ncells, ncells)
 
@@ -214,14 +248,36 @@ def speed(ncells):
 # --------------------------------------------------------------------
 
 if __name__ == '__main__':
-
+    parameters['reorder_dofs_serial'] = False
     # Check that we are extracting block right
     # identity(ncells)
 
+
+    mesh = UnitSquareMesh(3, 3)
+    W_elm = MixedElement([FiniteElement('Lagrange', triangle, 1),
+                          VectorElement('Lagrange', triangle, 2)])
+    W = FunctionSpace(mesh, W_elm)
+
+    f = interpolate(Expression(('x[0]', 'x[1]', 'x[1]+x[0]'), degree=1), W)
+    b = f.vector()
+
+    W0 = FunctionSpace(mesh, 'CG', 1)
+    W1 = VectorFunctionSpace(mesh, 'CG', 2)
+
+    # bb = as_block(b, [W0, W1])
+    bb = as_block(b, [W.sub(0).dofmap().dofs(), W.sub(1).dofmap().dofs()])
+    f0 = Function(W0, bb[0])
+    f1 = Function(W1, bb[1])
+
+    f00, f10 = f.split()
+    print(sqrt(abs(assemble(inner(f0 - f00, f0 - f00)*dx))))
+    print(sqrt(abs(assemble(inner(f1 - f10, f1 - f10)*dx))))
+
     # Now speed
-    msg = 'dim(W) = %d, block = %g s, petsc = %g s, speedup %.2f'
-    for ncells in [4, 8, 16, 32, 64, 128]:
-        print msg % speed(ncells) 
+    if False:
+        msg = 'dim(W) = %d, block = %g s, petsc = %g s, speedup %.2f'
+        for ncells in [4, 8, 16, 32, 64, 128]:
+            print msg % speed(ncells) 
 
 
 

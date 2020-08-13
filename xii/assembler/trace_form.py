@@ -110,7 +110,8 @@ def Trace(v, mmesh, restriction='', normal=None, tag=None):
         assert tag <= set(mmesh.marking_function.array())
 
     else:
-        assert hasattr(mmesh, 'marking_function')
+        if not hasattr(mmesh, 'marking_function'):
+            mmesh.marking_function = df.MeshFunction('size_t', mmesh, mmesh.topology().dim(), 0)
         tag = set(mmesh.marking_function.array())
 
     tag_data = (mmesh.marking_function, tag)
