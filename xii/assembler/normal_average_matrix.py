@@ -3,7 +3,7 @@ from xii.assembler.normal_average_form import average_cell, average_space
 from xii.assembler.fem_eval import DegreeOfFreedom, FEBasisFunction
 from numpy.polynomial.legendre import leggauss
 from dolfin import (PETScMatrix, cells, Point, Cell, Function, TestFunction, Constant,
-                    dot)
+                    dot, FunctionSpace)
 
 from petsc4py import PETSc
 import numpy as np
@@ -138,18 +138,14 @@ def normal_average_matrix(V, TV, shape):
     return PETScMatrix(mat)
 
 
-def normal_average_matrix_2d(V, TV, center, shape):
+def normal_average_matrix_2d(V, center, shape):
     '''
-    Averaging matrix for reduction of g in V to TV by integration over shape.
+    Averaging matrix for reduction of g in V by integrating shape@center
     '''
-    # We build a matrix representation of u in V -> Pi(u) in TV where
-    #
-    # Pi(u)(s) = |L(s)|^-1*\int_{L(s)} dot(u(t), n) dx(s)
-    #
-    # Here L is the shape over which u is integrated for reduction.
-    # Its measure is |L(s)|.
-    
-    mesh_x = TV.mesh().coordinates()
+    assert V.mesh().geometry().dim() == 2
+    # NOTE: the Pi operator is the one which reduces function to manifold
+    # over topological gap of 2. Since we are in 2d each basis function is
+    # reduced to a (point) value. We are thusbuilding a vector  
     value_size = V.ufl_element().value_size()
 
     mesh = V.mesh()
@@ -157,9 +153,7 @@ def normal_average_matrix_2d(V, TV, center, shape):
     tree = mesh.bounding_box_tree()
     limit = mesh.num_cells()
 
-    TV_coordinates = TV.tabulate_dof_coordinates().reshape((TV.dim(), -1))
-    line_mesh = TV.mesh()
-    
+    TV = FunctionSpace(V.mesh(), 'Real', 0)
     TV_dm = TV.dofmap()
     V_dm = V.dofmap()
 
@@ -168,57 +162,48 @@ def normal_average_matrix_2d(V, TV, center, shape):
     Vel = V.element()
     basis_values = np.zeros(V.element().space_dimension()*value_size)
     with petsc_serial_matrix(TV, V) as mat:
+        # Assume plane normal
+        n = np.array([0, 0, 1.])
+        # The idea is now to minimize the point evaluation
+        TV_dofs = TV_dm.cell_dofs(0)  # That one dof
+        TV_dofs_x = [center.array()]  # <-- our auxiliary dof sits at the center 
+        for ldof, (row, avg_point) in enumerate(zip(TV_dofs, TV_dofs_x)):
+            TV_dof.dof = ldof
+            # Avg point here has the role of 'height' coordinate
+            quadrature = shape.quadrature(avg_point, n)
+            normal = shape.normal(avg_point, n)
 
-        for line_cell in cells(line_mesh):
-            TV_dof.cell = line_cell.index()
-            
-            # Get the tangent (normal of the plane which cuts the virtual
-            # surface to yield the bdry curve
-            v0, v1 = mesh_x[line_cell.entities(0)]
-            n = v0 - v1
+            integration_points = quadrature.points
+            wq = quadrature.weights
 
-            # The idea is now to minimize the point evaluation
-            TV_dofs = TV_dm.cell_dofs(line_cell.index())
-            TV_dofs_x = TV_coordinates[TV_dofs]
-            for ldof, (row, avg_point) in enumerate(zip(TV_dofs, TV_dofs_x)):
-                TV_dof.dof = ldof
-                
-                # Avg point here has the role of 'height' coordinate
-                quadrature = shape.quadrature(avg_point, n)
-                normal = shape.normal(avg_point, n)
-                
-                integration_points = quadrature.points
-                wq = quadrature.weights
+            # Precompute normals
+            normals_ip = [normal(ip)[:2] for ip in integration_points]
+            curve_measure = sum(wq)
 
-                # Precompute normals
-                normals_ip = [normal(ip) for ip in integration_points]
+            data = {}
+            for index, (ip, normal_ip) in enumerate(zip(integration_points, normals_ip)):
+                c = tree.compute_first_entity_collision(Point(*ip))
+                if c >= limit: continue
 
-                curve_measure = sum(wq)
+                Vcell = Cell(mesh, c)
+                vertex_coordinates = Vcell.get_vertex_coordinates()
+                cell_orientation = Vcell.orientation()
+                Vel.evaluate_basis_all(basis_values, ip, vertex_coordinates, cell_orientation)
 
-                data = {}
-                for index, (ip, normal_ip) in enumerate(zip(integration_points, normals_ip)):
-                    c = tree.compute_first_entity_collision(Point(*ip))
-                    if c >= limit: continue
+                cols_ip = V_dm.cell_dofs(c)
+                values_ip = basis_values*wq[index]
+                # Add
+                for col, value in zip(cols_ip, values_ip.reshape((-1, value_size))):
+                    if col in data:
+                        data[col] += value.dot(normal_ip)/curve_measure
+                    else:
+                        data[col] = value.dot(normal_ip)/curve_measure
 
-                    Vcell = Cell(mesh, c)
-                    vertex_coordinates = Vcell.get_vertex_coordinates()
-                    cell_orientation = Vcell.orientation()
-                    Vel.evaluate_basis_all(basis_values, ip, vertex_coordinates, cell_orientation)
-
-                    cols_ip = V_dm.cell_dofs(c)
-                    values_ip = basis_values*wq[index]
-                    # Add
-                    for col, value in zip(cols_ip, values_ip.reshape((-1, value_size))):
-                        if col in data:
-                            data[col] += value.dot(normal_ip)/curve_measure
-                        else:
-                            data[col] = value.dot(normal_ip)/curve_measure
-                            
-                # The thing now that with data we can assign to several
-                # rows of the matrix
-                column_indices = np.array(data.keys(), dtype='int32')
-                column_values = np.array([TV_dof.eval(Constant(data[col])) for col in column_indices])
-                mat.setValues([row], column_indices, column_values, PETSc.InsertMode.INSERT_VALUES)
+            # The thing now that with data we can assign to several
+            # rows of the matrix
+            column_indices = np.array(data.keys(), dtype='int32')
+            column_values = np.array([TV_dof.eval(Constant(data[col])) for col in column_indices])
+            mat.setValues([row], column_indices, column_values, PETSc.InsertMode.INSERT_VALUES)
             # On to next avg point
         # On to next cell
     return PETScMatrix(mat)
@@ -232,8 +217,31 @@ if __name__ == '__main__':
 
     
     def is_close(a, b=0): return abs(a - b) < 1E-13
+
+
+    mesh = UnitSquareMesh(32, 32)
     
-    # ---
+    radius = 0.01
+    quad_degree = 10
+    # PI
+    shape = Circle(radius=radius, degree=quad_degree)
+
+    V = VectorFunctionSpace(mesh, 'CG', 2)
+    TV = FunctionSpace(mesh, 'R', 0)  # The space that holds the result
+    f = interpolate(Expression(('(x[0]-0.5)',
+                                '(x[1]-0.5)'), degree=1), V)
+    Tf0 = interpolate(Constant(radius), TV)
+
+    
+    Trace = normal_average_matrix_2d(V, center=Point(0.5, 0.5), shape=shape)
+
+    Tf = Function(TV)
+    Trace.mult(f.vector(), Tf.vector())
+    Tf0.vector().axpy(-1, Tf.vector())
+    assert is_close(Tf0.vector().norm('linf')), (Tf0.vector().norm('linf'), Tf.vector().norm('linf'))
+
+
+    # 3d version ---
     
     mesh = UnitCubeMesh(10, 10, 10)
 
