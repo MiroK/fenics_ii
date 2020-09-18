@@ -202,7 +202,7 @@ if __name__ == '__main__':
     x = interpolate(f, Vc).vector().get_local()
     y = J.array().dot(x)  # Inject coarse into fine
     y0 = interpolate(f, Vf).vector().get_local()
-    # print y0, y
+    print np.linalg.norm(y0 - y)
 
 #    fc = sum(ff_i*c_i
 #             c_i = dof_fi(phic_j)
