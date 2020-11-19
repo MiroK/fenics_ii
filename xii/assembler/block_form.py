@@ -9,6 +9,8 @@ from six.moves import filter
 from six.moves import map
 from six.moves import range
 from six.moves import zip
+# from ufl import Argument
+from dolfin.function.argument import Argument
 
 
 def is_trial_function(arg):
@@ -29,15 +31,15 @@ def is_number(form):
 def trial_function(form):
     '''Extract trial function[s] of [block] form'''
     if isinstance(form, ufl.Form):
-        return list(filter(is_trial_function, form.arguments()))
-    return sum(list(map(trial_function, form)), ())
+        return tuple(filter(is_trial_function, form.arguments()))
+    return sum(tuple(map(trial_function, form)), ())
 
 
 def test_function(form):
     '''Extract test function[s] of [block] form'''
     if isinstance(form, ufl.Form):
-        return list(filter(is_test_function, form.arguments()))
-    return sum(list(map(test_function, form)), ())
+        return tuple(filter(is_test_function, form.arguments()))
+    return sum(tuple(map(test_function, form)), ())
 
 
 def is_bilinear_form(form):
@@ -88,8 +90,8 @@ class _block_form(list):
             assert is_number(value) or ((Argument(self.V0[index], 0), ), None) == (test_function(value), None)
             return list.__setitem__(self, index, value)
 
-        assert is_number(value) or (Argument(self.V1, 0), ) == test_function(value)
-        assert is_number(value) or (Argument(self.V0[index], 1), ) == trial_function(value)
+        assert is_number(value) or (Argument(self.V1, 0), ) == test_function(value), value
+        assert is_number(value) or (Argument(self.V0[index], 1), ) == trial_function(value), value
         
         return list.__setitem__(self, index, value)
 
