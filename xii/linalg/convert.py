@@ -441,12 +441,12 @@ if __name__ == '__main__':
 
     t = Timer('x'); t.start()
     X = convert(AA)
-    print t.stop()
+    print(t.stop())
 
     t = Timer('x'); t.start()
     Y = convert(AA, 'foo')
-    print t.stop()
+    print(t.stop())
 
     X_ = X.array()
     X_[:] -= Y.array()
-    print np.linalg.norm(X_, np.inf)
+    print(np.linalg.norm(X_, np.inf))

@@ -43,9 +43,12 @@ def transpose_matrix(A):
     return PETScMatrix(At)
 
 
-def diagonal_matrix(size, A=1):
+def diagonal_matrix(size, A):
     '''Dolfin A*I serial only'''
-    d = PETSc.Vec().createWithArray(A*np.ones(size))
+    if isinstance(A, (int, float)):
+        d = PETSc.Vec().createWithArray(A*np.ones(size))
+    else:
+        d = as_backend_type(A).vec()
     I = PETSc.Mat().createAIJ(size=size, nnz=1)
     I.setDiagonal(d)
     I.assemble()

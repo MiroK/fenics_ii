@@ -13,8 +13,9 @@ class ScipyLinOp(sp.LinearOperator):
         self.bmat = bmat
         self.dtype = np.dtype(float)
 
-        row_sizes, col_sizes = bmat_sizes(bmat)            
-        
+        row_sizes = [v.local_size() for v in bmat.create_vec(0)]
+        col_sizes = [v.local_size() for v in bmat.create_vec(1)]
+
         self.shape = (sum(row_sizes), sum(col_sizes))
         self.x = block_vec([PETScVector(mpi_comm_world(), n) for n in row_sizes])
             
@@ -49,7 +50,7 @@ def pyamg_solve(method, AA, bb, tol, M, x0, maxiter=None, **kwargs):
 
     residuals = []
     callback = lambda x, res=residuals: print('{} residual norm {}'.format(len(res), res[-1]))
-    xarr, status = krylov_solve(A=AA_, b=bb_, M=M_, x0=x0_, tol=tol,
+    xarr, status = krylov_solve(A=AA_, b=bb_, M=M_, x0=x0_, tol=float(tol),
                                 maxiter=maxiter, callback=callback, residuals=residuals,
                                 **kwargs)
 
