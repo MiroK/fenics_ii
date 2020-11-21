@@ -10,7 +10,10 @@ from six.moves import map
 from six.moves import range
 from six.moves import zip
 # from ufl import Argument
-from dolfin.function.argument import Argument
+try:
+    from dolfin.function.argument import Argument
+except ImportError:
+    pass
 
 
 def is_trial_function(arg):

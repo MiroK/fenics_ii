@@ -40,6 +40,7 @@ def convert(bmat, algorithm='numpy'):
     if isinstance(bmat, block_mat):
         # Create collpsed bmat
         row_sizes, col_sizes = bmat_sizes(bmat)
+
         nrows, ncols = len(row_sizes), len(col_sizes)
         indices = itertools.product(list(range(nrows)), list(range(ncols)))
 
