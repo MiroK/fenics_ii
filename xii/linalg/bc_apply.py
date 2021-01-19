@@ -11,7 +11,7 @@ from petsc4py import PETSc
 import numpy as np
 
 
-def apply_bc(A, b, bcs, diag_val=1.):
+def apply_bc(A, b, bcs, diag_val=1., return_apply_b=False):
     '''
     Apply block boundary conditions to block system A, b    
     '''
@@ -83,19 +83,55 @@ def apply_bc(A, b, bcs, diag_val=1.):
     x = bb.copy()
     x.zeroEntries()
     x.setValues(rows, x_values)
-
-    # Apply to monolithic
-    len(rows) and AA.zeroRowsColumns(rows, diag=diag_val, x=x, b=bb)
+    x.assemble()
 
     blocks = []
     for first, last in zip(offsets[:-1], offsets[1:]):
         blocks.append(PETSc.IS().createStride(last-first, first, 1))
+
+        
+    if return_apply_b:
+        # We don't want to reassemble system and apply bcs (when they are 
+        # updated) to the (new) matrix and the rhs. Matrix is expensive 
+        # AND the change of bcs only effects the rhs. So what we build
+        # here is a function which applies updated bcs only to rhs as
+        # if by assemble_system (i.e. in a symmetric way)
+        def apply_b(bb, AA=AA.copy(), dofs=rows, bcs=bcs, blocks=blocks):
+            # Pick up the updated values
+            values = np.array(sum((bc.get_boundary_values().values() if isinstance(bc, DirichletBC) else []
+                                   for bcs_sub in bcs for bc in bcs_sub),
+                                  []))
+            # Taken from cbc.block
+            c, Ac = AA.createVecs()
+
+            c.zeroEntries()
+            c.setValues(dofs, values)  # Forward
+            c.assemble()
+
+            AA.mult(c, Ac)  # Note: we work with the deep copy of A
+            
+            b = convert(bb)  # We cond't get view here ...
+            b_vec = as_backend_type(b).vec()
+            b_vec.axpy(-1, Ac)  # Elliminate
+            b_vec.setValues(dofs, values)
+            b_vec.assemble()
+
+            bb *= 0  # ... so copy
+            bb += as_block(b, blocks)
+                
+            return bb
+
+    # Apply to monolithic
+    len(rows) and AA.zeroRowsColumns(rows, diag=diag_val, x=x, b=bb)
 
     # Reasamble into block shape
     b = as_block(bb, blocks)
     A = as_block(AA, blocks)
     
     if has_wrapped_A: return A[0][0], b[0]
+
+    if return_apply_b:
+        return A, b, apply_b
     
     return A, b
 
@@ -281,3 +317,28 @@ if __name__ == '__main__':
         msg = 'dim(W) = %d, block = %g s, petsc = %g s, speedup %.2f'
         for ncells in [4, 8, 16, 32, 64, 128]:
             print msg % speed(ncells) 
+
+    V = FunctionSpace(mesh, 'CG', 1)
+    u, v, = TrialFunction(V), TestFunction(V)
+
+    a = [[inner(u, v)*dx, 0], [0, inner(u, v)*dx]]
+    L = [inner(Constant(0), v)*dx, inner(Constant(0), v)*dx]
+    from xii import ii_assemble
+
+    A, b = map(ii_assemble, (a, L))
+
+    foo = Constant(1)
+    
+    bcs = [[DirichletBC(V, foo, 'on_boundary')],
+           [DirichletBC(V, Constant(2), 'on_boundary')]]
+
+    A, b, apply_b = apply_bc(A, b, bcs, return_apply_b=True)
+    
+    c = apply_b(b)
+    d = c.copy()
+
+    foo.assign(Constant(2))
+    b = apply_b(b)
+    print (d - b).norm()
+    # print b[0].get_local()
+    
