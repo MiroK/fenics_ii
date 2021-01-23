@@ -1,7 +1,6 @@
+from itertools import chain, dropwhile
 from make_mesh_cpp import make_mesh
 from collections import defaultdict
-from scipy.spatial import cKDTree
-from itertools import chain
 import dolfin as df
 import numpy as np
 import operator
@@ -233,6 +232,54 @@ class EmbeddedMesh(df.Mesh):
 
         return self.parent_entity_map[parent_mesh.id()]
 
+    def translate_markers(self, entity_f, tags=None):
+        '''For entity_f.mesh being parent of self tranlate markers'''
+        assert entity_f.mesh().id() in self.parent_entity_map
+        assert 0 < entity_f.dim() < self.topology().dim()
+        
+        if tags is None:
+            tags = np.unique(entity_f.array())
+        if isinstance(tags, int):
+            tags = (tags, )
+
+        emesh = entity_f.mesh()
+        entity_dim = entity_f.dim()
+        cell_dim = self.topology().dim()
+        # Entity is connected to parent cells, some of these we can map to
+        # from child mesh as cell. Some of its entities is the entity. This
+        # is to be determined by vertices
+        _, e2v_parent = (emesh.init(entity_dim, 0), emesh.topology()(entity_dim, 0))        
+        _, e2c = (emesh.init(entity_dim, cell_dim), emesh.topology()(entity_dim, cell_dim))
+        _, c2e = (self.init(cell_dim, entity_dim), self.topology()(cell_dim, entity_dim))
+        _, e2v = (self.init(entity_dim, 0), self.topology()(entity_dim, 0))        
+
+        ivertex_mapping = dict((v, k) for k, v in self.parent_entity_map[emesh.id()][0].items())
+        icell_mapping = dict((v, k) for k, v in self.parent_entity_map[emesh.id()][cell_dim].items())
+
+        marker_f = df.MeshFunction('size_t', self, entity_dim, 0)
+        for tag in tags:
+            entities, = np.where(entity_f.array() == tag)  # parent
+            # We encode them as vertices in the child
+            as_vertices = [set(ivertex_mapping.get(v, -1) for v in e2v_parent(e)) for e in entities]
+            # The above was an attempt. Continue with those that could be embeded
+            for e, as_vertex in zip(entities, as_vertices):
+                if any(v == -1 for v in as_vertex): continue
+
+                parent_cells = [c for c in e2c(e) if c in icell_mapping]
+
+                found = None
+                while not found and parent_cells:
+                    child_entities = c2e(icell_mapping[parent_cells.pop()])
+                    matches = [e_ for e_ in child_entities if set(e2v(e_)) == as_vertex]
+
+                    found = bool(matches)
+                    e_, = matches
+                    if found:
+                        marker_f[int(e_)] = entity_f[e]
+
+                    
+        return marker_f
+    
         
 class OuterNormal(df.Function):
     '''Outer normal of a manifold mesh as a vector DG0 function.'''
@@ -286,6 +333,7 @@ def InnerNormal(mesh, orientation):
     n = OuterNormal(mesh, orientation)
     n.vector()[:] *= -1
     return n
+
 
 def is_1_sequence(iterable):
     '''value mathces the index (-offset)'''
