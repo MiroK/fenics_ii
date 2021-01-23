@@ -70,9 +70,14 @@ def trace_mat_no_restrict(V, TV, trace_mesh=None, tag_data=None):
     fdim = trace_mesh.topology().dim()
 
     # None means all
-    if tag_data is None: tag_data = (MeshFunction('size_t', trace_mesh, trace_mesh.topology().dim(), 0),
-                                     set((0, )))
-    
+    if tag_data is None:
+        try:
+            marking_function = trace_mesh.marking_function
+            tag_data = (marking_function, set(marking_function.array()))
+        except AttributeError:
+            tag_data = (MeshFunction('size_t', trace_mesh, trace_mesh.topology().dim(), 0),
+                        set((0, )))
+
     trace_mesh_subdomains, tags = tag_data
     # Init/extract the mapping
     try:
@@ -150,9 +155,8 @@ def trace_mat_one_restrict(V, TV, restriction, normal, trace_mesh=None, tag_data
     '''
     mesh = V.mesh()
     fdim = mesh.topology().dim() - 1
-    
     if trace_mesh is None: trace_mesh = TV.mesh()
-
+    
     # None means all
     if tag_data is None:
         tag_data = (MeshFunction('size_t', trace_mesh, trace_mesh.topology().dim(), 0),
@@ -350,9 +354,9 @@ def get_entity_map(mesh, trace_mesh, subdomains=None, tags=None):
             parent_entity_map = build_embedding_map(trace_mesh, mesh, subdomains, tags)
             trace_mesh.parent_entity_map[mesh_id] = parent_entity_map
         else:
-            info('\tMissing map for tags %r of mesh %d' % (tags, mesh_id))
             needed_tags = trace_mesh.tagged_cells - tags
             if needed_tags:
+                info('\tMissing map for tags %r of mesh %d' % (needed_tags, mesh_id))
                 parent_entity_map = build_embedding_map(trace_mesh, mesh, subdomains, tags)
                 # Add new
                 for edim in trace_mesh.parent_entity_map[mesh_id]:

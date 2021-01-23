@@ -1,6 +1,7 @@
 from ufl.corealg.traversal import traverse_unique_terminals
 from xii.assembler.ufl_utils import *
 import dolfin as df
+import numpy as np
 import ufl
 
 
@@ -111,9 +112,12 @@ def Trace(v, mmesh, restriction='', normal=None, tag=None):
 
         tag_data = (mmesh.marking_function, tag)
     else:
-        # None means all
-        tag_data = (df.MeshFunction('size_t', mmesh, mmesh.topology().dim(), 0),
-                    set((0, )))
+        try:
+            marking_f = mmesh.marking_function
+        except AttributeError:
+            marking_f = df.MeshFunction('size_t', mmesh, mmesh.topology().dim(), 0)
+            
+        tag_data = (marking_f, set(np.unique(marking_f.array())))
         
     v.trace_ = {'type': restriction, 'mesh': mmesh, 'normal': normal,
                 'tag': tag_data}
