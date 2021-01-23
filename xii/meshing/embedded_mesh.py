@@ -160,6 +160,79 @@ class EmbeddedMesh(df.Mesh):
         # Declare which tagged cells are found
         self.tagged_cells = set(markers)
 
+    def compute_embedding(self, other_entity_f, tags, tol=1E-10):
+        '''
+        Compute how self can be viewed as en embeded mesh of other_entity_f.mesh 
+        for entities which have the tag.
+        '''
+        # The use case I have in mind is when we declare [L|R] interface
+        # based on L and in the system assembly the view of I from R is needed.
+        # Then a 'blind' search is needed because we threw away informations.
+        # So that's we avoid here
+        tdim = self.topology().dim()
+        assert tdim == other_entity_f.dim()
+        assert self.geometry().dim() == other_entity_f.mesh().geometry().dim()
+        
+        parent_mesh = other_entity_f.mesh()
+        if parent_mesh.id() in self.parent_entity_map:
+            raise ValueError('There is a mapping for {} already'.format(parent_mesh.id()))
+        
+        # To pair cells with entitities ...
+        c2v = self.topology()(tdim, 0)
+        # Use vertex comparison
+        parent_mesh.init(tdim, 0)
+        e2v = parent_mesh.topology()(tdim, 0)
+
+        if isinstance(tags, int): tags = [tags]
+
+        tagged_entities = np.hstack([np.where(other_entity_f.array() == tag)[0] for tag in tags])
+        assert len(tagged_entities)
+
+        tree = self.bounding_box_tree()        
+        # Collision by coordinates
+        x, x_parent = self.coordinates(), parent_mesh.coordinates()
+
+        entity_mapping, vertex_mapping = {}, {}
+        for entity in tagged_entities:
+            # We need to be able to embed all vertices in order to get a cell
+            entity_vertices = e2v(entity).tolist()
+            # The observation is that in working case there is one cell that
+            # can embedded all vertices of the entity
+            the_cell = set()
+            # The tree collisions can give false positives so shall compare
+            # coordinates with
+            is_reachable = True
+            while is_reachable and entity_vertices:
+                v = entity_vertices.pop()
+                v_cells = tree.compute_collisions(df.Point(x_parent[v]))
+                # True isect is a cell which has v
+                v_cells = [c for c in v_cells if min(np.linalg.norm(x_parent[v] - x[c2v(c)], 2, 1)) < tol]
+
+                # Such cell is for such not the one that collides
+                is_reachable = bool(len(v_cells))            
+                (is_reachable and the_cell) and the_cell.intersection_update(v_cells)
+                (is_reachable and not the_cell) and the_cell.update(v_cells)
+
+            if is_reachable:
+                the_cell, = the_cell  # The uniqueness
+                entity_mapping[the_cell] = entity
+                
+                # And now pair the vertices
+                entity_vertices = e2v(entity).tolist()
+
+                for vp in c2v(the_cell):
+                    if vp not in vertex_mapping:
+                        dist = np.linalg.norm(x[vp] - x_parent[entity_vertices], 2, 1)
+                        i = np.argmin(dist)
+                        assert dist[i] < tol
+                        
+                        vertex_mapping[vp] = entity_vertices[i]
+                    entity_vertices.remove(vertex_mapping[vp])
+
+        self.parent_entity_map[parent_mesh.id()] = {0: vertex_mapping, tdim: entity_mapping}
+
+        return self.parent_entity_map[parent_mesh.id()]
+
         
 class OuterNormal(df.Function):
     '''Outer normal of a manifold mesh as a vector DG0 function.'''
@@ -221,6 +294,7 @@ def is_1_sequence(iterable):
         return False
 
     return steps[0] == 1
+
 
 def build_embedding_map(emesh, mesh, esubdomains=None, tags=None, tol=1E-14):
     '''
