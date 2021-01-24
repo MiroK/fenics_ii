@@ -28,6 +28,8 @@ class EmbeddedMesh(df.Mesh):
 
         assert markers, markers
 
+        # NOTE: treating submesh as a separate case is done for performance
+        # as it seems that pure python as done below is about 2x slower
         # We reuse a lot of Submesh capabilities if marking by cell_f
         if base_mesh.topology().dim() == marking_function.dim():
             # Submesh works only with one marker so we conform
@@ -45,11 +47,11 @@ class EmbeddedMesh(df.Mesh):
 
             # The entity mapping attribute;
             # NOTE: At this point there is not reason to use a dict as
-            # a lookup table
-            mesh_key = marking_function.mesh().id()
+            # a lookup table            
             mapping_0 = submesh.data().array('parent_vertex_indices', 0)
-
             mapping_tdim = submesh.data().array('parent_cell_indices', tdim)
+
+            mesh_key = marking_function.mesh().id()            
             self.parent_entity_map = {mesh_key: {0: dict(enumerate(mapping_0)),
                                                  tdim: dict(enumerate(mapping_tdim))}}
             # Finally it remains to preserve the markers
@@ -70,58 +72,41 @@ class EmbeddedMesh(df.Mesh):
             return None  
 
         # Otherwise the mesh needs to by build from scratch
-        base_mesh.init(tdim, 0)
-        # Collect unique vertices based on their new-mesh indexing, the cells
-        # of the embedded mesh are defined in terms of their embedded-numbering
-        new_vertices, new_cells = [], []
-        # NOTE: new_vertices is actually new -> old vertex map
-        # Map from cells of embedded mesh to tdim entities of base mesh, and
-        cell_map = []
-        cell_colors = defaultdict(list)  # Preserve the markers
+        _, e2v = (base_mesh.init(tdim, 0), base_mesh.topology()(tdim, 0))
+        entity_values = marking_function.array()
+        colorings = [np.where(entity_values == tag)[0] for tag in markers]
+        # Represent the entities as their vertices
+        tagged_entities = np.hstack(colorings)
 
-        new_cell_index, new_vertex_index = 0, 0
-        for marker in markers:
-            for entity in df.SubsetIterator(marking_function, marker):
-                vs = entity.entities(0)
-                cell = []
-                # Vertex lookup
-                for v in vs:
-                    try:
-                        local = new_vertices.index(v)
-                    except ValueError:
-                        local = new_vertex_index
-                        new_vertices.append(v)
-                        new_vertex_index += 1
-                    # Cell, one by one in terms of vertices
-                    cell.append(local)
-                # The cell
-                new_cells.append(cell)
-                # Into map
-                cell_map.append(entity.index())
-                # Colors
-                cell_colors[marker].append(new_cell_index)
-
-                new_cell_index += 1
-        vertex_coordinates = base_mesh.coordinates()[new_vertices]
-        new_cells = np.array(new_cells, dtype='uintp')
+        tagged_entities_v = np.array([e2v(e) for e in tagged_entities], dtype='uintp')
+        # Unique vertices that make them up are vertices of our mesh
+        tagged_vertices = np.unique(tagged_entities_v.flatten())
+        # Representing the entities in the numbering of the new mesh will
+        # give us the cell makeup
+        mapping = dict(zip(tagged_vertices, range(len(tagged_vertices))))
+        # So these are our new cells
+        tagged_entities_v.ravel()[:] = np.fromiter((mapping[v] for v in tagged_entities_v.flat),
+                                                   dtype='uintp')
         
         # With acquired data build the mesh
         df.Mesh.__init__(self)
         # Fill
-        make_mesh(coordinates=vertex_coordinates, cells=new_cells, tdim=tdim, gdim=gdim,
+        vertex_coordinates = base_mesh.coordinates()[tagged_vertices]
+        make_mesh(coordinates=vertex_coordinates, cells=tagged_entities_v, tdim=tdim, gdim=gdim,
                   mesh=self)
 
         # The entity mapping attribute
         mesh_key = marking_function.mesh().id()
-        self.parent_entity_map = {mesh_key: {0: dict(enumerate(new_vertices)),
-                                             tdim: dict(enumerate(cell_map))}}
+        self.parent_entity_map = {mesh_key: {0: dict(enumerate(tagged_vertices)),
+                                             tdim: dict(enumerate(tagged_entities))}}
 
         f = df.MeshFunction('size_t', self, tdim, 0)
-        f_ = f.array()
-        # Finally the inherited marking function
+        # Finally the inherited marking function. We colored sequentially so
         if len(markers) > 1:
-            for marker, cells in cell_colors.iteritems():
-                f_[cells] = marker
+            f_ = f.array()            
+            offsets = np.cumsum(np.r_[0, list(map(len, colorings))])
+            for i, marker in enumerate(markers):
+                f_[offsets[i]:offsets[i+1]] = marker
         else:
             f.set_all(markers[0])
 
