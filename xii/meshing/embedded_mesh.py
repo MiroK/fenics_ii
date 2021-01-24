@@ -17,38 +17,8 @@ class EmbeddedMesh(df.Mesh):
     def __init__(self, marking_function, markers):
         if not isinstance(markers, (list, tuple)): markers = [markers]
         
-        # Convenience option to specify only subdomains
-        is_number = lambda m: isinstance(m, int)
-        new_markers = []
-        # Build a new list int list with facet_function marked
-        if not all(map(is_number, markers)):
-            
-            numbers = filter(is_number, markers)
-            next_int_marker = max(numbers) if numbers else 0
-            for marker in markers:
-                if is_number(marker):
-                    new_markers.append(marker)
-                else:
-                    next_int_marker += 1
-                    # SubDomain
-                    try:
-                        marker.mark(marking_function, next_int_marker)
-                    except AttributeError:
-                        # A string
-                        try:
-                            df.CompiledSubDomain(marker).mark(marking_function, next_int_marker)
-                        # A lambda
-                        except TypeError:
-                            df.CompiledSubDomain(*marker()).mark(marking_function, next_int_marker)
-
-                    new_markers.append(next_int_marker)
-            
-            markers = new_markers
-            
         base_mesh = marking_function.mesh()
-
         assert base_mesh.topology().dim() >= marking_function.dim()
-
         # Work in serial only (much like submesh)
         assert df.MPI.size(base_mesh.mpi_comm()) == 1
 
@@ -277,7 +247,6 @@ class EmbeddedMesh(df.Mesh):
                     if found:
                         marker_f[int(e_)] = entity_f[e]
 
-                    
         return marker_f
     
         
