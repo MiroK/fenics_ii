@@ -167,8 +167,6 @@ def test_translate_markers_3d_edge(n=4):
     values = inside.translate_markers(bdries, (1, 2))
     assert set(np.unique(values)) == set((0, 1, 2))
 
-    File('xxx.pvd') << values
-    
     tdim = mesh.topology().dim()
     # And they are in the right place
     x, y = mesh.coordinates(), inside.coordinates()

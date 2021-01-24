@@ -177,9 +177,6 @@ def test_3d(n=4, tol=1E-10):
     left = EmbeddedMesh(cell_f, 1)
     right = EmbeddedMesh(cell_f, 2)
 
-    File('left.pvd') << left
-    File('right.pvd') << right
-    
     facet_f = MeshFunction('size_t', left, 2, 0)
     CompiledSubDomain('near(x[0], 0.5)').mark(facet_f, 1)
 
