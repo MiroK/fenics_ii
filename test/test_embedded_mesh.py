@@ -263,6 +263,37 @@ def test_3d_performance(n=4, tol=1E-10, strict=False):
 
     return (dt, mesh.num_cells(), iface.num_cells())
 
+def test_3d_performance_cell(n=4, tol=1E-10, strict=False):
+    '''[|]'''
+    mesh = UnitCubeMesh(n, n, n)
+    cell_f = MeshFunction('size_t', mesh, 3, 0)
+    CompiledSubDomain('x[0] < 0.5 + DOLFIN_EPS').mark(cell_f, 1)
+
+    t = Timer('embed')
+    iface = EmbeddedMesh(cell_f, 1)
+    dt = t.stop()
+
+    if strict:
+        # We want to embed
+        mappings = iface.parent_entity_map[mesh.id()]
+        # Is it correct?
+
+        xi, x = iface.coordinates(), mesh.coordinates()
+        assert min(np.linalg.norm(xi[mappings[0].keys()]-x[mappings[0].values()], 2, 1)) < tol
+        
+        tdim = mesh.topology().dim()
+        mesh.init(tdim, 0)
+        f2v = mesh.topology()(tdim, 0)
+        
+        icells = iface.cells()
+
+        vertex_match = lambda xs, ys: all(min(np.linalg.norm(ys - x, 2, 1)) < tol for x in xs)
+    
+        assert all([vertex_match(xi[icells[key]], x[f2v(val)]) for key, val in mappings[tdim].items()])
+
+    return (dt, mesh.num_cells(), iface.num_cells())
+
+
 # --------------------------------------------------------------------
 
 if __name__ == '__main__':
@@ -288,3 +319,20 @@ if __name__ == '__main__':
             
         print('%.3f %d[%.2f] %d[%.2f]' % (dt, all_cells, rate_all, embd_cells, rate_embd))
         dt0, all_cells0, embd_cells0 = dt, float(all_cells), float(embd_cells)
+
+    print
+
+    test_3d_performance_cell(4, strict=True)    
+
+    dt0, all_cells0, embd_cells0 = None, None, None
+    for n in (4, 8, 16, 32, 64):
+        dt, all_cells, embd_cells = test_3d_performance_cell(n)
+        if dt0 is not None:
+            rate_all = ln(dt/dt0)/ln(all_cells/all_cells0)
+            rate_embd = ln(dt/dt0)/ln(embd_cells/embd_cells0)
+        else:
+            rate_all, rate_embd = -1, -1
+            
+        print('%.3f %d[%.2f] %d[%.2f]' % (dt, all_cells, rate_all, embd_cells, rate_embd))
+        dt0, all_cells0, embd_cells0 = dt, float(all_cells), float(embd_cells)
+    
