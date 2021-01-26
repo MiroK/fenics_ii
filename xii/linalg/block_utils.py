@@ -230,46 +230,35 @@ def is_increasing(seq):
     return seq[0] < seq[1] and is_increasing(seq[1:])
 
 
-class ReductionOperator(block_base):
-    '''
-    This operator reduces block vector into a block vector with 
-    at most the same number of blocks. The size of the blocks is specified
-    by offsets. Eg (1, 2, 3, 4) is the idenity for vector with 4 block
-    [with components [0:1], [1:2], [2:3], [3:4]], while (2, 3, 4) would 
-    produce a 3 vector from [0:2], [2:3], [3:4]
-    '''
-    def __init__(self, offsets, W):
-        assert len(W) == offsets[-1]
-        assert is_increasing(offsets)
-        self.offsets = [0] + offsets
+class RearangeOperator(block_base):
+    '''R*[u0, u1, u2] = [(u0, u2), u1] ((0, 2), 1)'''
+    def __init__(self, mapping, W):
+        # mapping = RearangeOperator.check(mapping)
+        # FIXME: Check assumptions
+        # With matvec R*u we will recombine
+        self.mapping = mapping
+        # When doing R.T*v we have to extract
+        dofs = [Wi.dofmap().dofs() for Wi in W]
 
-        self.index_sets = []
-        for f, l in zip(self.offsets[:-1], self.offsets[1:]):
-            if (l - f) == 1:
-                self.index_sets.append([])
-            else:
-                index_set = []
-                prev = 0
-                for Wi in W[f:l]:
-                    this = Wi.dofmap().dofs() + prev
-                    index_set.append(PETSc.IS().createGeneral(this.tolist()))
-                    prev = len(this)
-                self.index_sets.append(index_set)
+        index_sets = []
+        for indices in mapping:
+            offsets = np.cumsum(np.r_[0, [len(dofs[i]) for i in indices]])
+            index_sets.append(tuple(PETSc.IS().createGeneral((offset + dofs[i]).tolist())
+                                 for offset, i in zip(offsets, indices)))
+        self.index_sets = index_sets
+                
         # Handle get_dims
         self.__sizes__ = (sum(Wi.dim() for Wi in W), )*2
 
     def matvec(self, b):
         '''Reduce'''
-        # print type(b), b.size(), self.offsets
-        # assert b.size() == self.offsets[-1]
-
-        reduced = []
-        for f, l in zip(self.offsets[:-1], self.offsets[1:]):
-            if (l - f) == 1:
-                reduced.append(b[f])
+        reshaped = []
+        for indices in self.mapping:
+            if len(indices) == 1:
+                reshaped.append(b.blocks[indices[0]])
             else:
-                reduced.append(PETScVector(as_petsc_nest(block_vec(b.blocks[f:l]))))
-        return block_vec(reduced) if len(reduced) > 1 else reduced[0]
+                reshaped.append(PETScVector(as_petsc_nest(block_vec([b.blocks[idx] for idx in indices]))))
+        return block_vec(reshaped) if len(reshaped) > 1 else reshaped[0]
 
     def transpmult(self, b):
         '''Unpack'''
@@ -280,19 +269,34 @@ class ReductionOperator(block_base):
         n = len(b)
         assert n == len(self.index_sets), self.index_sets
 
-        unpacked = []
-        for bi, iset in zip(b, self.index_sets):
-            if len(iset) == 0:
-                unpacked.append(bi)
+        unpacked = [0]*n
+        for bi, block_dofs, blocks in zip(b, self.index_sets, self.mapping):
+            if len(blocks) == 1:
+                unpacked[blocks[0]] = bi
             else:
                 x_petsc = as_backend_type(bi).vec()
-
-                subvecs = map(lambda indices, x=x_petsc: PETScVector(x.getSubVector(indices)),
-                              iset)
-
-                unpacked.extend(subvecs)
+                subvecs = [PETScVector(x_petsc.getSubVector(dofs)) for dofs in block_dofs]
+                for j, subvec in zip(range(*blocks), subvecs):
+                    unpacked[j] = subvec
         return block_vec(unpacked)
 
+    
+class ReductionOperator(RearangeOperator):
+    '''
+    This operator reduces block vector into a block vector with 
+    at most the same number of blocks. The size of the blocks is specified
+    by offsets. Eg (1, 2, 3, 4) is the idenity for vector with 4 block
+    [with components [0:1], [1:2], [2:3], [3:4]], while (2, 3, 4) would 
+    produce a 3 vector from [0:2], [2:3], [3:4]
+    '''
+    def __init__(self, offsets, W):
+        assert len(W) == offsets[-1]
+        assert is_increasing(offsets)
+
+        offsets = [0] + offsets
+        mapping = tuple(tuple(range(f, l)) for f, l in zip(offsets[:-1], offsets[1:]))
+        RearangeOperator.__init__(self, mapping, W)
+        
     
 class RegroupOperator(block_base):
     '''Block vec to Block vec of block_vec/vecs.'''
@@ -384,3 +388,9 @@ if __name__ == '__main__':
 
     y  = BB_m*(R*bb)
     print np.linalg.norm(np.hstack([bi.get_local() for bi in z_block])-y.get_local())
+
+
+# Check inputs to rearange
+# MORE TESTS
+# Inputs with function spaces
+# Permute operator
