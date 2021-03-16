@@ -35,7 +35,7 @@ def apply_bc(A, b, bcs, diag_val=1., return_apply_b=False):
         bcs = [bcs]
 
     # block boundary conditions is a list with bcs for each block of A, b
-    assert len(A) == len(b) == len(bcs)
+    assert len(A) == len(b) == len(bcs), (len(A), len(b), len(bcs))
 
     bcs_ = []
     for bc in bcs:

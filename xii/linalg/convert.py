@@ -346,35 +346,16 @@ def bmat_sizes(bmat):
         return tuple(map(get_dims, block_vec.blocks))
 
     if isinstance(bmat, block_mat):
-        bmat = bmat.blocks
-        row_sizes , col_sizes = [], []
-        for row in bmat:
-            # In each row there must be something that be used to get
-            # the row size
-            size = set([dim[0]
-                        for dim in [get_dims(A) for A in row]
-                        if dim is not None])
-            if len(size) == 1:
-                # Moreover all the things should agree on the row size
-                # (since they are in the same row)
-                row_sizes.append(size.pop())
-            else:
-                # Scalars
-                row_sizes.append(None)
+        vec = bmat.create_vec(0)
+        vecs = (vec, ) if not hasattr(vec, 'blocks') else vec.blocks
+        row_sizes = tuple(vec.size() for vec in vecs)
 
-        for col in bmat.T:
-            size = set([dim[1]
-                        for dim in [get_dims(A) for A in col]
-                        if dim is not None])
-            
-            if len(size) == 1:
-                col_sizes.append(size.pop())
-            else:
-                col_sizes.append(None)
-            
-        # However we return both to indicate this was matrix like
-        return (tuple(row_sizes), tuple(col_sizes))
-
+        vec = bmat.create_vec(1)
+        vecs = (vec, ) if not hasattr(vec, 'blocks') else vec.blocks
+        col_sizes = tuple(vec.size() for vec in vecs)
+        
+        return row_sizes, col_sizes
+    
     raise ValueError('Cannot bmat_sizes of %r, %s' % (type(bmat), bmat))
 
 
