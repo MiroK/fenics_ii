@@ -16,7 +16,7 @@ def apply_bc(A, b, bcs, diag_val=1., return_apply_b=False):
     Apply block boundary conditions to block system A, b    
     '''
     # Specs of do nothing
-    if bcs is None or not bcs or not any(bc for bc in bcs):
+    if bcs is None or not bcs or (not any(bc for bc in bcs) and isinstance(bcs, list)):
         return A, b
     
     # Allow for A, b be simple matrices. To proceed we wrap them as
@@ -32,7 +32,14 @@ def apply_bc(A, b, bcs, diag_val=1., return_apply_b=False):
     if not isinstance(b, block_vec):
         assert has_wrapped_A
         b = block_vec([b])
-        bcs = [bcs]
+
+    if isinstance(bcs, dict):
+        assert all(0 <= k < len(A) for k in bcs.keys())
+        assert all(isinstance(v, list) for v in bcs.values())
+        bcs = [bcs.get(i, []) for i in range(len(A))]
+    else:
+        if has_wrapped_A:
+            bcs = [bcs]
 
     # block boundary conditions is a list with bcs for each block of A, b
     assert len(A) == len(b) == len(bcs), (len(A), len(b), len(bcs))

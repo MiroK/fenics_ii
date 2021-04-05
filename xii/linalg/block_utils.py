@@ -45,6 +45,7 @@ def ii_PETScOperator(bmat, nullspace):
                 # Apply
                 y_bvec = self.A*x_bvec
                 # Convert back
+                
                 y.axpy(1., as_petsc_nest(y_bvec))
 
             def multTranspose(self, mat, x, y):
@@ -116,6 +117,7 @@ def ii_PETScPreconditioner(bmat, ksp):
                 # Apply
                 y_bvec = self.A*x_bvec
                 # Convert back
+
                 y.axpy(1., as_petsc_nest(y_bvec))
             
             def applyTranspose(self, mat, x, y):
@@ -266,9 +268,8 @@ class RearangeOperator(block_base):
             b = [b]
         else:
             b = b.blocks
-        n = len(b)
-        assert n == len(self.index_sets), self.index_sets
-
+            
+        n = sum(map(len, self.index_sets))
         unpacked = [0]*n
         for bi, block_dofs, blocks in zip(b, self.index_sets, self.mapping):
             if len(blocks) == 1:
@@ -276,8 +277,10 @@ class RearangeOperator(block_base):
             else:
                 x_petsc = as_backend_type(bi).vec()
                 subvecs = [PETScVector(x_petsc.getSubVector(dofs)) for dofs in block_dofs]
-                for j, subvec in zip(range(*blocks), subvecs):
+                for j, subvec in zip(blocks, subvecs):
                     unpacked[j] = subvec
+
+                    
         return block_vec(unpacked)
 
     
