@@ -15,7 +15,7 @@ class EmbeddedMesh(df.Mesh):
     Having several maps in the dict is useful for mortaring.
     '''
     def __init__(self, marking_function, markers):
-        if not isinstance(markers, (list, tuple)): markers = [markers]
+        if not isinstance(markers, (list, tuple, set)): markers = [markers]
         
         base_mesh = marking_function.mesh()
         assert base_mesh.topology().dim() >= marking_function.dim()
@@ -238,6 +238,9 @@ class EmbeddedMesh(df.Mesh):
 class OuterNormal(df.Function):
     '''Outer normal of a manifold mesh as a vector DG0 function.'''
     def __init__(self, mesh, orientation):
+        if orientation is None:
+            # We assume convex domain and take center as ...
+            orientation = mesh.coordinates().mean(axis=0)
 
         # Manifold assumption
         assert 1 <= mesh.topology().dim() < mesh.geometry().dim()
