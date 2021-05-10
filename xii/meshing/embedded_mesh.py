@@ -63,7 +63,7 @@ class EmbeddedMesh(df.Mesh):
                     new_cells = np.array([old2new[o] for o in old_cells], dtype='uintp')
                     f_values[new_cells] = color
             else:
-                f.set_all(markers[0])
+                f.set_all(next(iter(markers)))
             
             self.marking_function = f
             # Declare which tagged cells are found
@@ -108,7 +108,7 @@ class EmbeddedMesh(df.Mesh):
             for i, marker in enumerate(markers):
                 f_[offsets[i]:offsets[i+1]] = marker
         else:
-            f.set_all(markers[0])
+            f.set_all(next(iter(markers)))
 
         self.marking_function = f
         # Declare which tagged cells are found
@@ -241,7 +241,6 @@ class OuterNormal(df.Function):
         if orientation is None:
             # We assume convex domain and take center as ...
             orientation = mesh.coordinates().mean(axis=0)
-
         # Manifold assumption
         assert 1 <= mesh.topology().dim() < mesh.geometry().dim()
         gdim = mesh.geometry().dim()

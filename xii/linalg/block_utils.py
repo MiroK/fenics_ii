@@ -100,7 +100,9 @@ def ii_PETScPreconditioner(bmat, ksp):
     #     nrows, ncols = get_dims(bmat)
     #     row_sizes, col_sizes = (nrows, ), (ncols, )
     #     is_block = False
-    is_block = not isinstance(bmat, (Matrix, PETScMatrix))
+    x = bmat.create_vec()
+    is_block = isinstance(x, block_base)
+    
     # NOTE: we assume that this is a symmetric operator
     class Foo(object):
         def __init__(self, A):
