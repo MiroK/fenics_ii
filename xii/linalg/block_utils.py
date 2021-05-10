@@ -251,7 +251,7 @@ class ReductionOperator(block_base):
                 index_set = []
                 prev = 0
                 for Wi in W[f:l]:
-                    this = Wi.dofmap().dofs() + prev
+                    this = np.array(Wi.dofmap().dofs()) + prev
                     index_set.append(PETSc.IS().createGeneral(this.tolist()))
                     prev = len(this)
                 self.index_sets.append(index_set)
