@@ -102,7 +102,8 @@ def ii_PETScPreconditioner(bmat, ksp):
     #     is_block = False
     x = bmat.create_vec()
     is_block = isinstance(x, block_base)
-    
+
+    print('is_block', is_block)
     # NOTE: we assume that this is a symmetric operator
     class Foo(object):
         def __init__(self, A):
@@ -253,6 +254,15 @@ class RearangeOperator(block_base):
                 
         # Handle get_dims
         self.__sizes__ = (sum(Wi.dim() for Wi in W), )*2
+
+        self.W = W
+
+    def create_vec(self, dim=1):
+        if dim == 1:
+            return block_vec([Function(Wi).vector() for Wi in self.W])
+
+        x = self.create_vec(dim=1)
+        return self*x
 
     def matvec(self, b):
         '''Reduce'''

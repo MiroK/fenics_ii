@@ -237,6 +237,11 @@ def numpy_to_petsc(mat):
     '''Build PETScMatrix with array structure'''
     # Dense array to matrix
     if isinstance(mat, np.ndarray):
+        if mat.ndim == 1:
+            vec = PETSc.Vec().createWithArray(mat)
+            vec.assemble()
+            return PETScVector(vec)
+
         return numpy_to_petsc(csr_matrix(mat))
     # Sparse
     A = PETSc.Mat().createAIJ(comm=COMM,
