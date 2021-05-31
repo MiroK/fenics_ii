@@ -74,7 +74,7 @@ def Average(v, line_mesh, shape):
         # Otherise the hope is that we will eval in cell interior which
         print('\tUsing 3d-1d trace!!!!')
         
-    if isinstance(v, df.Coefficient):
+    if isinstance(v, ufl.Coefficient):
         v =  df.Function(v.function_space(), v.vector())
     else:
         # Object copy?

@@ -37,7 +37,6 @@ def avg_mat(V, TV, reduced_mesh, data):
     assert TV.ufl_element().family() == 'Discontinuous Lagrange'
     
     # Compatibility of spaces
-    assert V.dolfin_element().value_rank() == TV.dolfin_element().value_rank()
     assert V.ufl_element().value_shape() == TV.ufl_element().value_shape()
     assert average_cell(V) == TV.mesh().ufl_cell()
     assert V.mesh().geometry().dim() == TV.mesh().geometry().dim()
@@ -113,7 +112,7 @@ def average_matrix(V, TV, shape):
                     Vcell = Cell(mesh, c)
                     vertex_coordinates = Vcell.get_vertex_coordinates()
                     cell_orientation = Vcell.orientation()
-                    Vel.evaluate_basis_all(basis_values, ip, vertex_coordinates, cell_orientation)
+                    basis_values[:] = Vel.evaluate_basis_all(ip, vertex_coordinates, cell_orientation)
 
                     cols_ip = V_dm.cell_dofs(c)
                     values_ip = basis_values*wq[index]
@@ -133,7 +132,7 @@ def average_matrix(V, TV, shape):
                     mat.setValues([row], column_indices, column_values, PETSc.InsertMode.INSERT_VALUES)
             # On to next avg point
         # On to next cell
-    return PETScMatrix(mat)
+    return mat
 
 
 def trace_3d1d_matrix(V, TV, reduced_mesh):
@@ -202,7 +201,7 @@ def trace_3d1d_matrix(V, TV, reduced_mesh):
 
             for scalar_row, avg_point in zip(scalar_dofs, scalar_dofs_x):
                 # 3d at point
-                Vel.evaluate_basis_all(basis_values, avg_point, vertex_coordinates, cell_orientation)
+                basis_values[:] = Vel.evaluate_basis_all(avg_point, vertex_coordinates, cell_orientation)
                 # The thing now is that with data we can assign to several
                 # rows of the matrix. Shift determines the (x, y, ... ) or
                 # (xx, xy, yx, ...) component of Q
@@ -212,7 +211,7 @@ def trace_3d1d_matrix(V, TV, reduced_mesh):
                     mat.setValues([row], column_indices, column_values, PETSc.InsertMode.INSERT_VALUES)
             # On to next avg point
         # On to next cell
-    return PETScMatrix(mat)
+    return mat
 
 
 def MeasureFunction(averaged):
