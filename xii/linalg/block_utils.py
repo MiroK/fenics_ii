@@ -24,12 +24,29 @@ def block_diag_mat(diagonal):
 
 def ii_PETScOperator(bmat, nullspace):
     '''Return an object with mult method which acts like bmat*'''
-    if isinstance(bmat, block_base):
-        row_sizes, col_sizes = bmat_sizes(bmat)
+    colspace_vec, rowspace_vec = bmat.create_vec(0), bmat.create_vec(1)
+
+    if isinstance(colspace_vec, block_vec):
         is_block = True
+        assert isinstance(rowspace_vec, block_vec)
+
+        row_sizes = tuple(bi.size() for bi in colspace_vec)
+        col_sizes = tuple(xi.size() for xi in rowspace_vec)
+        
     else:
-        row_sizes, col_sizes = (bmat.size(0), ), (bmat.size(1), )
         is_block = False
+        assert not isinstance(rowspace_vec, block_vec)
+
+        row_sizes = (colspace_vec.size(), )
+        col_sizes = (rowspace_vec.size(), )
+
+    print(is_block, row_sizes, col_sizes)
+    # if isinstance(bmat, block_base):
+    #     row_sizes, col_sizes = bmat_sizes(bmat)
+    #     is_block = True
+    # else:
+    #     row_sizes, col_sizes = (bmat.size(0), ), (bmat.size(1), )
+    #     is_block = False
 
     class Foo(object):
         def __init__(self, A):

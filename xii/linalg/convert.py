@@ -68,7 +68,10 @@ def convert(bmat, algorithm='numpy'):
         # Convert to numpy
         array = block_mat_to_numpy(bmat)
         # Constuct from numpy
-        return numpy_to_petsc(array)
+        bmat = numpy_to_petsc(array)
+        set_lg_map(bmat)
+
+        return bmat
 
     # Try with a composite
     return collapse(bmat)
@@ -96,6 +99,7 @@ def collapse(bmat):
     # T
     elif isinstance(bmat, block_transpose):
         return collapse_tr(bmat)
+
     # Some things in cbc.block know their matrix representation
     # This is typically diagonals like InvLumpDiag etc
     elif hasattr(bmat, 'v'):
@@ -116,7 +120,7 @@ def collapse(bmat):
     # Try:
     elif hasattr(bmat, 'collapse'):
         return bmat.collapse()
-
+    
     elif hasattr(bmat, 'create_vec'):
         x = bmat.create_vec()
         columns = []
