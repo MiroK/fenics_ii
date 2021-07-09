@@ -1,5 +1,6 @@
 from itertools import chain, dropwhile
 from make_mesh_cpp import make_mesh
+from branching import color_branches, walk_cells, is_loop
 from collections import defaultdict
 import dolfin as df
 import numpy as np
@@ -409,6 +410,87 @@ def build_embedding_map(emesh, mesh, esubdomains=None, tags=None, tol=1E-14):
 #    tree = cKDTree(parent, leafsize=24)
 #    _, vertex_map = tree.query(child, k=1)
 
+# FIXME: (and enclosing curves)
+
+def wind_number(mesh, points):
+    '''Of a loop'''
+    assert is_loop(mesh)
+    assert mesh.geometry().dim() == 2
+    assert points.ndim == 2
+
+    x = df.SpatialCoordinate(mesh)
+    tan = TangentCurve(mesh)
+    c = df.Constant([0, 0])
+    
+    R = df.Constant(((0, 1), (-1, 0)))
+    L = df.inner((x-c)/(2*df.pi)/df.dot(x-c, x-c), df.dot(R, tan))*df.dx
+
+    return np.fromiter(((c.assign(df.Constant(point)), df.assemble(L))[-1] for point in points),
+                       dtype=float)
+
+
+def encloses_points(mesh, points, tol=1E-2):
+    '''Point is outside/not enclosed if it wind number is > tol'''
+    return wind_number(mesh, points) > tol
+
+
+def NormalCurve(mesh, outside=None, tol=1E-2):
+    '''In plane we can get things by rotating the tangent to get unit normal'''
+    # The idea is to use a given point to figure out wind number and orient
+    # accordingly
+    if outside is None:
+        outside = np.max(mesh.coordinates(), axis=0) + np.ones(2)
+    assert outside.shape == (2, )
+    
+    n,  = wind_number(mesh, np.array([outside]))
+    if abs(n) < tol:
+        # Orient with
+        R = df.Constant(((0, 1), (-1, 0)))
+    else:
+        R = df.Constant(((0, -1), (1, 0)))
+        
+    t = TangentCurve(mesh)
+    V = t.function_space()
+    v = df.TestFunction(V)
+
+    n = df.Function(V)
+    # DG0 project the rotated tangent
+    df.assemble(df.inner(df.dot(R, t)/df.CellVolume(mesh), v)*df.dx,
+                tensor=n.vector())
+
+    return n
+
+
+class TangentCurve(df.Function):
+    '''Unit tangent vector of a curve'''
+    def __init__(self, mesh):
+        assert 1 <= mesh.topology().dim() < mesh.geometry().dim()
+        gdim = mesh.geometry().dim()
+
+        V = df.VectorFunctionSpace(mesh, 'DG', 0, gdim)
+        df.Function.__init__(self, V)
+        n_values = self.vector().get_local()
+
+        X = mesh.coordinates()
+        c2v = mesh.topology()(1, 0)
+        
+        values = []
+
+        cell_f, bcolors, lcolors = color_branches(mesh)
+        colors = bcolors + lcolors
+
+        values = np.zeros(V.dim()).reshape((-1, gdim))
+        for color in colors:
+            for cell, orient in walk_cells(cell_f, tag=color):
+                v0, v1 = X[c2v(cell) if orient else c2v(cell)[::-1]]
+                t = (v1 - v0)/np.linalg.norm(v1-v0)
+                values[cell][:] = t
+
+        for sub in range(gdim):
+            dofs = V.sub(sub).dofmap().dofs()
+            n_values[dofs] = values[:, sub]
+        self.vector().set_local(n_values)
+        self.vector().apply('insert')
 
 # -------------------------------------------------------------------
 
