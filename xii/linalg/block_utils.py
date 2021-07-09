@@ -252,6 +252,32 @@ def is_increasing(seq):
     return seq[0] < seq[1] and is_increasing(seq[1:])
 
 
+class SubSelectOperator(block_base):
+    '''R((0, 1))*[u0, u1, u2] = [u0, u1]'''
+    def __init__(self, indices, W):
+        self.indices = indices
+        self.W = W
+
+    def create_vec(self, dim=1):
+        if dim == 1:
+            return block_vec([Function(Wi).vector() for Wi in self.W])
+
+        x = self.create_vec(dim=1)
+        return self*x
+
+    def matvec(self, b):
+        '''Extract'''
+        return block_vec([b[index] for index in self.indices])
+
+    def transpmult(self, b):
+        '''Fill the rest with zeros'''
+        ans = self.create_vec(dim=1)
+        
+        for source, dest in enumerate(self.indices):
+            ans[dest] = b[source]
+
+        return ans
+
 class RearangeOperator(block_base):
     '''R*[u0, u1, u2] = [(u0, u2), u1] ((0, 2), 1)'''
     def __init__(self, mapping, W):
@@ -418,9 +444,26 @@ if __name__ == '__main__':
 
     print (z - z_block).norm()
 
-    y  = BB_m*(R*bb)
-    print np.linalg.norm(np.hstack([bi.get_local() for bi in z_block])-y.get_local())
+    y_  = BB_m*(R*bb)
+    print np.linalg.norm(np.hstack([bi.get_local() for bi in z_block])-y_.get_local())
 
+    W = [V, Vb]
+    Index = SubSelectOperator((1, 0), W)
+    cc = Index*bb
+    print(norm(cc[0] - y))
+    print(norm(cc[1] - x))
+
+    bb0 = (Index.T)*cc
+    print((bb0 - bb).norm())
+
+    Index = SubSelectOperator((1, ), W)
+    cc = Index*bb
+    print(norm(cc[0] - y))
+
+    bb0 = (Index.T)*cc
+    print((bb0 - bb).norm())
+    print(norm(bb0[1] - bb[1]))
+    print(norm(bb0[0]))
 
 # Check inputs to rearange
 # MORE TESTS

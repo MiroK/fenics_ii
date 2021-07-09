@@ -137,6 +137,7 @@ def collapse(bmat):
 def collapse_tr(bmat):
     '''to Transpose'''
     # Base
+    # FIXME:!!!
     A = bmat.A
     if is_petsc_mat(A):
         A_ = as_petsc(A)
