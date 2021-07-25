@@ -27,7 +27,7 @@ def cross_grid_refine(mesh):
     child2parent = np.empty(ncells*nvtx_cell, dtype='uintp')
     fine_cells = np.empty((ncells*nvtx_cell, nvtx_cell), dtype='uintp')
     # How we build new cells
-    basis = map(list, combinations(range(nvtx_cell), nvtx_cell-1))
+    basis = list(map(list, combinations(list(range(nvtx_cell)), nvtx_cell-1)))
 
     fc, center = 0, len(x)
     for pc, cell in enumerate(cells):
@@ -59,7 +59,7 @@ if __name__ == '__main__':
     assert fine_mesh.has_parent()
 
     mesh_f = MeshFunction('size_t', fine_mesh, 2, 0)
-    for child, parent in fine_mesh.parent_entity_map[mesh.id()][2].items():
+    for child, parent in list(fine_mesh.parent_entity_map[mesh.id()][2].items()):
         mesh_f[child] = parent
     
     File('foo.pvd') << mesh_f

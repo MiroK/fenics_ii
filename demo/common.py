@@ -63,7 +63,7 @@ def as_expression(expr, degree=4, **kwargs):
 def coroutine(func):
     def start(*args,**kwargs):
         cr = func(*args,**kwargs)
-        cr.next()
+        next(cr)
         return cr
     return start
 
@@ -119,7 +119,7 @@ def monitor_error(u, norms, memory, reduction=lambda x: x, path=''):
                        ['|r|_l2=%g' % r_norm] +
                        ['niters=%d' % niters])
         # Screen
-        print GREEN % msg
+        print(GREEN % msg)
         # Log
         if path:
             with open(path, 'a') as f: f.write(msg + '\n')

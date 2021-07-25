@@ -83,9 +83,9 @@ if __name__ == '__main__':
     box = bbox(seg)
 
     line = np.array([[3, 3], [4., 4]])
-    print box_collides(box, line)
-    print collides_cell(seg, line)
+    print(box_collides(box, line))
+    print(collides_cell(seg, line))
     
     line = np.array([[0, 1], [1., 0]])
-    print box_collides(box, line)
-    print collides_cell(seg, line)
+    print(box_collides(box, line))
+    print(collides_cell(seg, line))

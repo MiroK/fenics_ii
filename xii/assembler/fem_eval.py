@@ -1,4 +1,4 @@
-from dolfin import Cell, Expression
+from dolfin import Cell, UserExpression
 import numpy as np
 
 
@@ -43,11 +43,10 @@ class DegreeOfFreedom(object):
         self.__cell = cell_
 
     def eval(self, f):
-        return self.elm.evaluate_dof(self.dof,
-                                     f.as_expression() if isinstance(f, FEBasisFunction) else f,
-                                     self.__cell_vertex_x,
-                                     self.__cell_orientation,
-                                     self.__cell)
+        return self.elm.evaluate_dofs(f.as_expression() if isinstance(f, FEBasisFunction) else f,
+                                      self.__cell_vertex_x,
+                                      self.__cell_orientation,
+                                      self.__cell)[self.dof]
 
 # NOTE: this is a very silly construction. Basically the problem is
 # that Function cannot be properly overloaded beacsue SWIG does not 
@@ -63,7 +62,7 @@ class FEBasisFunction(object):
 
         # A fake instanc to talk to with the world
         adapter = type('MiroHack',
-                       (Expression, ),
+                       (UserExpression, ),
                        {'value_shape': lambda self_, : shape,
                         'eval': lambda self_, values, x: self.eval(values, x)})
         self.__adapter = adapter(degree=degree)
@@ -99,11 +98,10 @@ class FEBasisFunction(object):
         self.__cell = cell_
 
     def eval(self, values, x):
-        self.elm.evaluate_basis(self.dof,
-                                values[:], 
-                                x,
-                                self.__cell_vertex_x,
-                                self.__cell_orientation)
+        values[:] = self.elm.evaluate_basis(self.dof,
+                                            x,
+                                            self.__cell_vertex_x,
+                                            self.__cell_orientation)
 
     def __call__(self, x):
         self.eval(self.__values, x)
@@ -138,7 +136,7 @@ if __name__ == '__main__':
     dofs.cell = cell
     dofs.dof = local_dof
 
-    print dofs.eval(f), dofs.eval(g.as_expression())
+    print(dofs.eval(f), dofs.eval(g.as_expression()))
 
     x = Cell(mesh, cell).midpoint().array()[:2]
-    print f(x), g(x)
+    print(f(x), g(x))

@@ -34,7 +34,6 @@ def trace_mat(V, TV, trace_mesh, data):
     understood as D -> D-1.
     '''
     # Compatibility of spaces
-    assert V.dolfin_element().value_rank() == TV.dolfin_element().value_rank()
     assert V.ufl_element().value_shape() == TV.ufl_element().value_shape()
     assert trace_cell(V) == TV.mesh().ufl_cell()
     assert V.mesh().geometry().dim() == TV.mesh().geometry().dim()
@@ -102,7 +101,7 @@ def trace_mat_no_restrict(V, TV, trace_mesh=None, tag_data=None):
     V_basis_f = FEBasisFunction(V)
 
     # Only look at tagged cells
-    trace_cells = itertools.chain(*[itertools.imap(operator.methodcaller('index'),
+    trace_cells = itertools.chain(*[map(operator.methodcaller('index'),
                                                    SubsetIterator(trace_mesh_subdomains, tag))
                                     for tag in tags])
 
@@ -164,7 +163,7 @@ def trace_mat_one_restrict(V, TV, restriction, normal, trace_mesh=None, tag_data
     trace_mesh_subdomains, tags = tag_data
 
     # Only look at tagged cells
-    trace_cells = itertools.chain(*[itertools.imap(operator.methodcaller('index'),
+    trace_cells = itertools.chain(*[map(operator.methodcaller('index'),
                                                    SubsetIterator(trace_mesh_subdomains, tag))
                                     for tag in tags])
         

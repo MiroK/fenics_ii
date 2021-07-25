@@ -26,7 +26,7 @@ def test_2d(n=32, tol=1E-10):
     # Is it correct?
 
     xi, x = iface.coordinates(), right.coordinates()
-    assert min(np.linalg.norm(xi[mappings[0].keys()]-x[mappings[0].values()], 2, 1)) < tol
+    assert min(np.linalg.norm(xi[list(mappings[0].keys())]-x[list(mappings[0].values())], 2, 1)) < tol
 
     tdim = right.topology().dim()-1
     right.init(tdim, 0)
@@ -36,7 +36,7 @@ def test_2d(n=32, tol=1E-10):
 
     vertex_match = lambda xs, ys: all(min(np.linalg.norm(ys - x, 2, 1)) < tol for x in xs)
     
-    assert all([vertex_match(xi[icells[key]], x[f2v(val)]) for key, val in mappings[tdim].items()])
+    assert all([vertex_match(xi[icells[key]], x[f2v(val)]) for key, val in list(mappings[tdim].items())])
 
     try:
         iface.compute_embedding(facet_f, 2)
@@ -92,7 +92,7 @@ def test_2d_enclosed(n=32, tol=1E-10):
     mappings = bmesh.compute_embedding(bdries1, (1, 2, 3, 4))
 
     xi, x = bmesh.coordinates(), mesh1.coordinates()
-    assert min(np.linalg.norm(xi[mappings[0].keys()]-x[mappings[0].values()], 2, 1)) < tol
+    assert min(np.linalg.norm(xi[list(mappings[0].keys())]-x[list(mappings[0].values())], 2, 1)) < tol
 
     tdim = mesh1.topology().dim()-1
     mesh1.init(tdim, 0)
@@ -102,7 +102,7 @@ def test_2d_enclosed(n=32, tol=1E-10):
 
     vertex_match = lambda xs, ys: all(min(np.linalg.norm(ys - x, 2, 1)) < tol for x in xs)
     
-    assert all([vertex_match(xi[icells[key]], x[f2v(val)]) for key, val in mappings[tdim].items()])
+    assert all([vertex_match(xi[icells[key]], x[f2v(val)]) for key, val in list(mappings[tdim].items())])
 
     try:
         bmesh.compute_embedding(bdries1, 2)
@@ -144,7 +144,7 @@ def test_2d_incomplete(n=32, tol=1E-10):
     # Is it correct?
 
     xi, x = iface.coordinates(), right.coordinates()
-    assert min(np.linalg.norm(xi[mappings[0].keys()]-x[mappings[0].values()], 2, 1)) < tol
+    assert min(np.linalg.norm(xi[list(mappings[0].keys())]-x[list(mappings[0].values())], 2, 1)) < tol
 
     tdim = right.topology().dim()-1
     right.init(tdim, 0)
@@ -154,7 +154,7 @@ def test_2d_incomplete(n=32, tol=1E-10):
 
     vertex_match = lambda xs, ys: all(min(np.linalg.norm(ys - x, 2, 1)) < tol for x in xs)
     
-    assert all([vertex_match(xi[icells[key]], x[f2v(val)]) for key, val in mappings[tdim].items()])
+    assert all([vertex_match(xi[icells[key]], x[f2v(val)]) for key, val in list(mappings[tdim].items())])
 
     try:
         iface.compute_embedding(facet_f, 2)
@@ -191,7 +191,7 @@ def test_3d(n=4, tol=1E-10):
     # Is it correct?
 
     xi, x = iface.coordinates(), right.coordinates()
-    assert min(np.linalg.norm(xi[mappings[0].keys()]-x[mappings[0].values()], 2, 1)) < tol
+    assert min(np.linalg.norm(xi[list(mappings[0].keys())]-x[list(mappings[0].values())], 2, 1)) < tol
 
     tdim = right.topology().dim()-1
     right.init(tdim, 0)
@@ -201,7 +201,7 @@ def test_3d(n=4, tol=1E-10):
 
     vertex_match = lambda xs, ys: all(min(np.linalg.norm(ys - x, 2, 1)) < tol for x in xs)
     
-    assert all([vertex_match(xi[icells[key]], x[f2v(val)]) for key, val in mappings[tdim].items()])
+    assert all([vertex_match(xi[icells[key]], x[f2v(val)]) for key, val in list(mappings[tdim].items())])
 
     try:
         iface.compute_embedding(facet_f, 2)

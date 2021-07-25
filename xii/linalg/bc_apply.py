@@ -34,8 +34,8 @@ def apply_bc(A, b, bcs, diag_val=1., return_apply_b=False):
         b = block_vec([b])
 
     if isinstance(bcs, dict):
-        assert all(0 <= k < len(A) for k in bcs.keys())
-        assert all(isinstance(v, list) for v in bcs.values())
+        assert all(0 <= k < len(A) for k in list(bcs.keys()))
+        assert all(isinstance(v, list) for v in list(bcs.values()))
         bcs = [bcs.get(i, []) for i in range(len(A))]
     else:
         if has_wrapped_A:
@@ -56,7 +56,7 @@ def apply_bc(A, b, bcs, diag_val=1., return_apply_b=False):
     if not bcs or not any(bcs): return A, b
 
     # Obtain a monolithic matrix
-    AA, bb = map(convert, (A, b))
+    AA, bb = list(map(convert, (A, b)))
 
     # PETSc guys
     AA, bb = as_backend_type(AA).mat(), as_backend_type(bb).vec()
@@ -81,8 +81,8 @@ def apply_bc(A, b, bcs, diag_val=1., return_apply_b=False):
             # the dict
             if isinstance(bc, DirichletBC): bc = bc.get_boundary_values()
             # Dofs and values for rhs
-            rows.extend(shift + np.array(bc.keys(), dtype='int32'))
-            x_values.extend(bc.values())
+            rows.extend(shift + np.array(list(bc.keys()), dtype='int32'))
+            x_values.extend(list(bc.values()))
             
     rows = np.hstack(rows)
     x_values = np.array(x_values)
@@ -105,7 +105,7 @@ def apply_bc(A, b, bcs, diag_val=1., return_apply_b=False):
         # if by assemble_system (i.e. in a symmetric way)
         def apply_b(bb, AA=AA.copy(), dofs=rows, bcs=bcs, blocks=blocks):
             # Pick up the updated values
-            values = np.array(sum((bc.get_boundary_values().values() if isinstance(bc, DirichletBC) else []
+            values = np.array(sum((list(bc.get_boundary_values().values()) if isinstance(bc, DirichletBC) else []
                                    for bcs_sub in bcs for bc in bcs_sub),
                                   []))
             # Taken from cbc.block
@@ -179,7 +179,7 @@ def as_block(monolithic, blocks):
         for bi in b:
             bi.assemblyBegin()
             bi.assemblyEnd()
-        return block_vec(map(PETScVector, b))
+        return block_vec(list(map(PETScVector, b)))
 
     # Otherwise we have a Matrix
     try:
@@ -205,8 +205,8 @@ def identity(ncells):
     Q = FunctionSpace(mesh, 'CG', 1)
     W = [V, Q]
 
-    u, p = map(TrialFunction, W)
-    v, q = map(TestFunction, W)
+    u, p = list(map(TrialFunction, W))
+    v, q = list(map(TestFunction, W))
 
     a = [[0]*len(W) for _ in range(len(W))]
     a[0][0] = inner(grad(u), grad(v))*dx
@@ -240,7 +240,7 @@ def identity(ncells):
             y = Aij*x
             y0 = A0[i][j]*x
 
-            print i, j, '>>>', (y - y0).norm('linf')
+            print(i, j, '>>>', (y - y0).norm('linf'))
     return eb
 
     
@@ -251,8 +251,8 @@ def speed(ncells):
     Q = FunctionSpace(mesh, 'CG', 1)
     W = [V, Q]
 
-    u, p = map(TrialFunction, W)
-    v, q = map(TestFunction, W)
+    u, p = list(map(TrialFunction, W))
+    v, q = list(map(TestFunction, W))
 
     a = [[0]*len(W) for _ in range(len(W))]
     a[0][0] = inner(grad(u), grad(v))*dx
@@ -275,19 +275,19 @@ def speed(ncells):
 
     dimW = sum(Wi.dim() for Wi in W)
 
-    A, b = map(block_assemble, (a, L))
+    A, b = list(map(block_assemble, (a, L)))
     
     t = Timer('second')
     A, b = apply_bc(A, b, bcs)
     dt1 = t.stop()
 
-    print '>>>', (b - b0).norm()
+    print('>>>', (b - b0).norm())
 
     # First method
-    A, c = map(block_assemble, (a, L))    
+    A, c = list(map(block_assemble, (a, L)))    
     block_rhs_bc(bcs, A).apply(c)
 
-    print '>>>', (b - c).norm()
+    print('>>>', (b - c).norm())
 
     return dimW, dt0, dt1, dt0/dt1
 
@@ -316,14 +316,14 @@ if __name__ == '__main__':
     f1 = Function(W1, bb[1])
 
     f00, f10 = f.split()
-    print(sqrt(abs(assemble(inner(f0 - f00, f0 - f00)*dx))))
-    print(sqrt(abs(assemble(inner(f1 - f10, f1 - f10)*dx))))
+    print((sqrt(abs(assemble(inner(f0 - f00, f0 - f00)*dx)))))
+    print((sqrt(abs(assemble(inner(f1 - f10, f1 - f10)*dx)))))
 
     # Now speed
     if False:
         msg = 'dim(W) = %d, block = %g s, petsc = %g s, speedup %.2f'
         for ncells in [4, 8, 16, 32, 64, 128]:
-            print msg % speed(ncells) 
+            print(msg % speed(ncells)) 
 
     V = FunctionSpace(mesh, 'CG', 1)
     u, v, = TrialFunction(V), TestFunction(V)
@@ -332,7 +332,7 @@ if __name__ == '__main__':
     L = [inner(Constant(0), v)*dx, inner(Constant(0), v)*dx]
     from xii import ii_assemble
 
-    A, b = map(ii_assemble, (a, L))
+    A, b = list(map(ii_assemble, (a, L)))
 
     foo = Constant(1)
     
@@ -346,6 +346,6 @@ if __name__ == '__main__':
 
     foo.assign(Constant(2))
     b = apply_b(b)
-    print (d - b).norm()
+    print((d - b).norm())
     # print b[0].get_local()
     

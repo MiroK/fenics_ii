@@ -17,7 +17,6 @@ def nonconforming_trace_mat(V, T):
     T(f) ~ g should hold.
     '''
     # For this to work I only make sure that function values are the same
-    assert V.dolfin_element().value_rank() == T.dolfin_element().value_rank()
     assert V.ufl_element().value_shape() == T.ufl_element().value_shape()
 
     # I want to evaluate T degrees of freedom at V basis functions, i.e.
@@ -34,7 +33,7 @@ def nonconforming_trace_mat(V, T):
     
     mesh = V.mesh()  # The (d-1)trace mesh
     tree = mesh.bounding_box_tree()
-    limit = mesh.topology().size_global(mesh.topology().dim())
+    limit = mesh.num_entities_global(mesh.topology().dim())
 
     Tdm = T.dofmap()
     elm_T = T.element()
@@ -107,4 +106,4 @@ if __name__ == '__main__':
     mesh = UnitSquareMesh(32, 32)
     V = FunctionSpace(mesh, 'RT', 1)
 
-    print cg_element(V.ufl_element())
+    print(cg_element(V.ufl_element()))

@@ -18,13 +18,13 @@ def Grad(f, X=sp.symbols('x[0], x[1]')):
 
     assert is_vector(f)
 
-    return sp.Matrix([[fi.diff(xj) for xj in X] for fi in f.values()])
+    return sp.Matrix([[fi.diff(xj) for xj in X] for fi in list(f.values())])
 
 
 def Div(f, X=sp.symbols('x[0], x[1]')):
     '''Divergence of vector/tensor in 2d'''
     if is_vector(f):
-        return sum(fi.diff(xi, 1) for fi, xi in zip(f.values(), X))
+        return sum(fi.diff(xi, 1) for fi, xi in zip(list(f.values()), X))
 
     assert is_2tensor(f)
     return sp.Matrix([Div(f.row(i)) for i in range(f.rows)])
@@ -39,7 +39,7 @@ def asExpr(f, degree=6):
                 shape = (max(f.shape), )
             else:
                 shape = f.shape
-            code = np.array(map(ccode, f.values())).reshape(shape)
+            code = np.array(list(map(ccode, list(f.values())))).reshape(shape)
             return df.Expression(code.tolist(), degree=degree)
     except AttributeError:
         return df.Expression(ccode(f), degree=degree)

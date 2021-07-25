@@ -1,7 +1,8 @@
-from dolfin import compile_extension_module as compile_cpp
-from dolfin import Mesh, MeshEditor
+from dolfin import compile_cpp_code as compile_cpp
+from dolfin import Mesh
 
-code='''
+
+code="""
 #include <dolfin/mesh/Mesh.h>
 #include <dolfin/mesh/MeshEditor.h>
 #include <dolfin/mesh/CellType.h>
@@ -13,10 +14,17 @@ code='''
 #include <unordered_set>
 #include <map>
 
+#include <Eigen/Core>
+#include <pybind11/pybind11.h>
+#include <pybind11/eigen.h>
+
+using IntVecIn = Eigen::Ref<const Eigen::VectorXi>;
+using DoubleVecIn = Eigen::Ref<const Eigen::VectorXd>;
+
 namespace dolfin {
   // Fills a SIMPLICIAL mesh
-  void fill_mesh(const Array<double>& coordinates,
-                 const Array<std::size_t>& cells, 
+  void fill_mesh(const DoubleVecIn coordinates,
+                 const IntVecIn cells, 
                  const int tdim, 
                  const int gdim, 
                  std::shared_ptr<Mesh> mesh)
@@ -59,9 +67,16 @@ namespace dolfin {
      editor.close();
   }
 };
-'''
-module = compile_cpp(code)
 
+PYBIND11_MODULE(SIGNATURE, m)
+{
+    m.def("fill_mesh", &dolfin::fill_mesh);
+}
+
+"""
+# --------------
+
+module = compile_cpp(code)
 
 def make_mesh(coordinates, cells, tdim, gdim, mesh=None):
     '''Mesh by MeshEditor from vertices and cells'''

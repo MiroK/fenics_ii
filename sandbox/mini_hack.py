@@ -125,8 +125,8 @@ def mini_block(n):
     Q = FunctionSpace(mesh, 'Lagrange', 1)
     W = [V, Vb, Q]
 
-    u, ub, p = map(TrialFunction, W)
-    v, vb, q = map(TestFunction, W)
+    u, ub, p = list(map(TrialFunction, W))
+    v, vb, q = list(map(TestFunction, W))
 
     n = FacetNormal(mesh)
 
@@ -196,5 +196,5 @@ if __name__ == '__main__':
         e_uh = errornorm(u_exact, uh, 'H1', degree_rise=1, mesh=mesh)
         e_ph = errornorm(p_exact, ph, 'L2', degree_rise=1, mesh=mesh)
 
-        print '\terrors', e_uh, e_ph, 'ndofs', ndofs
+        print('\terrors', e_uh, e_ph, 'ndofs', ndofs)
 

@@ -211,8 +211,8 @@ def wind_number(contour, points, nrefs=0):
 
 if __name__ == '__main__':
     from xii import EmbeddedMesh
-    from embedded_mesh import TangentCurve, NormalCurve, encloses_points
-    from embedded_mesh import wind_number as wind_number_ii
+    from .embedded_mesh import TangentCurve, NormalCurve, encloses_points
+    from .embedded_mesh import wind_number as wind_number_ii
     
     mesh = df.UnitSquareMesh(5, 5, 'crossed')
     facet_f = df.MeshFunction('size_t', mesh, 1, 0)
@@ -245,17 +245,17 @@ if __name__ == '__main__':
     points = np.array([[0.5, 0.5], [-0.2, -0.1], [0.3, 0.98], [0.25, 0.4]])
     for p in points:
         c.assign(Constant(p))
-        print(p, wind())
+        print((p, wind()))
         
-    print(wind_number_ii(bmesh, points))
-    print(wind_number(contour, points, nrefs=0))
-    print(wind_number(contour, points, nrefs=1))
-    print(wind_number(contour, points, nrefs=2))    
-    print(is_inside_contour(contour, points, nrefs=3))
+    print((wind_number_ii(bmesh, points)))
+    print((wind_number(contour, points, nrefs=0)))
+    print((wind_number(contour, points, nrefs=1)))
+    print((wind_number(contour, points, nrefs=2)))    
+    print((is_inside_contour(contour, points, nrefs=3)))
 
     n = NormalCurve(bmesh)#, outside=np.array([-0.5, -0.5]))
     df.File('normal.pvd') << n
-    print(encloses_points(bmesh, points))
+    print((encloses_points(bmesh, points)))
     
     tan = TangentCurve(bmesh)
     df.File('tangent.pvd') << tan

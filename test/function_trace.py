@@ -11,8 +11,8 @@ def main(i):
     Q = FunctionSpace(bmesh, 'DG', 0)
     W = [V, Q]
 
-    u, p = map(TrialFunction, W)
-    v, q = map(TestFunction, W)
+    u, p = list(map(TrialFunction, W))
+    v, q = list(map(TestFunction, W))
     Tu = Trace(u, bmesh)
     Tv = Trace(v, bmesh)
 
@@ -33,7 +33,7 @@ def main(i):
 
     wh = ii_Function(W)
 
-    AA, bb = map(ii_convert, map(ii_assemble, (a, L)))
+    AA, bb = list(map(ii_convert, list(map(ii_assemble, (a, L)))))
     LUSolver('umfpack').solve(AA, wh.vector(), bb)
 
     # Verify a01 for computed solution
@@ -45,4 +45,4 @@ def main(i):
 # --------------------------------------------------------------------
 
 if __name__ == '__main__':
-    map(main, (3, 4, 5, 6))
+    list(map(main, (3, 4, 5, 6)))

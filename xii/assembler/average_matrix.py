@@ -37,7 +37,6 @@ def avg_mat(V, TV, reduced_mesh, data):
     assert TV.ufl_element().family() == 'Discontinuous Lagrange'
     
     # Compatibility of spaces
-    assert V.dolfin_element().value_rank() == TV.dolfin_element().value_rank()
     assert V.ufl_element().value_shape() == TV.ufl_element().value_shape()
     assert average_cell(V) == TV.mesh().ufl_cell()
     assert V.mesh().geometry().dim() == TV.mesh().geometry().dim()
@@ -126,7 +125,7 @@ def average_matrix(V, TV, shape):
                             
                 # The thing now that with data we can assign to several
                 # rows of the matrix
-                column_indices = np.array(data.keys(), dtype='int32')
+                column_indices = np.array(list(data.keys()), dtype='int32')
                 for shift in range(value_size):
                     row = scalar_row + shift
                     column_values = np.array([data[col][shift] for col in column_indices])

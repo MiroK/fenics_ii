@@ -25,7 +25,6 @@ def interpolation_mat(V, Q):
     Matrix representation of interpolation operator from V to Q
     '''
     # Compatibility of spaces
-    assert V.dolfin_element().value_rank() == Q.dolfin_element().value_rank()
     assert V.ufl_element().value_shape() == Q.ufl_element().value_shape()
     # We assume that the spaces are constructed on the same mesh
     assert V.mesh().id() == Q.mesh().id()
@@ -42,7 +41,7 @@ def interpolation_mat(V, Q):
     column_values = np.zeros(V_basis_f.elm.space_dimension(), dtype='double')
     with petsc_serial_matrix(Q, V) as mat:
 
-        for cell in xrange(V.mesh().num_cells()):
+        for cell in range(V.mesh().num_cells()):
             Q_dof.cell = cell
             V_basis_f.cell = cell
 
@@ -82,4 +81,4 @@ if __name__ == '__main__':
 
     q = Function(Q, I*v.vector())
 
-    print sqrt(abs(assemble(inner(q - f, q - f)*dx)))
+    print(sqrt(abs(assemble(inner(q - f, q - f)*dx))))

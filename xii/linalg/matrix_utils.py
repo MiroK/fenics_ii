@@ -1,5 +1,5 @@
 from dolfin import (PETScMatrix, Matrix, IndexMap, PETScVector, Vector,
-                    as_backend_type, mpi_comm_world, FunctionSpace)
+                    as_backend_type, FunctionSpace, MPI)
 from block import block_mat, block_vec
 from scipy.sparse import csr_matrix
 from contextlib import contextmanager
@@ -91,7 +91,7 @@ def petsc_serial_matrix(test_space, trial_space, nnz=None):
     # Decide local to global map
     # For our custom case everything is serial
     if is_number(test_space) and is_number(trial_space):
-        comm = mpi_comm_world().tompi4py()
+        comm = MPI.comm_world
         # Local same as global
         sizes = [[test_space, test_space], [trial_space, trial_space]]
 
@@ -100,18 +100,18 @@ def petsc_serial_matrix(test_space, trial_space, nnz=None):
     # With function space this can be extracted
     else:
         mesh = test_space.mesh()
-        comm = mesh.mpi_comm().tompi4py()
+        comm = mesh.mpi_comm()
         
         row_map = test_space.dofmap()
         col_map = trial_space.dofmap()
     
-        sizes = [[row_map.index_map().size(IndexMap.MapSize_OWNED),
-                  row_map.index_map().size(IndexMap.MapSize_GLOBAL)],
-                 [col_map.index_map().size(IndexMap.MapSize_OWNED),
-                  col_map.index_map().size(IndexMap.MapSize_GLOBAL)]]
+        sizes = [[row_map.index_map().size(IndexMap.MapSize.OWNED),
+                  row_map.index_map().size(IndexMap.MapSize.GLOBAL)],
+                 [col_map.index_map().size(IndexMap.MapSize.OWNED),
+                  col_map.index_map().size(IndexMap.MapSize.GLOBAL)]]
 
-        row_map = map(int, row_map.tabulate_local_to_global_dofs())
-        col_map = map(int, col_map.tabulate_local_to_global_dofs())
+        row_map = list(map(int, row_map.tabulate_local_to_global_dofs()))
+        col_map = list(map(int, col_map.tabulate_local_to_global_dofs()))
         
     assert comm.size == 1
 
@@ -120,7 +120,7 @@ def petsc_serial_matrix(test_space, trial_space, nnz=None):
                              else
                              PETSc.LGMap().createIS(indices))
     
-    row_lgmap, col_lgmap = map(lgmap, (row_map, col_map))
+    row_lgmap, col_lgmap = list(map(lgmap, (row_map, col_map)))
 
 
     # Alloc

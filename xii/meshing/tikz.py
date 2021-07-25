@@ -110,7 +110,7 @@ if __name__ == '__main__':
     mesh, [subdomains, bdries] = load_mesh(path, data_sets=((dim, 'volumes'), (dim-1, 'surfaces'), ))
 
     # style_map = dict(zip(set(bdries.array()), repeat('black!50!white, very thin')))
-    style_map = dict(zip(set(bdries.array()), repeat(None)))
+    style_map = dict(list(zip(set(bdries.array()), repeat(None))))
     style_map[1] = 'red, very thin'
 
     code = tikzify_2d_mesh(bdries, style_map)

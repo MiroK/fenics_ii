@@ -39,7 +39,7 @@ def extension_element(elm):
     # Want exact match here; otherwise VectorElement is MixedElement and while
     # it works I don't find it pretty
     if type(elm) == df.MixedElement:
-        return df.MixedElement(map(extension_element, elm.sub_elements()))
+        return df.MixedElement(list(map(extension_element, elm.sub_elements())))
 
     family = elm.family()
     
@@ -81,7 +81,7 @@ def Extension(v, mesh, type, data=None):
 
     assert extension_cell(v) == mesh.ufl_cell(), (extension_cell(v), mesh.ufl_cell())
 
-    if isinstance(v, df.Coefficient):
+    if isinstance(v, ufl.Coefficient):
         v =  df.Function(v.function_space(), v.vector())
     else:
         # Object copy?
@@ -122,4 +122,4 @@ def is_extension_integral(integral):
 
 def extension_integrals(form):
     '''Extract trace integrals from the form'''
-    return filter(is_extension_integral, form.integrals())
+    return list(filter(is_extension_integral, form.integrals()))

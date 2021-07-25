@@ -56,4 +56,4 @@ for n in (8, 16, 32, 64, 128):
 errors = np.array(errors)
 
 assert np.all(np.log(errors[1:]/errors[:-1])/np.log(1./2) > 1.5)
-print errors
+print(errors)

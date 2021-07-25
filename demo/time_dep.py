@@ -17,8 +17,8 @@ def heat(n, dt, f, u0, gD):
     Q = FunctionSpace(bmesh, 'CG', 1)
     W = [V, Q]
 
-    u, p = map(TrialFunction, W)
-    v, q = map(TestFunction, W)
+    u, p = list(map(TrialFunction, W))
+    v, q = list(map(TestFunction, W))
 
     dx_ = Measure('dx', domain=bmesh)
     Tu, Tv = Trace(u, bmesh), Trace(v, bmesh)
@@ -39,13 +39,13 @@ def heat(n, dt, f, u0, gD):
     bcs = [[DirichletBC(V, gD, facet_f, 4)],
            [DirichletBC(Q, Constant(0), 'on_boundary')]]
 
-    AA, bb = map(ii_assemble, (a, L))
+    AA, bb = list(map(ii_assemble, (a, L)))
     AA, bb, apply_b = apply_bc(AA, bb, bcs, return_apply_b=True)
 
     wh = ii_Function(W)
 
     A = ii_convert(AA)
-    print('Symmetry', as_backend_type(A).mat().isHermitian(1E-4))
+    print(('Symmetry', as_backend_type(A).mat().isHermitian(1E-4)))
     solver = LUSolver(A)
     
     t = 0
@@ -88,5 +88,5 @@ if __name__ == '__main__':
             u.t = t
             dt_row.append(errornorm(u, uh, 'H1'))
         table.append(dt_row)
-        print(dt, '->', dt_row)
+        print((dt, '->', dt_row))
         dt /= 2.

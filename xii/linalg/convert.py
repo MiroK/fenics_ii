@@ -5,14 +5,15 @@ import xii
 
 from block.block_compose import block_mul, block_add, block_sub, block_transpose
 from block import block_mat, block_vec
-from dolfin import PETScVector, PETScMatrix, mpi_comm_world
-from dolfin import Vector, GenericVector, Matrix
+from dolfin import PETScVector, PETScMatrix
+from dolfin import Vector, GenericVector, Matrix, MPI
 from scipy.sparse import bmat as numpy_block_mat
 from scipy.sparse import csr_matrix, vstack as sp_vstack
 from petsc4py import PETSc
 import numpy as np
 import itertools
 import operator
+from functools import reduce
 
 COMM = PETSc.COMM_WORLD
 
@@ -35,7 +36,7 @@ def convert(bmat, algorithm='numpy'):
         # Create collpsed bmat
         row_sizes, col_sizes = bmat_sizes(bmat)
         nrows, ncols = len(row_sizes), len(col_sizes)
-        indices = itertools.product(range(nrows), range(ncols))
+        indices = itertools.product(list(range(nrows)), list(range(ncols)))
 
         blocks = np.zeros((nrows, ncols), dtype='object')
         for block, (i, j) in zip(bmat.blocks.flatten(), indices):
@@ -232,7 +233,7 @@ def block_mat_to_numpy(bmat):
     if is_number(bmat):
         return None  # What bmat accepts
     # Recurse on blocks
-    blocks = np.array(map(block_mat_to_numpy, bmat.blocks.flatten()))
+    blocks = np.array(list(map(block_mat_to_numpy, bmat.blocks.flatten())))
     blocks = blocks.reshape(bmat.blocks.shape)
     # The bmat
     return numpy_block_mat(blocks).tocsr()
@@ -271,8 +272,8 @@ def block_mat_to_petsc(bmat):
         row = 0
         for row_blocks in bmat.blocks:
             # Zip the row iterators of the matrices together
-            for indices_values in itertools.izip(*map(iter_rows, row_blocks)):
-                indices, values = zip(*indices_values)
+            for indices_values in zip(*list(map(iter_rows, row_blocks))):
+                indices, values = list(zip(*indices_values))
 
                 indices = [list(index+offset) for index, offset in zip(indices, col_offsets)]
                 indices = sum(indices, [])
@@ -379,12 +380,12 @@ def set_lg_map(mat):
     assert is_petsc_mat(mat) or isinstance(mat, block_mat), (type(mat))
 
     if isinstance(mat, block_mat):
-        blocks = np.array(map(set_lg_map, mat.blocks.flatten())).reshape(mat.blocks.shape)
+        blocks = np.array(list(map(set_lg_map, mat.blocks.flatten()))).reshape(mat.blocks.shape)
         return block_mat(blocks)
 
-    comm = mpi_comm_world().tompi4py()
+    comm = MPI.comm_world
     # Work with matrix
-    rowmap, colmap = range(mat.size(0)), range(mat.size(1))
+    rowmap, colmap = list(range(mat.size(0))), list(range(mat.size(1)))
 
     row_lgmap = PETSc.LGMap().create(rowmap, comm=comm)
     col_lgmap = PETSc.LGMap().create(colmap, comm=comm)
@@ -396,7 +397,7 @@ def set_lg_map(mat):
 
 def Rn_basis(vec):
     if not isinstance(vec, block_vec):
-        vec = Vector(mpi_comm_world(), vec.local_size())
+        vec = Vector(MPI.comm_world, vec.local_size())
         values = np.zeros(vec.local_size())
         for i in range(len(values)):
             values[i] = 1.
@@ -419,8 +420,8 @@ if __name__ == '__main__':
     Q = FunctionSpace(mesh, 'DG', 0)
     W = [V, Q]
     
-    u, p = map(TrialFunction, W)
-    v, q = map(TestFunction, W)
+    u, p = list(map(TrialFunction, W))
+    v, q = list(map(TestFunction, W))
 
     [[A00, A01],
      [A10, A11]] = [[assemble(inner(u, v)*dx), assemble(inner(v, p)*dx)],
@@ -432,12 +433,12 @@ if __name__ == '__main__':
 
     t = Timer('x'); t.start()
     X = convert(AA)
-    print(t.stop())
+    print((t.stop()))
 
     t = Timer('x'); t.start()
     Y = convert(AA, 'foo')
-    print(t.stop())
+    print((t.stop()))
 
     X_ = X.array()
     X_[:] -= Y.array()
-    print(np.linalg.norm(X_, np.inf))
+    print((np.linalg.norm(X_, np.inf)))

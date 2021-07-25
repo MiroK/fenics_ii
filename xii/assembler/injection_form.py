@@ -40,7 +40,7 @@ def Injection(v, fmesh):
         assert cmesh.child().id() == fmesh.id()
         assert fmesh.parent().id() == cmesh.id()
 
-    if isinstance(v, df.Coefficient):
+    if isinstance(v, ufl.Coefficient):
         v =  df.Function(v.function_space(), v.vector())
     else:
         v = [df.TestFunction, df.TrialFunction][v.number()](v.function_space())
@@ -81,4 +81,4 @@ def is_injection_integral(integral):
 
 def injection_integrals(form):
     '''Extract injection integrals from the form'''
-    return filter(is_injection_integral, form.integrals())
+    return list(filter(is_injection_integral, form.integrals()))

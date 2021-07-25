@@ -32,7 +32,7 @@ def line_mesh(branches, tol=1E-13):
 
     cells = []
     # For numbering the interior points we start with the next available
-    fI = max(map(max, ext_bounds)) + 1  # Next avaiable
+    fI = max(list(map(max, ext_bounds))) + 1  # Next avaiable
     for (fE, lE), branch in zip(ext_bounds, branches):
         int_nodes = branch[1:-1]
 
@@ -46,7 +46,7 @@ def line_mesh(branches, tol=1E-13):
         ext_nodes = np.vstack([ext_nodes, int_nodes])
 
         # And the cells
-        cells.extend(zip(vmap[:-1], vmap[1:]))
+        cells.extend(list(zip(vmap[:-1], vmap[1:])))
         
         # For next round
         fI = lI

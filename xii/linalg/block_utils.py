@@ -8,7 +8,7 @@ from xii.linalg.matrix_utils import as_petsc
 
 from block import block_mat, block_vec
 from dolfin import (PETScVector, as_backend_type, Function, Vector, GenericVector,
-                    mpi_comm_world, Matrix, PETScMatrix)
+                    Matrix, PETScMatrix)
 from petsc4py import PETSc
 import numpy as np
 
@@ -40,7 +40,7 @@ def ii_PETScOperator(bmat, nullspace):
         row_sizes = (colspace_vec.size(), )
         col_sizes = (rowspace_vec.size(), )
 
-    print(is_block, row_sizes, col_sizes)
+    print((is_block, row_sizes, col_sizes))
     # if isinstance(bmat, block_base):
     #     row_sizes, col_sizes = bmat_sizes(bmat)
     #     is_block = True
@@ -58,7 +58,7 @@ def ii_PETScOperator(bmat, nullspace):
                 y *= 0
                 # Now x shall be comming as a nested vector
                 # Convert
-                x_bvec = block_vec(map(PETScVector, x.getNestSubVecs()))
+                x_bvec = block_vec(list(map(PETScVector, x.getNestSubVecs())))
                 # Apply
                 y_bvec = self.A*x_bvec
                 # Convert back
@@ -72,7 +72,7 @@ def ii_PETScOperator(bmat, nullspace):
                 y *= 0
                 # Now x shall be comming as a nested vector
                 # Convert
-                x_bvec = block_vec(map(PETScVector, x.getNestSubVecs()))
+                x_bvec = block_vec(list(map(PETScVector, x.getNestSubVecs())))
                 # Apply
                 y_bvec = AT*x_bvec
                 # Convert back
@@ -120,7 +120,7 @@ def ii_PETScPreconditioner(bmat, ksp):
     x = bmat.create_vec()
     is_block = isinstance(x, block_base)
 
-    print('is_block', is_block)
+    print(('is_block', is_block))
     # NOTE: we assume that this is a symmetric operator
     class Foo(object):
         def __init__(self, A):
@@ -133,7 +133,7 @@ def ii_PETScPreconditioner(bmat, ksp):
                 y *= 0
                 # Now x shall be comming as a nested vector
                 # Convert
-                x_bvec = block_vec(map(PETScVector, x.getNestSubVecs()))
+                x_bvec = block_vec(list(map(PETScVector, x.getNestSubVecs())))
                 # Apply
                 y_bvec = self.A*x_bvec
                 # Convert back
@@ -148,7 +148,7 @@ def ii_PETScPreconditioner(bmat, ksp):
                 y *= 0
                 # Now x shall be comming as a nested vector
                 # Convert
-                x_bvec = block_vec(map(PETScVector, x.getNestSubVecs()))
+                x_bvec = block_vec(list(map(PETScVector, x.getNestSubVecs())))
                 # Apply
                 y_bvec = AT*x_bvec
                 # Convert back
@@ -442,28 +442,28 @@ if __name__ == '__main__':
 
     z = (R.T)*BB_m*(R*bb)
 
-    print (z - z_block).norm()
+    print((z - z_block).norm())
 
     y_  = BB_m*(R*bb)
-    print np.linalg.norm(np.hstack([bi.get_local() for bi in z_block])-y_.get_local())
+    print(np.linalg.norm(np.hstack([bi.get_local() for bi in z_block])-y_.get_local()))
 
     W = [V, Vb]
     Index = SubSelectOperator((1, 0), W)
     cc = Index*bb
-    print(norm(cc[0] - y))
-    print(norm(cc[1] - x))
+    print((norm(cc[0] - y)))
+    print((norm(cc[1] - x)))
 
     bb0 = (Index.T)*cc
-    print((bb0 - bb).norm())
+    print(((bb0 - bb).norm()))
 
     Index = SubSelectOperator((1, ), W)
     cc = Index*bb
-    print(norm(cc[0] - y))
+    print((norm(cc[0] - y)))
 
     bb0 = (Index.T)*cc
-    print((bb0 - bb).norm())
-    print(norm(bb0[1] - bb[1]))
-    print(norm(bb0[0]))
+    print(((bb0 - bb).norm()))
+    print((norm(bb0[1] - bb[1])))
+    print((norm(bb0[0])))
 
 # Check inputs to rearange
 # MORE TESTS

@@ -15,7 +15,7 @@ q = TestFunction(Q)
 
 a = inner(Tu, q)*dx_
 A = ii_assemble(a)
-print ii_convert(A).array()
+print(ii_convert(A).array())
 
 
 v = TestFunction(V)
@@ -24,4 +24,4 @@ p = TrialFunction(Q)
 
 a = inner(Tv, p)*dx_
 A = ii_assemble(a)
-print ii_convert(A).array()
+print(ii_convert(A).array())

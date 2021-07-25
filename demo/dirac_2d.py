@@ -3,8 +3,9 @@ from xii import *
 import numpy as np
 
 
-def setup_problem(i, (x0, f, g), eps=None):
+def setup_problem(i, xxx_todo_changeme, eps=None):
     '''Babuska on [0, 1]^2'''
+    (x0, f, g) = xxx_todo_changeme
     n = 4*2**i
     mesh = UnitSquareMesh(*(n, )*2)
     volume = sum(c.volume() for c in cells(mesh))
@@ -13,8 +14,8 @@ def setup_problem(i, (x0, f, g), eps=None):
     Q = VectorFunctionSpace(mesh, 'R', 0)
     W = [V, Q]
 
-    u, p = map(TrialFunction, W)
-    v, q = map(TestFunction, W)
+    u, p = list(map(TrialFunction, W))
+    v, q = list(map(TestFunction, W))
     # Point Constraints
     Du, Dv = PointTrace(u, x0), PointTrace(v, x0)
 

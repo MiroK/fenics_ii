@@ -42,6 +42,6 @@ def assemble(form):
 
     shape = shape_list(form)
     # Recurse
-    blocks = reshape_list(map(assemble, flatten_list(form)), shape)
+    blocks = reshape_list(list(map(assemble, flatten_list(form))), shape)
     
     return (block_vec if len(shape) == 1 else block_mat)(blocks)

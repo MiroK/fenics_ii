@@ -16,7 +16,7 @@ def test_2d_cell(n=32, tol=1E-10):
     # Is it correct?
 
     xi, x = left.coordinates(), mesh.coordinates()
-    assert min(np.linalg.norm(xi[mappings[0].keys()]-x[mappings[0].values()], 2, 1)) < tol
+    assert min(np.linalg.norm(xi[list(mappings[0].keys())]-x[list(mappings[0].values())], 2, 1)) < tol
 
     tdim = mesh.topology().dim()
     c2v = mesh.topology()(tdim, 0)
@@ -25,7 +25,7 @@ def test_2d_cell(n=32, tol=1E-10):
 
     vertex_match = lambda xs, ys: all(min(np.linalg.norm(ys - x, 2, 1)) < tol for x in xs)
     
-    assert all([vertex_match(xi[icells[key]], x[c2v(val)]) for key, val in mappings[tdim].items()])
+    assert all([vertex_match(xi[icells[key]], x[c2v(val)]) for key, val in list(mappings[tdim].items())])
 
 
 def test_2d(n=32, tol=1E-10):
@@ -46,7 +46,7 @@ def test_2d(n=32, tol=1E-10):
     # Is it correct?
 
     xi, x = iface.coordinates(), left.coordinates()
-    assert min(np.linalg.norm(xi[mappings[0].keys()]-x[mappings[0].values()], 2, 1)) < tol
+    assert min(np.linalg.norm(xi[list(mappings[0].keys())]-x[list(mappings[0].values())], 2, 1)) < tol
 
     tdim = left.topology().dim()-1
     left.init(tdim, 0)
@@ -56,7 +56,7 @@ def test_2d(n=32, tol=1E-10):
 
     vertex_match = lambda xs, ys: all(min(np.linalg.norm(ys - x, 2, 1)) < tol for x in xs)
     
-    assert all([vertex_match(xi[icells[key]], x[f2v(val)]) for key, val in mappings[tdim].items()])
+    assert all([vertex_match(xi[icells[key]], x[f2v(val)]) for key, val in list(mappings[tdim].items())])
 
     V = FunctionSpace(left, 'CG', 1)
     u = interpolate(Expression('x[1]', degree=1), V)
@@ -96,7 +96,7 @@ def test_2d_enclosed(n=32, tol=1E-10):
     mappings = bmesh.parent_entity_map[mesh1.id()]
 
     xi, x = bmesh.coordinates(), mesh1.coordinates()
-    assert min(np.linalg.norm(xi[mappings[0].keys()]-x[mappings[0].values()], 2, 1)) < tol
+    assert min(np.linalg.norm(xi[list(mappings[0].keys())]-x[list(mappings[0].values())], 2, 1)) < tol
 
     tdim = mesh1.topology().dim()-1
     mesh1.init(tdim, 0)
@@ -106,7 +106,7 @@ def test_2d_enclosed(n=32, tol=1E-10):
 
     vertex_match = lambda xs, ys: all(min(np.linalg.norm(ys - x, 2, 1)) < tol for x in xs)
     
-    assert all([vertex_match(xi[icells[key]], x[f2v(val)]) for key, val in mappings[tdim].items()])
+    assert all([vertex_match(xi[icells[key]], x[f2v(val)]) for key, val in list(mappings[tdim].items())])
 
     V = VectorFunctionSpace(mesh1, 'CG', 1)
     u = interpolate(Expression(('x[1]', 'x[0]'), degree=1), V)
@@ -149,7 +149,7 @@ def test_2d_color(n=32, tol=1E-10):
     mappings = bmesh.parent_entity_map[mesh1.id()]
 
     xi, x = bmesh.coordinates(), mesh1.coordinates()
-    assert min(np.linalg.norm(xi[mappings[0].keys()]-x[mappings[0].values()], 2, 1)) < tol
+    assert min(np.linalg.norm(xi[list(mappings[0].keys())]-x[list(mappings[0].values())], 2, 1)) < tol
 
     tdim = mesh1.topology().dim()-1
     mesh1.init(tdim, 0)
@@ -159,13 +159,13 @@ def test_2d_color(n=32, tol=1E-10):
 
     vertex_match = lambda xs, ys: all(min(np.linalg.norm(ys - x, 2, 1)) < tol for x in xs)
 
-    assert all([vertex_match(xi[icells[key]], x[f2v(val)]) for key, val in mappings[tdim].items()])
+    assert all([vertex_match(xi[icells[key]], x[f2v(val)]) for key, val in list(mappings[tdim].items())])
 
     # Now color specific
     cf = bmesh.marking_function
     assert set(cf.array()) == set((1, 2, 3, 4))
 
-    assert all(bdries1[v] == cf[k] for k, v in mappings[tdim].items())
+    assert all(bdries1[v] == cf[k] for k, v in list(mappings[tdim].items()))
 
 
 def test_3d_cell(n=4, tol=1E-10):
@@ -181,7 +181,7 @@ def test_3d_cell(n=4, tol=1E-10):
     # Is it correct?
 
     xi, x = left.coordinates(), mesh.coordinates()
-    assert min(np.linalg.norm(xi[mappings[0].keys()]-x[mappings[0].values()], 2, 1)) < tol
+    assert min(np.linalg.norm(xi[list(mappings[0].keys())]-x[list(mappings[0].values())], 2, 1)) < tol
 
     tdim = left.topology().dim()
     f2v = mesh.topology()(tdim, 0)
@@ -190,7 +190,7 @@ def test_3d_cell(n=4, tol=1E-10):
 
     vertex_match = lambda xs, ys: all(min(np.linalg.norm(ys - x, 2, 1)) < tol for x in xs)
 
-    assert all([vertex_match(xi[icells[key]], x[f2v(val)]) for key, val in mappings[tdim].items()])
+    assert all([vertex_match(xi[icells[key]], x[f2v(val)]) for key, val in list(mappings[tdim].items())])
 
 
 def test_3d(n=4, tol=1E-10):
@@ -211,7 +211,7 @@ def test_3d(n=4, tol=1E-10):
     # Is it correct?
 
     xi, x = iface.coordinates(), left.coordinates()
-    assert min(np.linalg.norm(xi[mappings[0].keys()]-x[mappings[0].values()], 2, 1)) < tol
+    assert min(np.linalg.norm(xi[list(mappings[0].keys())]-x[list(mappings[0].values())], 2, 1)) < tol
 
     tdim = left.topology().dim()-1
     left.init(tdim, 0)
@@ -221,7 +221,7 @@ def test_3d(n=4, tol=1E-10):
 
     vertex_match = lambda xs, ys: all(min(np.linalg.norm(ys - x, 2, 1)) < tol for x in xs)
     
-    assert all([vertex_match(xi[icells[key]], x[f2v(val)]) for key, val in mappings[tdim].items()])
+    assert all([vertex_match(xi[icells[key]], x[f2v(val)]) for key, val in list(mappings[tdim].items())])
 
     V = FunctionSpace(left, 'CG', 1)
     u = interpolate(Expression('x[0] + x[1]', degree=1), V)
@@ -249,7 +249,7 @@ def test_3d_performance(n=4, tol=1E-10, strict=False):
         # Is it correct?
 
         xi, x = iface.coordinates(), mesh.coordinates()
-        assert min(np.linalg.norm(xi[mappings[0].keys()]-x[mappings[0].values()], 2, 1)) < tol
+        assert min(np.linalg.norm(xi[list(mappings[0].keys())]-x[list(mappings[0].values())], 2, 1)) < tol
         
         tdim = mesh.topology().dim()-1
         mesh.init(tdim, 0)
@@ -259,7 +259,7 @@ def test_3d_performance(n=4, tol=1E-10, strict=False):
 
         vertex_match = lambda xs, ys: all(min(np.linalg.norm(ys - x, 2, 1)) < tol for x in xs)
     
-        assert all([vertex_match(xi[icells[key]], x[f2v(val)]) for key, val in mappings[tdim].items()])
+        assert all([vertex_match(xi[icells[key]], x[f2v(val)]) for key, val in list(mappings[tdim].items())])
 
     return (dt, mesh.num_cells(), iface.num_cells())
 
@@ -279,7 +279,7 @@ def test_3d_performance_cell(n=4, tol=1E-10, strict=False):
         # Is it correct?
 
         xi, x = iface.coordinates(), mesh.coordinates()
-        assert min(np.linalg.norm(xi[mappings[0].keys()]-x[mappings[0].values()], 2, 1)) < tol
+        assert min(np.linalg.norm(xi[list(mappings[0].keys())]-x[list(mappings[0].values())], 2, 1)) < tol
         
         tdim = mesh.topology().dim()
         mesh.init(tdim, 0)
@@ -289,7 +289,7 @@ def test_3d_performance_cell(n=4, tol=1E-10, strict=False):
 
         vertex_match = lambda xs, ys: all(min(np.linalg.norm(ys - x, 2, 1)) < tol for x in xs)
     
-        assert all([vertex_match(xi[icells[key]], x[f2v(val)]) for key, val in mappings[tdim].items()])
+        assert all([vertex_match(xi[icells[key]], x[f2v(val)]) for key, val in list(mappings[tdim].items())])
 
     return (dt, mesh.num_cells(), iface.num_cells())
 
@@ -317,10 +317,10 @@ if __name__ == '__main__':
         else:
             rate_all, rate_embd = -1, -1
             
-        print('%.3f %d[%.2f] %d[%.2f]' % (dt, all_cells, rate_all, embd_cells, rate_embd))
+        print(('%.3f %d[%.2f] %d[%.2f]' % (dt, all_cells, rate_all, embd_cells, rate_embd)))
         dt0, all_cells0, embd_cells0 = dt, float(all_cells), float(embd_cells)
 
-    print
+    print()
 
     test_3d_performance_cell(4, strict=True)    
 
@@ -333,6 +333,6 @@ if __name__ == '__main__':
         else:
             rate_all, rate_embd = -1, -1
             
-        print('%.3f %d[%.2f] %d[%.2f]' % (dt, all_cells, rate_all, embd_cells, rate_embd))
+        print(('%.3f %d[%.2f] %d[%.2f]' % (dt, all_cells, rate_all, embd_cells, rate_embd)))
         dt0, all_cells0, embd_cells0 = dt, float(all_cells), float(embd_cells)
     

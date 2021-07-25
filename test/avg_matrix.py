@@ -46,4 +46,4 @@ if __name__ == '__main__':
             rate = -1
         h0, e0 = h, e
         
-        print(h, e, rate)
+        print((h, e, rate))

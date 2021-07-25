@@ -36,7 +36,7 @@ def Restriction(v, mmesh):
     assert restriction_cell(v) == mmesh.ufl_cell()
     # assert isinstance(mmesh, SubDomainMesh)
 
-    if isinstance(v, df.Coefficient):
+    if isinstance(v, ufl.Coefficient):
         v =  df.Function(v.function_space(), v.vector())
     else:
         # Object copy?
@@ -67,4 +67,4 @@ def is_restriction_integral(integral):
 
 def restriction_integrals(form):
     '''Extract restriction integrals from the form'''
-    return filter(is_restriction_integral, form.integrals())
+    return list(filter(is_restriction_integral, form.integrals()))

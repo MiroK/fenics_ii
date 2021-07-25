@@ -20,8 +20,8 @@ def setup_problem(i, f, eps=None):
     B = FunctionSpace(mesh, 'CG', 1)
     W = [Q, V, B]
 
-    p, u, lmbda = map(TrialFunction, W)
-    q, v, beta = map(TestFunction, W)
+    p, u, lmbda = list(map(TrialFunction, W))
+    q, v, beta = list(map(TestFunction, W))
     Tu = Trace(u, bmesh)
     Tv = Trace(v, bmesh)
 
@@ -61,11 +61,11 @@ def setup_preconditioner(W, which, eps=None):
     from block.algebraic.petsc import AMG
     from block.algebraic.petsc import LumpedInvDiag
     from xii.linalg.convert import collapse
-    print 'WHICH is', which
+    print('WHICH is', which)
     (Q, V, B) = W
 
-    p, u, lmbda = map(TrialFunction, W)
-    q, v, beta = map(TestFunction, W)
+    p, u, lmbda = list(map(TrialFunction, W))
+    q, v, beta = list(map(TestFunction, W))
 
     bmesh = BoundaryMesh(Q.mesh(), 'exterior')
     Tu = Trace(u, bmesh)
@@ -93,7 +93,7 @@ def setup_preconditioner(W, which, eps=None):
         B22 = LumpedInvDiag(ii_assemble(b22))
     # SZ
     else:
-        print 'X'
+        print('X')
         # eps*L2
         b00 = Constant(eps)*inner(p, q)*dx
         B00 = LumpedInvDiag(ii_assemble(b00))
@@ -125,7 +125,7 @@ def setup_mms(eps=None):
     f = x + y
     g = u
 
-    up = map(as_expression, (u, p))
+    up = list(map(as_expression, (u, p)))
     f = as_expression(f)
 
     return up, f

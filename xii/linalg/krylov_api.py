@@ -1,4 +1,4 @@
-from __future__ import print_function
+
 from xii.linalg.convert import bmat_sizes, convert
 from dolfin import PETScVector, mpi_comm_world
 import block.iterative as cbc

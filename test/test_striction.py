@@ -12,7 +12,7 @@ mesh0 = EmbeddedMesh(cell_f, 0)
 V1 = FunctionSpace(mesh1, 'CG', 1)
 V0 = FunctionSpace(mesh0, 'CG', 1)
 
-u0, u1 = map(TrialFunction, (V0, V1))
+u0, u1 = list(map(TrialFunction, (V0, V1)))
 
 Q = FunctionSpace(mesh, 'CG', 1)
 q = TestFunction(Q)
@@ -30,4 +30,4 @@ true = assemble(inner(f, g)*dx0)
 
 mine = gh.vector().inner(A*fh.vector())
 
-print abs(true-mine), abs(true)
+print(abs(true-mine), abs(true))

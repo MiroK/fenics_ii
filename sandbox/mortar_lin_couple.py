@@ -41,7 +41,7 @@ def mortar_lin_couple(N):
     w = ii_Function(W)
     u1, u2, p = w  # Split
 
-    v1, v2, q = map(TestFunction, W)
+    v1, v2, q = list(map(TestFunction, W))
     Tu1, Tv1 = (Trace(x, gamma_mesh) for x in (u1, v1))
     Tu2, Tv2 = (Trace(x, gamma_mesh) for x in (u2, v2))
 
@@ -72,14 +72,14 @@ def mortar_lin_couple(N):
     while eps > tol and niter < maxiter:
         niter += 1
     
-        A, b = map(ii_assemble, (dF, F))
-        A, b = map(ii_convert, (A, b))
+        A, b = list(map(ii_assemble, (dF, F)))
+        A, b = list(map(ii_convert, (A, b)))
         
         solve(A, dw.vector(), b)
         
         eps = sqrt(sum(x.norm('l2')**2 for x in dw.vectors()))
         
-        print '\t%d |du| = %.6E |A|= %.6E |b| = %.6E' % (niter, eps, A.norm('linf'), b.norm('l2'))
+        print('\t%d |du| = %.6E |A|= %.6E |b| = %.6E' % (niter, eps, A.norm('linf'), b.norm('l2')))
 
         # FIXME: Update
         for i in range(len(W)):

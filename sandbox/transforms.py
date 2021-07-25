@@ -107,7 +107,7 @@ if __name__ == '__main__':
 
     T = C(x0, n, R)
 
-    Txq = map(T, xq)
+    Txq = list(map(T, xq))
 
     # Are there points in the plane
     assert all(abs(np.dot(y - x0, n)) < 1E-13 for y in Txq)
@@ -120,7 +120,7 @@ if __name__ == '__main__':
         xq, wq = leggauss(degree)
         xq = np.c_[np.cos(np.pi*xq), np.sin(np.pi*xq), np.zeros_like(xq)]
         # Circle viewed from reference
-        Txq = map(C(x0, n, R), xq)
+        Txq = list(map(C(x0, n, R), xq))
         # Scaled weights (R is jac of T, pi is from theta=pi*(-1, 1)
         wq *= R*np.pi
 
@@ -146,7 +146,7 @@ if __name__ == '__main__':
     xq = np.c_[xq, np.zeros_like(wq)]
 
     T = D(x0=x0, n=n, R=R)
-    Txq = map(T, xq)
+    Txq = list(map(T, xq))
     
     # Are there points in the plane
     assert all(abs(np.dot(y - x0, n)) < 1E-13 for y in Txq)
@@ -161,7 +161,7 @@ if __name__ == '__main__':
         xq = np.c_[xq, np.zeros_like(wq)]
 
         # Circle viewed from reference
-        Txq = map(D(x0, n, R), xq)
+        Txq = list(map(D(x0, n, R), xq))
         # Scaled weights (R is jac of T, pi is from theta=pi*(-1, 1)
         wq *= R**2
 
@@ -220,7 +220,7 @@ if __name__ == '__main__':
         # Scale the weights
         wq *= size
 
-        Txq = sum(map(sq_bdry, xq), [])
+        Txq = sum(list(map(sq_bdry, xq)), [])
         
         return lambda f: sum(wqi*f(yi) for yi, wqi in zip(Txq, np.repeat(wq, 4)))
 
@@ -241,7 +241,7 @@ if __name__ == '__main__':
     # -- Square surface ----------
     rect = S(x0, n, P)
     # Corner points are in the plane
-    corners = map(rect, np.array([[-1, -1], [1, -1], [1, 1], [-1, 1]]))
+    corners = list(map(rect, np.array([[-1, -1], [1, -1], [1, 1], [-1, 1]])))
 
     assert all(abs(np.dot(P - v, n)) < 1E-13 for v in corners)
 
@@ -266,10 +266,10 @@ if __name__ == '__main__':
         wq *= size
 
         # 2D
-        wq = map(np.prod, itertools.product(wq, wq))
+        wq = list(map(np.prod, itertools.product(wq, wq)))
         
-        xq = map(np.array, itertools.product(xq, xq))
-        Txq = map(sq, xq)
+        xq = list(map(np.array, itertools.product(xq, xq)))
+        Txq = list(map(sq, xq))
         
         return lambda f: sum(wqi*f(yi) for yi, wqi in zip(Txq, wq))
 

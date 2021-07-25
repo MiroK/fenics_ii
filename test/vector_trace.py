@@ -5,7 +5,7 @@ from xii import EmbeddedMesh
 
 mesh = UnitSquareMesh(10, 10)
 
-bdry = FacetFunction('size_t', mesh, 0)
+bdry = MeshFunction('size_t', mesh, 1, 0)
 DomainBoundary().mark(bdry, 1)
 bmesh = EmbeddedMesh(bdry, 1)
 
@@ -23,7 +23,7 @@ Tv = Function(TV)
 Trace.mult(v.vector(), Tv.vector())
 
 Tv0.vector().axpy(-1, Tv.vector())
-print Tv0.vector().norm('linf')
+print(Tv0.vector().norm('linf'))
 
 
 V = VectorFunctionSpace(mesh, 'CG', 2)
@@ -40,4 +40,4 @@ Tv = Function(TV)
 Trace.mult(v.vector(), Tv.vector())
 
 Tv0.vector().axpy(-1, Tv.vector())
-print Tv0.vector().norm('linf')
+print(Tv0.vector().norm('linf'))

@@ -37,7 +37,7 @@ def inner_point_refine(mesh, new_pts, strict):
     child2parent = np.empty(ncells*nvtx_cell, dtype='uintp')
     fine_cells = np.empty((ncells*nvtx_cell, nvtx_cell), dtype='uintp')
     # How we build new cells
-    basis = map(list, combinations(range(nvtx_cell), nvtx_cell-1))
+    basis = list(map(list, combinations(list(range(nvtx_cell)), nvtx_cell-1)))
 
     fine_coords = np.row_stack([x, xnew])
     
@@ -143,7 +143,7 @@ def simplices(x, cell):
     '''Insert x to cell'''
     # Subdivide interval AB -> AX, BX
     nvtx = len(cell)
-    for other in map(list, combinations(range(nvtx), nvtx-1)):
+    for other in map(list, combinations(list(range(nvtx)), nvtx-1)):
         yield np.row_stack([x, cell[other]])
 
         
@@ -206,8 +206,8 @@ if __name__ == '__main__':
                    'plazza': adapt}
 
     meshes = {}
-    for name, refine in refine_ways.items():
-        print '>>>>>>>>>>>>>>>>>>>%s<<<<<<<<<<<<<<<<<<<' % name
+    for name, refine in list(refine_ways.items()):
+        print('>>>>>>>>>>>>>>>>>>>%s<<<<<<<<<<<<<<<<<<<' % name)
         fine_mesh = refine(mesh)
         meshes[name] = fine_mesh
         assert fine_mesh.has_parent()
@@ -217,7 +217,7 @@ if __name__ == '__main__':
 
         mesh_f = MeshFunction('size_t', fine_mesh, 2, 0)
         try:
-            for child, parent in fine_mesh.parent_entity_map[mesh.id()][2].items():
+            for child, parent in list(fine_mesh.parent_entity_map[mesh.id()][2].items()):
                 mesh_f[child] = graph_colors[parent]
         except AttributeError:
             for child, parent in enumerate(fine_mesh.data().array('parent_cell', 2)):

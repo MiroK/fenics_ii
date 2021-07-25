@@ -8,6 +8,7 @@ import operator
 from xii.assembler.trace_form import *
 from xii.assembler.ufl_utils import *
 import xii.assembler.xii_assembly
+from functools import reduce
 
 
 class ReducedFormAssembler(object):

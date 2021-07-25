@@ -100,7 +100,7 @@ def mesh_from_gmsh(nodes, element_data, TOL=1E-13):
     elm_tdim = {1: 1, 2: 2, 4: 2}    
     # The idea is first build the mesh (and cell function) and later
     # descent over entities to tag them
-    cell_elm = max(element_data.keys(), key=lambda elm: elm_tdim[elm])  # 
+    cell_elm = max(list(element_data.keys()), key=lambda elm: elm_tdim[elm])  # 
     # Here are cells defined in terms of incident nodes (in gmsh numbering)
     cells_as_nodes = element_data[cell_elm]['topology']
     # The unique vertices make up mesh vertices
@@ -112,7 +112,7 @@ def mesh_from_gmsh(nodes, element_data, TOL=1E-13):
     cells_as_nodes = np.fromiter((node_map[c] for c in cells_as_nodes.ravel()),
                                  dtype=cells_as_nodes.dtype).reshape(cells_as_nodes.shape)
 
-    print('Mesh has {} cells.'.format(len(cells_as_nodes)))
+    print(('Mesh has {} cells.'.format(len(cells_as_nodes))))
     # Cell-node-connectivity is enough to build mesh
     elm_name = {1: 'interval', 2: 'triangle', 4: 'tetrahedron'}
     cell_tdim = elm_tdim[cell_elm]
@@ -156,7 +156,7 @@ def mesh_from_gmsh(nodes, element_data, TOL=1E-13):
             # Encode in fenics
             entity = [node_map[v] for v in entity]
             # When we look at entities incide to the related vertices
-            mesh_entity, = map(int, reduce(operator.and_, (set(v2e(v)) for v in entity)))
+            mesh_entity, = list(map(int, reduce(operator.and_, (set(v2e(v)) for v in entity))))
 
             # ... there should be exactly one and
             assert set(entity) == set(e2v(mesh_entity))
