@@ -112,7 +112,7 @@ def average_matrix(V, TV, shape):
                     Vcell = Cell(mesh, c)
                     vertex_coordinates = Vcell.get_vertex_coordinates()
                     cell_orientation = Vcell.orientation()
-                    Vel.evaluate_basis_all(basis_values, ip, vertex_coordinates, cell_orientation)
+                    basis_values[:] = Vel.evaluate_basis_all(ip, vertex_coordinates, cell_orientation)
 
                     cols_ip = V_dm.cell_dofs(c)
                     values_ip = basis_values*wq[index]

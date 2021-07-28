@@ -150,7 +150,7 @@ def element_types(iterable):
 
 def as_block(monolithic, blocks):
     '''Turn monolithic operator into block-structured one with indices specified in blocks'''
-    comm = mpi_comm_world()
+    comm = MPI.comm_world
 
     # We want list of PETSc.IS-es
     elm_type, = element_types(blocks)
@@ -171,7 +171,7 @@ def as_block(monolithic, blocks):
     if isinstance(monolithic, (GenericVector, Vector)):
         return as_block(as_backend_type(monolithic).vec(), blocks)
 
-    if isinstance(monolithic, (GenericMatrix, Matrix)):
+    if isinstance(monolithic, (Matrix, )):
         return as_block(as_backend_type(monolithic).mat(), blocks)
 
     if isinstance(monolithic, PETSc.Vec):
@@ -234,7 +234,7 @@ def identity(ncells):
         for j in range(len(W)):
             Aij = A[i][j]  # Always matrix
             
-            x = Vector(mpi_comm_world(), Aij.size(1))
+            x = Vector(MPI.comm_world, Aij.size(1))
             x.set_local(np.random.rand(x.local_size()))
 
             y = Aij*x

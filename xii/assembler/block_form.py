@@ -1,4 +1,5 @@
 from xii.assembler.ufl_utils import traverse_terminals, replace as ii_replace
+from dolfin.function.argument import Argument
 from itertools import dropwhile
 from dolfin import *
 import numpy as np
@@ -23,14 +24,14 @@ def is_number(form):
 def trial_function(form):
     '''Extract trial function[s] of [block] form'''
     if isinstance(form, ufl.Form):
-        return list(filter(is_trial_function, form.arguments()))
+        return tuple(filter(is_trial_function, form.arguments()))
     return sum(list(map(trial_function, form)), ())
 
 
 def test_function(form):
     '''Extract test function[s] of [block] form'''
     if isinstance(form, ufl.Form):
-        return list(filter(is_test_function, form.arguments()))
+        return tuple(filter(is_test_function, form.arguments()))
     return sum(list(map(test_function, form)), ())
 
 
@@ -79,10 +80,10 @@ class _block_form(list):
     def __setitem__(self, index, value):
         '''self[i][j] 0 value'''
         if self.V1 is None:
-            assert is_number(value) or ((Argument(self.V0[index], 0), ), None) == (test_function(value), None)
+            assert is_number(value) or ((Argument(self.V0[index], 0), ), None) == (test_function(value), None), (Argument(self.V0[index], 0), test_function(value))
             return list.__setitem__(self, index, value)
 
-        assert is_number(value) or (Argument(self.V1, 0), ) == test_function(value)
+        assert is_number(value) or (Argument(self.V1, 0), ) == test_function(value), (Argument(self.V1, 0), test_function(value))
         assert is_number(value) or (Argument(self.V0[index], 1), ) == trial_function(value)
         
         return list.__setitem__(self, index, value)
