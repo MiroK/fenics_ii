@@ -15,6 +15,7 @@ class VarHistory(list):
         super(list).__init__()
 
     def report_last(self, with_name=True):
+        '''Last value as string'''
         if with_name:
             return f'{self.name} = {self.fmt(self[-1])}'
         else:
@@ -37,6 +38,7 @@ class VarApproximationHistory():
         self.hs = VarHistory(f'h(V({name}))', lambda s: f'{s:.2E}')
 
     def append(self, uh):
+        '''Update mesh size and dims of fem space and the error + rate'''
         error = self.get_error(uh)
         self.errors.append(error)
 
@@ -60,6 +62,15 @@ class VarApproximationHistory():
         return ' '.join([c.name
                          for c in (self.hs, self.errors, self.rates, self.Vdims)])
 
+    def get_rate(self):
+        '''Incremental and least squares fit'''
+        incr = self.rates[-1]
+        if np.isnan(incr):
+            return (np.nan, np.nan)
+
+        fit, _ = np.polyfit(np.log(self.hs), np.log(self.errors), deg=1)
+        return (incr, fit) 
+
     
 class ConvergenceLog():
     '''Monitor for error convergence studies'''
@@ -78,17 +89,20 @@ class ConvergenceLog():
 
         self.histories = ChainMap(avar_histories, var_histories)
 
+    def __getitem__(self, key):
+        return self.histories[key]
+
     def add(self, new):
         if not isinstance(new, dict):
             return self.add(dict(zip(self.variables, new)))
 
         for key in self.histories:
-            self.histories[key].append(new[key])
+            self[key].append(new[key])
 
     def report_last(self, with_name):
-        return ' '.join([format(self.histories[key].report_last(with_name), '<20')
+        return ' '.join([format(self[key].report_last(with_name), '<20')
                          for key in self.histories])
 
     def header(self,):
-        _header = ' '.join([self.histories[key].header() for key in self.histories])
+        _header = ' '.join([self[key].header() for key in self.histories])
         return '\n'.join(['-'*len(_header), _header, '-'*len(_header)])

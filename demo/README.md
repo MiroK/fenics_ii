@@ -15,7 +15,7 @@ typically operators in fractional Sobolev spaces implemented in
 These demos mostly showcase core functionality of `FEniCS_ii`, that is, the coupling
 operators
 
-- [ ] `poisson_babuska.py` shows that trace/multiplier meshes need not to conform to the background
+- [x] `poisson_babuska.py` shows that trace/multiplier meshes need not to conform to the background
 - [ ] `poisson_babuska_bc.py` illustrates use of boundary conditions
 - [ ] `mixed_poisson_babuska.py` first encounter with H(div) problem
 - [ ] `curl_curl_babuska.py` first encounter with H(curl) problem
