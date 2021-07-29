@@ -17,11 +17,11 @@ operators
 
 - [x] `poisson_babuska.py` shows that trace/multiplier meshes need not to conform to the background
 - [x] `poisson_babuska_bc.py` illustrates use of boundary conditions
-- [ ] `mixed_poisson_babuska.py` first encounter with H(div) problem
+- [x] `mixed_poisson_babuska.py` first encounter with H(div) problem
 - [ ] `curl_curl_babuska.py` first encounter with H(curl) problem
-- [ ] `grad_div_babuska.py` sibling problem to `curl_curl.py`
+- [ ] `grad_div_babuska.py` sibling problem to `curl_curl.py` (for the sake of completeness)
 - [ ] `stokes_bc.py` nonstandard boundary conditions on Stokes problem; following Bertoluzza et al.
-- [ ] `dq_darcy_stokes` first multiphysics problem; Darcy-Stokes formulation without the multiplier following Discacciati&Quarteroni
+- [ ] `dq_darcy_stokes.py` first multiphysics problem; Darcy-Stokes formulation without the multiplier following Discacciati&Quarteroni
 - [ ] `layton_darcy_stokes.py` first multiphysics problem with multipliers; Darcy-Stokes formulation without the multiplier following Layton
 - [ ] `emi_primal.py`
 - [ ] `emi_primal_mortar.py`

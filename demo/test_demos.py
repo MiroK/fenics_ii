@@ -15,7 +15,10 @@ demos = (('poisson_babuska.py', '--conformity', 'nested'),
          ('poisson_babuska.py', '--conformity', 'conforming_facetf'),
          ('poisson_babuska_bc.py', '--bcs', 'dir_neu'),
          ('poisson_babuska_bc.py', '--bcs', 'dir'),
-         ('poisson_babuska_bc.py', '--bcs', 'neu'))
+         ('poisson_babuska_bc.py', '--bcs', 'neu'),
+         ('mixed_poisson_babuska.py', '--flux_degree', '1'),
+         ('mixed_poisson_babuska.py', '--flux_degree', '2')
+)
 
 
 @pytest.mark.parametrize('args', demos)
