@@ -1,140 +1,94 @@
-from dolfin import Expression, errornorm
-from sympy.printing import ccode
-from itertools import takewhile
-import sympy as sp
+from collections import OrderedDict, ChainMap
+import dolfin as df
 import numpy as np
-import re
 
 
-number = re.compile(r'[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?')
+H1_norm = lambda u, uh: df.errornorm(u, uh, 'H1', degree_rise=2)
+L2_norm = lambda u, uh: df.errornorm(u, uh, 'L2', degree_rise=2)
 
-first = lambda iterable: next(iter(iterable))
-    
-def parse_eps(eps):
-    '''Parse the eps param list '''
-    groups = []
-    i = 0
-    while i < len(eps):
-        e = eps[i]
-        if '[' in e:
-            group = [x for x in takewhile(lambda s: ']' not in s, eps[i:])]
-            # Don't forget the one that broke stuff
-            group.append(eps[i+len(group)])
-            i += len(group)
-            # Parse it
-            groups.append(parse_eps([first(number.findall(s)) for s in group]))
+
+class VarHistory(list):
+    '''History where only the value is interesting'''
+    def __init__(self, name, fmt=None):
+        self.name = name
+        self.fmt = fmt
+        super(list).__init__()
+
+    def report_last(self, with_name=True):
+        if with_name:
+            return f'{self.name} = {self.fmt(self[-1])}'
         else:
-            groups.append(float(first(number.findall(e))))
-            i += 1
-    return groups
+            return f'{self.fmt(self[-1])}'
 
+    def header(self):
+        return self.name
 
-def expr_body(expr, **kwargs):
-    if not hasattr(expr, '__len__'):
-        # Defined in terms of some coordinates
-        xyz = set(sp.symbols('x[0], x[1], x[2]'))
-        xyz_used = xyz & expr.free_symbols
-        assert xyz_used <= xyz
-        # Expression params which need default values
-        params = (expr.free_symbols - xyz_used) & set(kwargs.keys())
-        # Body
-        expr = ccode(expr).replace('M_PI', 'pi')
-        # Default to zero
-        kwargs.update(dict((str(p), 0.) for p in params))
-        # Convert
-        return expr
-    # Vectors, Matrices as iterables of expressions
-    else:
-        foo = tuple(expr_body(e, **kwargs) for e in expr)
-        # sp.Matrix flattens so we need to reshape back
-        if isinstance(expr, sp.Matrix):
-            if expr.is_square:
-                matrix = np.array(foo).reshape(expr.shape)
-                foo = tuple(tuple(row) for row in matrix)
-
-        return foo
-
-
-def as_expression(expr, degree=4, **kwargs):
-    '''Turns sympy expressions to Dolfin expressions.'''
-    return Expression(expr_body(expr), degree=degree, **kwargs)
-
-
-def coroutine(func):
-    def start(*args,**kwargs):
-        cr = func(*args,**kwargs)
-        next(cr)
-        return cr
-    return start
-
-
-@coroutine
-def monitor_error(u, norms, memory, reduction=lambda x: x, path=''):
-    '''
-    Send in current solution to get the error size and convergence printed.
-    '''
-    GREEN = '\033[1;37;32m%s\033[0m'
-    BLUE = '\033[1;37;34m%s\033[0m'
-
-    if path:
-        with open(path, 'w') as f: f.write('#\n')
     
-    mesh_size0, error0 = None, None
-    counter = 0
-    while True:
-        counter += 1
-        uh, W, niters, r_norm = yield
+class VarApproximationHistory():
+    '''History where for each new value we track mesh size, approximation
+    error, convergence rate and size of the finite element space.
+    '''
+    def __init__(self, name, u, get_error, subscript):
+        self.name = name
+        self.get_error = lambda uh: get_error(u, uh)
+        self.errors = VarHistory(f'|e_{name}|_{subscript}', lambda s: f'{s:.3E}')
+        self.rates = VarHistory(f'r|e_{name}|_{subscript}', lambda s: f'{s:.2f}')
+        self.Vdims = VarHistory(f'dim(V({name}))', lambda s: f'{s:g}')
+        self.hs = VarHistory(f'h(V({name}))', lambda s: f'{s:.2E}')
 
-        # Here I assume that the higher dim mesh foos come first.
-        # This then better be a mesh for som LinearComnimation guys
-        mesh = None
-        for uhi in uh:
-            if hasattr(uhi, 'function_space'):
-                mesh = uhi.function_space().mesh()
-                break
-        assert mesh is not None
-        mesh_size = mesh.hmin()
-        
-        error = [norm(ui, uhi) if hasattr(uhi, 'function_space') else norm(ui, uhi, mesh)
-                 for norm, ui, uhi in zip(norms, u, uh)]
-        error = np.array(reduction(error))
+    def append(self, uh):
+        error = self.get_error(uh)
+        self.errors.append(error)
 
-        ndofs = [Wi.dim() for Wi in W]
+        h = uh.function_space().mesh().hmin()
+        self.hs.append(h)
 
-        if error0 is not None:
-            rate = np.log(error/error0)/np.log(mesh_size/mesh_size0)
+        ndofs = uh.function_space().dim()
+        self.Vdims.append(ndofs)
+
+        if len(self.errors) > 1:
+            rate = df.ln(self.errors[-1]/self.errors[-2])/df.ln(self.hs[-1]/self.hs[-2])
         else:
-            rate = np.nan*np.ones_like(error)
-            
-        msg = ' '.join(['{case %d}' % counter] +
-                       ['h=%.2E' % mesh_size] +  # Resolution
-                       # Error
-                       ['e_(u%d)=%.2E[%.2f]' % (i, e, r)  
-                        for i, (e, r) in enumerate(zip(error, rate))] +
-                       # Unknowns
-                       ['#(%d)=%d' % p for p in enumerate(ndofs)] +
-                       # Total
-                       ['#(all)=%d' % sum(ndofs)] +
-                       # Rnorm
-                       ['|r|_l2=%g' % r_norm] +
-                       ['niters=%d' % niters])
-        # Screen
-        print(GREEN % msg)
-        # Log
-        if path:
-            with open(path, 'a') as f: f.write(msg + '\n')
+            rate = np.nan
+        self.rates.append(rate)
 
-        error0, mesh_size0 = error, mesh_size
-        memory.append(np.r_[mesh_size, error])
+    def report_last(self, with_name=True):
+        return ' '.join([c.report_last(with_name)
+                         for c in (self.hs, self.errors, self.rates, self.Vdims)])
 
+    def header(self):
+        return ' '.join([c.name
+                         for c in (self.hs, self.errors, self.rates, self.Vdims)])
+
+    
+class ConvergenceLog():
+    '''Monitor for error convergence studies'''
+    def __init__(self, variables):
+        var_histories = OrderedDict()
+        avar_histories = OrderedDict()
+        self.variables = tuple(variables.keys())
         
-# Two arg norms
-H1_norm = lambda u, uh, m=None: errornorm(u, uh, 'H1', degree_rise=2, mesh=m)
-H10_norm = lambda u, uh, m=None: errornorm(u, uh, 'H10', degree_rise=2, mesh=m)
-L2_norm = lambda u, uh, m=None: errornorm(u, uh, 'L2', degree_rise=2, mesh=m)
-Hdiv_norm = lambda u, uh, m=None: errornorm(u, uh, 'Hdiv', degree_rise=2, mesh=m)
-Hdiv0_norm = lambda u, uh, m=None: errornorm(u, uh, 'Hdiv0', degree_rise=2, mesh=m)
-Hcurl_norm = lambda u, uh, m=None: errornorm(u, uh, 'Hcurl', degree_rise=2, mesh=m)
-Hcurl0_norm = lambda u, uh, m=None: errornorm(u, uh, 'Hcurl0', degree_rise=2, mesh=m)
+        for k, v in variables.items():
+            # Separate things for error convergence from just values to track
+            if v is None:
+                var_histories[k] = VarHistory(k)
+            else:
+                u, error_f, subscript = v                
+                avar_histories[k] = VarApproximationHistory(k, u, error_f, subscript)
 
-linf_norm = lambda u, uh: np.linalg.norm(u - uh.vector().get_local())
+        self.histories = ChainMap(avar_histories, var_histories)
+
+    def add(self, new):
+        if not isinstance(new, dict):
+            return self.add(dict(zip(self.variables, new)))
+
+        for key in self.histories:
+            self.histories[key].append(new[key])
+
+    def report_last(self, with_name):
+        return ' '.join([format(self.histories[key].report_last(with_name), '<20')
+                         for key in self.histories])
+
+    def header(self,):
+        _header = ' '.join([self.histories[key].header() for key in self.histories])
+        return '\n'.join(['-'*len(_header), _header, '-'*len(_header)])
