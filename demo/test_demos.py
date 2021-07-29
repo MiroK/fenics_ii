@@ -17,7 +17,8 @@ demos = (('poisson_babuska.py', '--conformity', 'nested'),
          ('poisson_babuska_bc.py', '--bcs', 'dir'),
          ('poisson_babuska_bc.py', '--bcs', 'neu'),
          ('mixed_poisson_babuska.py', '--flux_degree', '1'),
-         ('mixed_poisson_babuska.py', '--flux_degree', '2')
+         ('mixed_poisson_babuska.py', '--flux_degree', '2'),
+         ('poisson_babuska_3d.py', ),
 )
 
 

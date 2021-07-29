@@ -78,7 +78,10 @@ class VarApproximationHistory():
         self.Vdims.append(ndofs)
 
         if len(self.errors) > 1:
-            rate = df.ln(self.errors[-1]/self.errors[-2])/df.ln(self.hs[-1]/self.hs[-2])
+            try:
+                rate = df.ln(self.errors[-1]/self.errors[-2])/df.ln(self.hs[-1]/self.hs[-2])
+            except ZeroDivisionError:
+                rate = np.nan
         else:
             rate = np.nan
         self.rates.append(rate)

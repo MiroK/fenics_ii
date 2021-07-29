@@ -1,6 +1,6 @@
 # The `Hello World` of fractional problems:
 #
-# -Delta u + u = f in Omega
+# -Delta u + u = f in Omega = (0, 1)^2
 #            u = g on boundary
 #
 # with the boundary conditions enforced weakly by Lagrange multiplier.
@@ -122,6 +122,6 @@ if __name__ == '__main__':
     # NOTE: the exit code here is for `test_demo.py`
     iru, fru = clog['u'].get_rate()
     irp, frp = clog['p'].get_rate()
-
+    
     passed = all((iru > 0.95, fru > 0.95, irp > 1.95, frp > 1.95))
     sys.exit(int(passed))
