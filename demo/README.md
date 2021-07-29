@@ -19,17 +19,20 @@ operators
 - [x] `poisson_babuska_bc.py` illustrates use of boundary conditions
 - [x] `mixed_poisson_babuska.py` first encounter with H(div) problem
 
-- [ ] `curl_curl_babuska.py` first encounter with H(curl) problem
-- [ ] `grad_div_babuska.py` sibling problem to `curl_curl.py` (for the sake of completeness)
+- [x] `curl_curl_babuska.py` first encounter with H(curl) problem
+- [x] `grad_div_babuska.py` sibling problem to `curl_curl.py` (for the sake of completeness)
 - [ ] `sym_grad_babuska.py` vector valued problem where we constraint full vector of components on the boundary
 
-- [ ] `stokes_bc.py` nonstandard boundary conditions on Stokes problem; following Bertoluzza et al [http://dx.doi.org/10.1016/j.cma.2017.04.024].
-- [ ] `dq_darcy_stokes.py` first multiphysics problem; Darcy-Stokes formulation without the multiplier following Discacciati&Quarteroni [https://doi.org/10.1016/S0168-9274(02)00125-3]
-- [ ] `layton_darcy_stokes.py` first multiphysics problem with multipliers; Darcy-Stokes formulation without the multiplier following Layton et al [https://doi.org/10.1137/S0036142901392766]
+- [ ] `stokes_bc.py` nonstandard boundary conditions on Stokes problem; following [Bertoluzza et al](http://dx.doi.org/10.1016/j.cma.2017.04.024)
+- [ ] `dq_darcy_stokes.py` first multiphysics problem; Darcy-Stokes formulation without the multiplier following [Discacciati&Quarteroni](https://doi.org/10.1016/S0168-9274(02)00125-3)
+- [ ] `layton_darcy_stokes.py` first multiphysics problem with multipliers; Darcy-Stokes formulation without the multiplier following [Layton et al](https://doi.org/10.1137/S0036142901392766)
+
 - [ ] `emi_primal.py`
 - [ ] `emi_primal_mortar.py`
 - [ ] `twoDoneDoneD.py`
+
 - [x] `poisson_babuska_3d.py` a trace constraint problem in 3d
+
 - [ ] `dq_3d_1d.py`
 - [ ] `laurino_3d_1d.py`
 - [ ] `lm_3d_1d.py`

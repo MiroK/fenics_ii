@@ -6,6 +6,7 @@ import numpy as np
 H1_norm = lambda u, uh: df.errornorm(u, uh, 'H1', degree_rise=2)
 L2_norm = lambda u, uh: df.errornorm(u, uh, 'L2', degree_rise=2)
 Hdiv_norm = lambda u, uh: df.errornorm(u, uh, 'Hdiv', degree_rise=2)
+Hcurl_norm = lambda u, uh: df.errornorm(u, uh, 'Hcurl', degree_rise=2)
 
 
 def broken_norm(subdomains, norm_f):

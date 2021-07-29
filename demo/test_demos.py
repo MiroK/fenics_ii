@@ -19,6 +19,10 @@ demos = (('poisson_babuska.py', '--conformity', 'nested'),
          ('mixed_poisson_babuska.py', '--flux_degree', '1'),
          ('mixed_poisson_babuska.py', '--flux_degree', '2'),
          ('poisson_babuska_3d.py', ),
+         ('grad_div_babuska.py', '--RT_degree', '1'),
+         ('grad_div_babuska.py', '--RT_degree', '2'),
+         ('curl_curl_babuska.py', '--Ned_degree', '1'),
+         ('curl_curl_babuska.py', '--Ned_degree', '2'),         
 )
 
 
