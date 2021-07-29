@@ -16,7 +16,7 @@ These demos mostly showcase core functionality of `FEniCS_ii`, that is, the coup
 operators
 
 - [x] `poisson_babuska.py` shows that trace/multiplier meshes need not to conform to the background
-- [ ] `poisson_babuska_bc.py` illustrates use of boundary conditions
+- [x] `poisson_babuska_bc.py` illustrates use of boundary conditions
 - [ ] `mixed_poisson_babuska.py` first encounter with H(div) problem
 - [ ] `curl_curl_babuska.py` first encounter with H(curl) problem
 - [ ] `grad_div_babuska.py` sibling problem to `curl_curl.py`

@@ -7,6 +7,34 @@ H1_norm = lambda u, uh: df.errornorm(u, uh, 'H1', degree_rise=2)
 L2_norm = lambda u, uh: df.errornorm(u, uh, 'L2', degree_rise=2)
 
 
+def broken_norm(subdomains, norm_f):
+    '''Evaluate norm on subdomains = {tag -> df.Subdomain}'''
+    def compute(u, uh):
+        # We expect u is {tag -> Expression}
+        # The idea is to restict uh to marked subdomains
+        V = uh.function_space()
+        mesh = V.mesh()
+        cell_f = df.MeshFunction('size_t', mesh, mesh.topology().dim(), 0)
+
+        errors = []
+        for tag in u:
+            cell_f.set_all(0)
+            # Restriction ...
+            subdomains[tag].mark(cell_f, tag)
+            sub_mesh = df.SubMesh(mesh, cell_f, tag)
+            
+            if not sub_mesh.num_cells(): continue
+            # ... and restrict
+            uh_sub = df.interpolate(uh, df.FunctionSpace(sub_mesh, V.ufl_element()))
+            
+            e_sub = norm_f(u[tag], uh_sub)
+            errors.append(e_sub)
+        # Combine errors from subdomains
+        return np.sqrt(sum(e**2 for e in errors))
+    # The closure
+    return compute
+
+
 class VarHistory(list):
     '''History where only the value is interesting'''
     def __init__(self, name, fmt=None):
@@ -31,7 +59,7 @@ class VarApproximationHistory():
     '''
     def __init__(self, name, u, get_error, subscript):
         self.name = name
-        self.get_error = lambda uh: get_error(u, uh)
+        self.get_error = lambda uh, u=u: get_error(u, uh)
         self.errors = VarHistory(f'|e_{name}|_{subscript}', lambda s: f'{s:.3E}')
         self.rates = VarHistory(f'r|e_{name}|_{subscript}', lambda s: f'{s:.2f}')
         self.Vdims = VarHistory(f'dim(V({name}))', lambda s: f'{s:g}')
