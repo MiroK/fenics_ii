@@ -8,16 +8,16 @@ mesh for the embedded manifold does not need to consist of entities of the mesh 
 domain. Crucial for such PDEs is the notion of the trace - hence the name.
 
 ## Dependencies
-  - [cbc.block](https://github.com/MiroK/cbc.block)
-  - FEniCS 2017.2.0  (python2)
+  - [cbc.block](https://bitbucket.org/fenics-apps/cbc.block/src/master/)
+  - FEniCS 2019.1.+  (python3)
 
 ### Optional dependencies
-  - [HsMG](https://arxiv.org/abs/1806.00222) is a package implementing preconditioners
+In some of the demos
+
+  - [HsMG](https://github.com/MiroK/hsmg) is a package implementing preconditioners
     for operators in fractional Sobolev spaces. These are needed to construct
     robust preconditioners for the interface component of the multiscle/multiphysics
-    problems,
   - [ULFY](https://github.com/MiroK/ulfy) is used to construct manufactured
-    solutions in some of the demos
   
 ## Install
 To install the package put this directory on python path. For this shell

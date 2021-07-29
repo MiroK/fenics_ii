@@ -18,12 +18,14 @@ operators
 - [x] `poisson_babuska.py` shows that trace/multiplier meshes need not to conform to the background
 - [x] `poisson_babuska_bc.py` illustrates use of boundary conditions
 - [x] `mixed_poisson_babuska.py` first encounter with H(div) problem
+
 - [ ] `curl_curl_babuska.py` first encounter with H(curl) problem
 - [ ] `grad_div_babuska.py` sibling problem to `curl_curl.py` (for the sake of completeness)
 - [ ] `sym_grad_babuska.py` vector valued problem where we constraint full vector of components on the boundary
-- [ ] `stokes_bc.py` nonstandard boundary conditions on Stokes problem; following Bertoluzza et al.
-- [ ] `dq_darcy_stokes.py` first multiphysics problem; Darcy-Stokes formulation without the multiplier following Discacciati&Quarteroni
-- [ ] `layton_darcy_stokes.py` first multiphysics problem with multipliers; Darcy-Stokes formulation without the multiplier following Layton
+
+- [ ] `stokes_bc.py` nonstandard boundary conditions on Stokes problem; following Bertoluzza et al [http://dx.doi.org/10.1016/j.cma.2017.04.024].
+- [ ] `dq_darcy_stokes.py` first multiphysics problem; Darcy-Stokes formulation without the multiplier following Discacciati&Quarteroni [https://doi.org/10.1016/S0168-9274(02)00125-3]
+- [ ] `layton_darcy_stokes.py` first multiphysics problem with multipliers; Darcy-Stokes formulation without the multiplier following Layton et al [https://doi.org/10.1137/S0036142901392766]
 - [ ] `emi_primal.py`
 - [ ] `emi_primal_mortar.py`
 - [ ] `twoDoneDoneD.py`
@@ -37,8 +39,7 @@ operators
 - [ ] `transient_poisson_babuska.py`
 
 ### Iterative
-We provide robust preconditioners for selected problems (details are provided
-in the referenced papers)
+We provide robust preconditioners for selected problems (details are provided in the referenced papers)
 
 - [ ] `poisson_babuska_bc_iter.py`
 - [ ] `mixed_poisson_babuska_bc_iter.py`
