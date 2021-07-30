@@ -13,25 +13,27 @@ typically operators in fractional Sobolev spaces implemented in
 
 ### Coupling 
 These demos mostly showcase core functionality of `FEniCS_ii`, that is, the coupling
-operators
+operators. In mixed-dimensional systems a commonly used reduction operator is the trace
+resctricting the function to manifold of codimension 1.
 
 - [x] `poisson_babuska.py` shows that trace/multiplier meshes need not to conform to the background
 - [x] `poisson_babuska_bc.py` illustrates use of boundary conditions
 - [x] `mixed_poisson_babuska.py` first encounter with H(div) problem
-
 - [x] `curl_curl_babuska.py` first encounter with H(curl) problem
 - [x] `grad_div_babuska.py` sibling problem to `curl_curl.py` (for the sake of completeness)
-- [ ] `sym_grad_babuska.py` vector valued problem where we constraint full vector of components on the boundary
-
+- [x] `sym_grad_babuska.py` vector valued problem where we constrain full vector of components on the boundary
 - [ ] `stokes_bc.py` nonstandard boundary conditions on Stokes problem; following [Bertoluzza et al](http://dx.doi.org/10.1016/j.cma.2017.04.024)
+- [x] `poisson_babuska_3d.py` a trace constraint problem in 3d
+
+Keeping the trace coupling we now consider different physics on different bulk domains
+
 - [ ] `dq_darcy_stokes.py` first multiphysics problem; Darcy-Stokes formulation without the multiplier following [Discacciati&Quarteroni](https://doi.org/10.1016/S0168-9274(02)00125-3)
 - [ ] `layton_darcy_stokes.py` first multiphysics problem with multipliers; Darcy-Stokes formulation without the multiplier following [Layton et al](https://doi.org/10.1137/S0036142901392766)
 
-- [ ] `emi_primal.py`
-- [ ] `emi_primal_mortar.py`
-- [ ] `twoDoneDoneD.py`
-
-- [x] `poisson_babuska_3d.py` a trace constraint problem in 3d
+An extra feature of `FEniCS_ii` is coupling which bridges the topological gap larger
+than 1, in particular, we support 3d to 1d restriction by averaging over virtual surfaces
+(in addition to mathematically less sound 3d to 1d trace). Some other restriction
+operators provided as `Injection`, `PointTrace`
 
 - [ ] `dq_3d_1d.py`
 - [ ] `laurino_3d_1d.py`
@@ -40,6 +42,12 @@ operators
 - [ ] `point_trace.py`
 - [ ] `nonlinear_poisson_babuska.py`
 - [ ] `transient_poisson_babuska.py`
+
+Finally we include some systems related to (reduced) EMI models
+
+- [ ] `emi_primal.py`
+- [ ] `emi_primal_mortar.py`
+- [ ] `twoDoneDoneD.py`
 
 ### Iterative
 We provide robust preconditioners for selected problems (details are provided in the referenced papers)
