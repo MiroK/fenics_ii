@@ -25,7 +25,9 @@ demos = (('poisson_babuska.py', '--conformity', 'nested'),
          ('curl_curl_babuska.py', '--Ned_degree', '2'),
          ('sym_grad_babuska.py', '--Bop', 'full'),
          ('sym_grad_babuska.py', '--Bop', 'normal'),
-         ('sym_grad_babuska.py', '--Bop', 'tangent'),         
+         ('sym_grad_babuska.py', '--Bop', 'tangent'),
+         ('bertoluzza.py', '--is_flat', '1'),
+         ('bertoluzza.py', '--is_flat', '0'),                           
 )
 
 

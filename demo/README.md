@@ -9,7 +9,9 @@ idea to lauch `test_demos.py` here.
 For manufactured solutions we rely on [ulfy](https://github.com/MiroK/ulfy) and
 direct solvers. For **iterative** demos the preconditioners on the interface are
 typically operators in fractional Sobolev spaces implemented in
-[HsMG](https://github.com/MiroK/hsmg)
+[HsMG](https://github.com/MiroK/hsmg). Demo `stokes_bc.py` can be run with a flag
+`--is_flat 0` in which case domain with curved boundary is considered. We generate
+mesh for it on the fly if [gmshnics](https://github.com/MiroK/gmshnics) is installed.
 
 ### Coupling 
 These demos mostly showcase core functionality of `FEniCS_ii`, that is, the coupling
@@ -22,7 +24,7 @@ resctricting the function to manifold of codimension 1.
 - [x] `curl_curl_babuska.py` first encounter with H(curl) problem
 - [x] `grad_div_babuska.py` sibling problem to `curl_curl.py` (for the sake of completeness)
 - [x] `sym_grad_babuska.py` vector valued problem where we constrain full vector of components on the boundary
-- [ ] `stokes_bc.py` nonstandard boundary conditions on Stokes problem; following [Bertoluzza et al](http://dx.doi.org/10.1016/j.cma.2017.04.024)
+- [x] `stokes_bc.py` nonstandard boundary conditions on Stokes problem; following [Bertoluzza et al](http://dx.doi.org/10.1016/j.cma.2017.04.024)
 - [x] `poisson_babuska_3d.py` a trace constraint problem in 3d
 
 Keeping the trace coupling we now consider different physics on different bulk domains
