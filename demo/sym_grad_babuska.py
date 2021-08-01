@@ -5,13 +5,10 @@
 #
 # where Bu=u Bu = u.n or Bu = u.t. Note that based on Bu additional boundary
 # conditions need to be enforced to get a well posed problem
-from collections import namedtuple
+from utils import PieceWiseExpression
 from dolfin import *
 from xii import *
 import ulfy 
-
-
-PiecewiseExpression = namedtuple('PiecewiseExpr', ('subdomains', 'expressions'))
 
 
 def setup_mms(Bop):

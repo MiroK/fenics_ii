@@ -27,7 +27,18 @@ demos = (('poisson_babuska.py', '--conformity', 'nested'),
          ('sym_grad_babuska.py', '--Bop', 'normal'),
          ('sym_grad_babuska.py', '--Bop', 'tangent'),
          ('bertoluzza.py', '--is_flat', '1'),
-         ('bertoluzza.py', '--is_flat', '0'),                           
+         ('bertoluzza.py', '--is_flat', '0'),
+         ('dq_darcy_stokes.py', ),  # With default discretization and unit params
+         ('dq_darcy_stokes.py', '--param_mu', '0.5', '--param_K', '2', '--param_alpha', '1'),
+         ('dq_darcy_stokes.py', '--param_mu', '0.5', '--param_K', '2', '--param_alpha', '0'),
+         ('dq_darcy_stokes.py', '--pS_degree', '1', '--pD_degree', '1'),
+         ('dq_darcy_stokes.py', '--pS_degree', '0', '--pD_degree', '1'),
+         ('dq_darcy_stokes.py', '--pS_degree', '0', '--pD_degree', '2'),
+         ('layton_darcy_stokes.py', ),  # With default (TH Stokes) discretization and unit params
+         ('layton_darcy_stokes.py', '--param_mu', '0.5', '--param_K', '4', '--param_alpha', '1'),
+         ('layton_darcy_stokes.py', '--param_mu', '0.5', '--param_K', '4', '--param_alpha', '0'),
+         # Try with stabilized Crouzeix-Raviart
+         ('layton_darcy_stokes.py', '--param_mu', '0.5', '--param_K', '4', '--param_alpha', '1', '--stokes_CR', '1'),
 )
 
 
@@ -39,8 +50,17 @@ def test_demos(args):
 # -----------------------------------------------------------------------------
 
 if __name__ == '__main__':
+    import argparse
     GREEN = '\033[1;37;32m%s\033[0m'
     RED = '\033[1;37;31m%s\033[0m'
+
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    # Decide material parameters
+    parser.add_argument('--selected', type=str, nargs='+', default=[], help='Stokes viscosity')
+    args, _ = parser.parse_known_args()
+
+    if args.selected:
+        demos = tuple(d for d in demos if d[0] in args.selected)
     
     results = {True: GREEN % 'Passed', False: RED % 'Failed'}
     for demo in demos:

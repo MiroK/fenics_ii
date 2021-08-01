@@ -5,13 +5,10 @@
 #
 # New thing here will be the bcs and also broken norm computations of
 # the multiplier error. NOTE: this is `poisson_babuska_bc.py --bcs mixed` option.
-from collections import namedtuple
+from utils import PieceWiseExpression
 from dolfin import *
 from xii import *
 import ulfy 
-
-
-PiecewiseExpression = namedtuple('PiecewiseExpr', ('subdomains', 'expressions'))
 
 
 def setup_problem(facet_f, mms, bc_setup):
