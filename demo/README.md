@@ -3,7 +3,7 @@ Here we collect different PDEs with variables on manifold/having constraints
 on manifolds. For each case we strive to give a manufactured solution as well
 so that we can verify convergence properties of the FEM formulations (and its
 implementation). As an additional test to those in the test suite it is good
-idea to lauch `test_demos.py` here.
+idea to lauch `test_demos.py`/`py.test .` from this folder.
 
 ## Dependencies
 For manufactured solutions we rely on [ulfy](https://github.com/MiroK/ulfy) and
@@ -30,7 +30,7 @@ resctricting the function to manifold of codimension 1.
 Keeping the trace coupling we now consider different physics on different bulk domains
 
 - [x] `dq_darcy_stokes.py` first multiphysics problem; Darcy-Stokes formulation without the multiplier following [Discacciati&Quarteroni](https://doi.org/10.1016/S0168-9274(02)00125-3)
-- [ ] `layton_darcy_stokes.py` first multiphysics problem with multipliers; Darcy-Stokes formulation without the multiplier following [Layton et al](https://doi.org/10.1137/S0036142901392766)
+- [x] `layton_darcy_stokes.py` first multiphysics problem with multipliers; Darcy-Stokes formulation without the multiplier following [Layton et al](https://doi.org/10.1137/S0036142901392766)
 
 An extra feature of `FEniCS_ii` is coupling which bridges the topological gap larger
 than 1, in particular, we support 3d to 1d restriction by averaging over virtual surfaces

@@ -1,225 +1,151 @@
-# This example solves the coupled Darcy-Stokes problem analyzed in
-#   Layton et al: Coupling fluid flow with porous media flow
-#
-# As usual in the demos we have:
-# Darcy domain = [0.25, 0.75]^2
-# Stokes domain = [0, 1]^2 \ Darcy domain
-#
-# On the Darcy domain we solve: u2 = -grad(p2)
-#                               div(u2) = f2
-#
-# On Stokes we have: -div(T(u1, p1)) = f1
-#                     div(u1) = 0
-#                     where T(u1, p1) = -p1*I + 2*D(u1) and D = sym o grad
-#
-# The Stokes problem is considered with Neumann bcs on the outer boundary
-# [These are specified using expression for the stress tensor]. Further,
-# letting t = T(u1, p1).n1, there are following interface conditions:
-#
-# -t.n1 = p2 + f
-# -t.tau1 = u1.tau1 - g  [tau1 is the tangent]
-# u1.n1 + u2.n2 = h 
-#
-# NOTE: normally f,g, h are zero. Here they are not in order to make
-# the exact solution easier to find.
-#
-# As a Lagrange multiplier I chose lambda = -t.n1.
-# NOTE: below the solution is such that lambda = 0.
-
+# Same problem setup as in `dq_darcy_stokes.py` except mixed
+# formulation is used to solve the Darcy subproblem and thus
+# we have a Lagrange multiplier on the interface to enforce the
+# coupling (mass conservation in particular)
+from utils import rotate
+import sympy as sp
 from dolfin import *
 from xii import *
+import ulfy
 
 
-def setup_domain(n):
-    '''
-    Inner is [0.25, 0.75]^2, inner is [0, 1]^2 \ [0.25, 0.75]^2 and 
-    \partial [0.25, 0.75]^2 is the interface
-    '''
-    # Avoiding mortar meshes here because of speed 
-    interior = CompiledSubDomain('std::max(fabs(x[0] - 0.5), fabs(x[1] - 0.5)) < 0.25')
-    outer_mesh = UnitSquareMesh(n, n)
+def setup_problem(i, mms, parameters, stokes_CR):
+    '''Solution of the Darcy-emmersed-Stokes test case'''
+    meshD, boundariesD = mms['get_geometry'](i, 'inner')
+    meshS, boundariesS = mms['get_geometry'](i, 'outer')
+    interface, subdomainsI = mms['get_geometry'](i, 'interface')
+
+    dsD = Measure('ds', domain=meshD, subdomain_data=boundariesD)
+    nD = FacetNormal(meshD)
+
+    dsS = Measure('ds', domain=meshS, subdomain_data=boundariesS)
+    nS = FacetNormal(meshS)
+    tS = rotate(nS)
+
+    dx_ = Measure('dx', domain=interface, subdomain_data=subdomainsI)
+    nD_ = OuterNormal(interface, [0.5, 0.5])
+    nS_ = -nD_   # We have nS as master
+    tS_ = rotate(nS_)
     
-    subdomains = MeshFunction('size_t', outer_mesh, outer_mesh.topology().dim(), 0)
-    # Awkward marking
-    for cell in cells(outer_mesh):
-        x = cell.midpoint().array()            
-        subdomains[cell] = int(interior.inside(x, False))
-    assert sum(1 for _ in SubsetIterator(subdomains, 1)) > 0
-
-    stokes_domain = EmbeddedMesh(subdomains, 0)
-    darcy_domain = EmbeddedMesh(subdomains, 1)
-
-    # Interior boundary
-    surfaces = MeshFunction('size_t', darcy_domain, darcy_domain.topology().dim()-1, 0)
-    DomainBoundary().mark(surfaces, 1)
-    iface_domain = EmbeddedMesh(surfaces, 1)
-
-    # Mark the outiside for Stokes
-    facet_f = MeshFunction('size_t', stokes_domain, stokes_domain.topology().dim()-1, 0)
-    CompiledSubDomain('near(x[0]*(1-x[0]), 0) || near(x[1]*(1-x[1]), 0)').mark(facet_f, 1)
-    stokes_domain.subdomains = facet_f
-
-    return stokes_domain, darcy_domain, iface_domain
-
-
-def setup_problem(i, data, eps=1.):
-    '''TODO'''
-    n = 16*2**i
-
-    stokes_domain, darcy_domain, iface_domain = setup_domain(n)
     # And now for the fun stuff
-    V1 = VectorFunctionSpace(stokes_domain, 'CG', 2)
-    Q1 = FunctionSpace(stokes_domain, 'CG', 1)
-    V2 = FunctionSpace(darcy_domain, 'RT', 2)
-    Q2 = FunctionSpace(darcy_domain, 'DG', 1)
-    # In the orignal paper there's DG but CG sems fine too
-    M = FunctionSpace(iface_domain, 'CG', 1) 
-    W = [V1, Q1, V2, Q2, M]
-
-    u1, p1, u2, p2, lambda_ = list(map(TrialFunction, W))
-    v1, q1, v2, q2, beta_ = list(map(TestFunction, W))
+    if not stokes_CR:
+        VS = VectorFunctionSpace(meshS, 'CG', 2)
+        QS = FunctionSpace(meshS, 'CG', 1)
+    else:
+        VS = VectorFunctionSpace(meshS, 'CR', 1)
+        QS = FunctionSpace(meshS, 'DG', 0)        
     
-    dxGamma = Measure('dx', domain=iface_domain)
-    # We will need traces of the functions on the boundary
-    Tu1, Tu2 = [Trace(x, iface_domain) for x in (u1, u2)]
-    Tv1, Tv2 = [Trace(x, iface_domain) for x in (v1, v2)]
+    VD = FunctionSpace(meshD, 'RT', 1)
+    QD = FunctionSpace(meshD, 'DG', 0)
+    M = FunctionSpace(interface, 'DG', 0)
+    W = [VS, VD, QS, QD, M]
 
-    n2 = OuterNormal(iface_domain, [0.5, 0.5])  # Outer of Darcy
-    n1 = -n2                                  # Outer of Stokes
-    # Get tangent vector
-    tau1 = Constant(((0, -1),
-                     (1, 0)))*n1
-
-    a = [[0]*len(W) for i in range(len(W))]
+    uS, uD, pS, pD, l = map(TrialFunction, W)
+    vS, vD, qS, qD, m = map(TestFunction, W)
     
-    a[0][0] = Constant(2)*inner(sym(grad(u1)), sym(grad(v1)))*dx +\
-              inner(u1, v1)*dx +\
-              inner(dot(Tu1, tau1), dot(Tv1, tau1))*dxGamma
-    a[0][1] = -inner(p1, div(v1))*dx
-    a[0][4] = inner(lambda_, dot(Tv1, n1))*dxGamma
+    TuS, TvS = (Trace(x, interface) for x in (uS, vS))
+    TuD, TvD = (Trace(x, interface) for x in (uD, vD))
 
-    a[1][0] = -inner(q1, div(u1))*dx
+    # Material parameters
+    mu, K, alpha = (Constant(parameters[key]) for key in ('mu', 'K', 'alpha'))
 
-    a[2][2] = inner(u2, v2)*dx
-    a[2][3] = -inner(p2, div(v2))*dx
-    a[2][4] = inner(lambda_, dot(Tv2, n2))*dxGamma
+    a = block_form(W, 2)
+    a[0][0] = (Constant(2*mu)*inner(sym(grad(uS)), sym(grad(vS)))*dx +
+               alpha*inner(dot(TuS, tS_), dot(TvS, tS_))*dx_)
+    # Stabilization for CR
+    if stokes_CR:
+        hA = FacetArea(meshS)        
+        a[0][0] += 2*mu/avg(hA)*inner(jump(uS, nS), jump(vS, nS))*dS
 
-    a[3][2] = -inner(q2, div(u2))*dx
+    a[0][2] = -inner(pS, div(vS))*dx
+    a[0][4] = inner(l, dot(TvS, nS_))*dx_
 
-    a[4][0] = inner(beta_, dot(Tu1, n1))*dxGamma 
-    a[4][2] = inner(beta_, dot(Tu2, n2))*dxGamma
+    a[1][1] = (1/K)*inner(uD, vD)*dx
+    a[1][3] = -inner(pD, div(vD))*dx
+    a[1][4] = inner(l, dot(TvD, nD_))*dx_
 
-    ####
-    n_outer = FacetNormal(stokes_domain)
-    dsOuter = Measure('ds',
-                      domain=stokes_domain,
-                      subdomain_data=stokes_domain.subdomains,
-                      subdomain_id=1)
+    a[2][0] = -inner(qS, div(uS))*dx
+    a[3][1] = -inner(qD, div(uD))*dx
 
-    L = [0]*len(W)
-    L[0] = inner(data['expr_f1'], v1)*dx + \
-           inner(v1, dot(data['expr_stokes_stress'], n_outer))*dsOuter + \
-           inner(dot(Tv1, tau1), dot(data['expr_u1'] + dot(data['expr_stokes_stress'], n1), tau1))*dxGamma
-    L[1] = inner(Constant(0), q1)*dx
-    L[2] = inner(data['expr_f'], dot(Tv2, n2))*dxGamma
-    L[3] = inner(-data['expr_f2'], q2)*dx
-    L[4] = inner(dot(data['expr_u1'], n1) + dot(data['expr_u2'], n2), beta_)*dxGamma
+    a[4][0] = inner(m, dot(TuS, nS_))*dx_
+    a[4][1] = inner(m, dot(TuD, nD_))*dx_
 
-    return a, L, W
+    # We will have 7, 8 as Neumann boundaries for Stokes  and 5, 6 for Dirichlet
+    lm_tags = (1, 2, 3, 4)
 
-
-def setup_preconditioner(W, which, eps):
-    from block.algebraic.petsc import AMG
-    from block.algebraic.petsc import LumpedInvDiag, LU
-    from hsmg import HsNorm
-
-    u1, p1, u2, p2, lambda_ = list(map(TrialFunction, W))
-    v1, q1, v2, q2, beta_ = list(map(TestFunction, W))
-    # This is not spectacular
-    b00 = inner(grad(u1), grad(v1))*dx + inner(u1, v1)*dx
-    B00 = AMG(ii_assemble(b00))
-
-    b11 = inner(p1, q1)*dx
-    B11 = LumpedInvDiag(ii_assemble(b11))
-
-    b22 = inner(div(u2), div(v2))*dx + inner(u2, v2)*dx
-    B22 = LU(ii_assemble(b22))
-
-    b33 = inner(p2, q2)*dx
-    B33 = LumpedInvDiag(ii_assemble(b33))
-
-    B44 = inverse(HsNorm(W[-1], s=0.5))
+    L = block_form(W, 1)
+    L[0] = (inner(mms['fS'], vS)*dx
+            # Contribution from Neumann bcs on the boundary
+            + sum(inner(mms['traction_S'][tag], vS)*dsS(tag) for tag in (7, 8))
+            #  Multiplier contrib from sigma.n.t
+            - sum(inner(mms['g_t'][tag], dot(vS, tS))*dsS(tag) for tag in lm_tags))
+    # Multiplier contrib from sigma.n.n
+    L[1] = sum(inner(mms['g_n'][tag], dot(vD, nD))*dsD(tag) for tag in lm_tags)
     
-    return block_diag_mat([B00, B11, B22, B33, B44])
+    L[3] = -inner(mms['fD'], qD)*dx
+    # Interface mass conservation
+    L[4] = sum(inner(mms['g_u'][tag], m)*dx_(tag) for tag in lm_tags)
+
+    VS_bcs = [DirichletBC(VS, mms['velocity_S'][tag], boundariesS, tag) for tag in (5, 6)]
+    W_bcs = [VS_bcs, [], [], [], []]
+    
+    return a, L, W, W_bcs
 
 # --------------------------------------------------------------------
 
-def setup_mms(eps):
-    '''Simple MMS problem for UnitSquareMesh'''
-    from common import as_expression
-    import sympy as sp
-    
-    pi = sp.pi
-    x, y, EPS = sp.symbols('x[0] x[1] EPS')
-    
-    sp_grad = lambda f: sp.Matrix([f.diff(x, 1), f.diff(y, 1)])
+if __name__ == '__main__':
+    from common import ConvergenceLog, H1_norm, L2_norm, Hdiv_norm, broken_norm
+    from dq_darcy_stokes import setup_mms
+    import sys, argparse
 
-    sp_Grad = lambda f: sp.Matrix([[f[0].diff(x, 1), f[0].diff(y, 1)],
-                                   [f[1].diff(x, 1), f[1].diff(y, 1)]])
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    # Decide material parameters ...
+    parser.add_argument('--param_mu', type=float, default=1, help='Stokes viscosity')
+    parser.add_argument('--param_K', type=float, default=1, help='Darcy conductivity')
+    parser.add_argument('--param_alpha', type=float, default=1, help='BJS')
+    # ... and whether to use CR-P0 discretization for Stokes
+    parser.add_argument('--stokes_CR', type=int, default=0, choices=[0, 1])
+    args, _ = parser.parse_known_args()
 
-    sp_div = lambda f: f[0].diff(x, 1) + f[1].diff(y, 1)
-    
-    sp_Div = lambda f: sp.Matrix([sp_div(f[0, :]), sp_div(f[1, :])])
+    # Reduce verbosity
+    set_log_level(40)
+    # For checking convergence we pick the solution of the test case ...
+    material_params = {k.split('_')[-1] : v for k, v in vars(args).items() if k.startswith('param_')}
+    mms = setup_mms(material_params)
+    uS_true, uD_true, pS_true, pD_true = (mms['solution'][k] for k in ('uS', 'uD', 'pS', 'pD'))
+    lm_true = mms['solution']['lm']
 
-    # Stokes velocity
-    u1 = sp.Matrix([sp.sin(2*pi*y), sp.sin(2*pi*x)])
-    # Stokes pressure
-    p1 = sp.cos(2*pi*x)*sp.cos(2*pi*y)
+    clog = ConvergenceLog({'uS': (uS_true, H1_norm, '1'),
+                           'uD': (uD_true, Hdiv_norm, 'div'),
+                           'pS': (pS_true, L2_norm, '0'),
+                           'pD': (pD_true, L2_norm, '0'),
+                           # Multiplier is defined piecewise
+                           'lm': (lm_true.expressions, broken_norm(lm_true.subdomains, L2_norm), '0')
+    })
 
-    sym = lambda A: (A + A.T)/2
+    print(clog.header())
+    for i in range(6):
+        a, L, W, bcs = setup_problem(i, mms, parameters=material_params,
+                                     stokes_CR=args.stokes_CR)
+        # Use direct solver to get the solution
+        A, b = map(ii_assemble, (a, L))
+        A, b = apply_bc(A, b, bcs)
+        A, b = map(ii_convert, (A, b))
 
-    # Assuming all the constants are unity, here's the stress tensor
-    T = lambda u, p: -p*sp.eye(2) + 2*sym(sp_Grad(u))
+        wh = ii_Function(W)
+        LUSolver(A, 'mumps').solve(wh.vector(), b)
 
-    # And the rhs for Stokes
-    f1 = -sp_Div(T(u1, p1)) + u1
+        uSh, uDh, pSh, pDh, lmh = wh
+        
+        clog.add((uSh, uDh, pSh, pDh, lmh))
+        print(clog.report_last(with_name=False))
+        
+    rates = tuple(clog[var].get_rate()[0] for var in ('uS', 'uD', 'pS', 'pD', 'lm'))
 
-    # Darcy pressure
-    p2 = p1 - sp.S(1.0)
-    # Again assuming all constants are 1 here's the Darcy velocity
-    u2 = -sp_grad(p2)
-    # The Darcy rhs
-    f2 = sp_div(u2)
-
-    # Define a vector T(u1, p1).n1 as t, then lambda_ = -t.n1
-    lambda_f = lambda n: n.dot(T(u1, p1)*n)
-    assert lambda_f(sp.Matrix([1, 0])).subs(x, 0.25) == 0
-    assert lambda_f(sp.Matrix([-1, 0])).subs(x, 0.75) == 0
-    assert lambda_f(sp.Matrix([0, 1])).subs(y, 0.25) == 0
-    assert lambda_f(sp.Matrix([0, -1])).subs(y, 0.75) == 0
-    # Cool so the multiplier is easy
-    lambda_ = sp.S(0)
-
-    # And this makes the f easy as well
-    f = lambda_ - p2
-
-    # NOTE: the multiplier is grad(u).n and with the chosen data this
-    # means that it's zero on the interface
-    up = list(map(as_expression, (u1, p1, u2, p2, lambda_)))  # The flux
-    fg = list(map(as_expression, (f, f1, f2, u1, u2, T(u1, p1))))
-    fg = dict(list(zip(['expr_%s' % s for s in ('f', 'f1', 'f2', 'u1', 'u2', 'stokes_stress')],
-                  fg)))
-    
-    return up, fg
-
-
-def setup_error_monitor(true, history, path=''):
-    '''We measure error V1 x Q1, V2 x Q2, L2(instead of fractional)'''
-    from common import monitor_error, H1_norm, L2_norm, Hdiv_norm
-    # Note we produce u1, u2, and p error. It is more natural to have
-    # broken H1 norm so reduce the first 2 errors to single number
-    reduction = lambda e: None if e is None else [sqrt(e[0]**2 + e[1]**2), e[-1]]
-
-    return monitor_error(true,
-                         [H1_norm, L2_norm, Hdiv_norm, L2_norm, L2_norm],
-                         history, path=path)
+    if args.stokes_CR:
+        expected = (1, )*5
+    else:
+        expected = (2, 1, 2, 1, 1)
+    passed = all(abs(r-e) < 0.1 for r, e in zip(rates, expected))
+        
+    sys.exit(int(passed))

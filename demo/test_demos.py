@@ -5,9 +5,13 @@ def run(cmd, *options):
     '''Run the demo convergence study'''
     cmd = ['python', cmd] + list(options)
     p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    p.communicate()
+    out, err = p.communicate()
 
+    if 'Error' in out.decode():
+        return 0
+    
     return p.returncode == 1
+
 
 demos = (('poisson_babuska.py', '--conformity', 'nested'),
          ('poisson_babuska.py', '--conformity', 'non_nested'),
