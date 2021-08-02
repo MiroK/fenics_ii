@@ -1,6 +1,7 @@
 import subprocess 
 import pytest
 
+
 def run(cmd, *options):
     '''Run the demo convergence study'''
     cmd = ['python', cmd] + list(options)
@@ -17,32 +18,51 @@ demos = (('poisson_babuska.py', '--conformity', 'nested'),
          ('poisson_babuska.py', '--conformity', 'non_nested'),
          ('poisson_babuska.py', '--conformity', 'conforming'),
          ('poisson_babuska.py', '--conformity', 'conforming_facetf'),
+         #
          ('poisson_babuska_bc.py', '--bcs', 'dir_neu'),
          ('poisson_babuska_bc.py', '--bcs', 'dir'),
          ('poisson_babuska_bc.py', '--bcs', 'neu'),
+         #
          ('mixed_poisson_babuska.py', '--flux_degree', '1'),
          ('mixed_poisson_babuska.py', '--flux_degree', '2'),
+         #
          ('poisson_babuska_3d.py', ),
+         #
          ('grad_div_babuska.py', '--RT_degree', '1'),
          ('grad_div_babuska.py', '--RT_degree', '2'),
+         #
          ('curl_curl_babuska.py', '--Ned_degree', '1'),
          ('curl_curl_babuska.py', '--Ned_degree', '2'),
+         #
          ('sym_grad_babuska.py', '--Bop', 'full'),
          ('sym_grad_babuska.py', '--Bop', 'normal'),
          ('sym_grad_babuska.py', '--Bop', 'tangent'),
+         #
          ('bertoluzza.py', '--is_flat', '1'),
          ('bertoluzza.py', '--is_flat', '0'),
+         #
          ('dq_darcy_stokes.py', ),  # With default discretization and unit params
          ('dq_darcy_stokes.py', '--param_mu', '0.5', '--param_K', '2', '--param_alpha', '1'),
          ('dq_darcy_stokes.py', '--param_mu', '0.5', '--param_K', '2', '--param_alpha', '0'),
          ('dq_darcy_stokes.py', '--pS_degree', '1', '--pD_degree', '1'),
          ('dq_darcy_stokes.py', '--pS_degree', '0', '--pD_degree', '1'),
          ('dq_darcy_stokes.py', '--pS_degree', '0', '--pD_degree', '2'),
+         #
          ('layton_darcy_stokes.py', ),  # With default (TH Stokes) discretization and unit params
          ('layton_darcy_stokes.py', '--param_mu', '0.5', '--param_K', '4', '--param_alpha', '1'),
          ('layton_darcy_stokes.py', '--param_mu', '0.5', '--param_K', '4', '--param_alpha', '0'),
-         # Try with stabilized Crouzeix-Raviart
-         ('layton_darcy_stokes.py', '--param_mu', '0.5', '--param_K', '4', '--param_alpha', '1', '--stokes_CR', '1'),
+         ('layton_darcy_stokes.py', '--param_mu', '0.5', '--param_K', '4', '--param_alpha', '1', '--stokes_CR', '1'), # Try with stabilized Crouzeix-Raviart
+         #
+         ('emi_primal.py', ),
+         ('emi_primal.py', '--param_kappa0', '2', '--param_kappa1', '4'),
+         ('emi_primal.py', '--degree', '2', '--param_kappa0', '3', '--param_kappa1', '5'),
+         #
+         ('emi_primal_mortar.py', ),
+         ('emi_primal_mortar.py', '--param_kappa0', '2', '--param_kappa1', '4'),
+         ('emi_primal_mortar.py', '--degree', '2', '--param_kappa0', '3', '--param_kappa1', '5'),         
+         #
+         ('twoDoneDoneD.py', ),
+         ('twoDoneDoneD.py', '--param_kappa', '2', '--param_kappa1', '3'),
 )
 
 
