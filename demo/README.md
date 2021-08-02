@@ -30,8 +30,8 @@ resctricting the function to manifold of codimension 1.
 We include some systems related to (reduced) EMI models, where variable-coefficient diffusion
 equations posed on domains of same/different topological dimension are coupled.
 
-- [ ] `emi_primal.py`
-- [ ] `emi_primal_mortar.py`
+- [x] `emi_primal.py` Formulation EMI model without the multiplier discussed e.g. in [Kuchta et al](https://doi.org/10.1007/978-3-030-61157-6_5)
+- [x] `emi_primal_mortar.py` Original EMI formulation with Lagrange multiplier presented in [Tveito et al](https://doi.org/10.3389/fphy.2017.00048)
 - [ ] `twoDoneDoneD.py`    [|]  and [Y] configuration
 
 Keeping the trace coupling we now consider different physics on different bulk domains
