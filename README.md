@@ -20,8 +20,7 @@ In some of the demos
   - [ULFY](https://github.com/MiroK/ulfy) is used to construct manufactured
   
 ## Install
-To install the package put this directory on python path. For this shell
-session you can achieve this by `source setup.rc`. 
+Use pip/distutils or similar. E.g. for dev mode run e.g. `pip install -e .`
 
 ## Limitations
  - Trace(expr) where expr is not a UFL terminal isn't currently supported

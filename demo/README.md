@@ -52,7 +52,6 @@ operators provided are e.g. `Injection`, `PointTrace`
 - [ ] `nonlinear_poisson_babuska.py`
 - [ ] `transient_poisson_babuska.py`
 
-
 ### Iterative
 We provide robust preconditioners for selected problems (details are provided in the referenced papers)
 
