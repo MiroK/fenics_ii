@@ -85,7 +85,7 @@ def load_mesh(h5_file, data_sets):
     Read in mesh and mesh functions from the data set in HDF5File.
     Data set is a tuple of (topological dim of entities, data-set-name)
     '''
-    h5 = HDF5File(mpi_comm_world(), h5_file, 'r')
+    h5 = HDF5File(MPI.comm_world, h5_file, 'r')
     mesh = Mesh()
     h5.read(mesh, 'mesh', False)
 

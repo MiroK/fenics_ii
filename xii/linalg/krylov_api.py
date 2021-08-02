@@ -1,6 +1,5 @@
-
 from xii.linalg.convert import bmat_sizes, convert
-from dolfin import PETScVector, mpi_comm_world
+from dolfin import PETScVector, MPI
 import block.iterative as cbc
 import scipy.sparse.linalg as sp
 from block import block_vec
@@ -17,7 +16,7 @@ class ScipyLinOp(sp.LinearOperator):
         col_sizes = [v.local_size() for v in bmat.create_vec(1)]
 
         self.shape = (sum(row_sizes), sum(col_sizes))
-        self.x = block_vec([PETScVector(mpi_comm_world(), n) for n in row_sizes])
+        self.x = block_vec([PETScVector(MPI.comm_world, n) for n in row_sizes])
             
     def _matvec(self, xarr):
         # Fill
