@@ -27,6 +27,13 @@ resctricting the function to manifold of codimension 1.
 - [x] `stokes_bc.py` nonstandard boundary conditions on Stokes problem; following [Bertoluzza et al](http://dx.doi.org/10.1016/j.cma.2017.04.024)
 - [x] `poisson_babuska_3d.py` a trace constraint problem in 3d
 
+We include some systems related to (reduced) EMI models, where variable-coefficient diffusion
+equations posed on domains of same/different topological dimension are coupled.
+
+- [ ] `emi_primal.py`
+- [ ] `emi_primal_mortar.py`
+- [ ] `twoDoneDoneD.py`    [|]  and [Y] configuration
+
 Keeping the trace coupling we now consider different physics on different bulk domains
 
 - [x] `dq_darcy_stokes.py` first multiphysics problem; Darcy-Stokes formulation without the multiplier following [Discacciati&Quarteroni](https://doi.org/10.1016/S0168-9274(02)00125-3)
@@ -45,11 +52,6 @@ operators provided are e.g. `Injection`, `PointTrace`
 - [ ] `nonlinear_poisson_babuska.py`
 - [ ] `transient_poisson_babuska.py`
 
-Finally we include some systems related to (reduced) EMI models
-
-- [ ] `emi_primal.py`
-- [ ] `emi_primal_mortar.py`
-- [ ] `twoDoneDoneD.py`    [|]  and [Y] configuration
 
 ### Iterative
 We provide robust preconditioners for selected problems (details are provided in the referenced papers)
