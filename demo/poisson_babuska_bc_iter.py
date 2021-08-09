@@ -12,9 +12,8 @@ from xii import *
 import ulfy 
 
 
-def setup_preconditioner(facet_f, mms, bc_setup, hs_block):
+def setup_preconditioner(W, facet_f, mms, bc_setup, hs_block):
     '''Preconditioner will be a Riesz map wrt H1 x H^{-1/2} inner product'''
-    mesh = facet_f.mesh()
     # See the mms below for how the boundaries are marked
     # NOTE: which bcs meet LM boundary effects boundary conditions
     # on the multiplier space
@@ -27,13 +26,7 @@ def setup_preconditioner(facet_f, mms, bc_setup, hs_block):
     else:
         lm_tags, dir_tags, neu_tags = (2, 4), (), (1, 3)
 
-    bmesh = EmbeddedMesh(facet_f, lm_tags)
-    bmesh_subd = bmesh.marking_function
-
-    V = FunctionSpace(mesh, 'CG', 1)
-    Q = FunctionSpace(bmesh, 'CG', 1)
-    W = [V, Q]
-
+    [V, Q] = W
     u, p = map(TrialFunction, W)
     v, q = map(TestFunction, W)
 
@@ -49,6 +42,7 @@ def setup_preconditioner(facet_f, mms, bc_setup, hs_block):
     BV, _ = assemble_system(aV, inner(Constant(0), v)*dx, V_bcs)
 
     # For LM we want Dirichlet where we meet the Dirichlet Boundary
+    bmesh = Q.mesh()
     facet_f = MeshFunction('size_t', bmesh, bmesh.topology().dim()-1, 0)
     if bc_setup == 'dir_neu':
         CompiledSubDomain('near(x[0], 0)').mark(facet_f, 1)
@@ -106,7 +100,7 @@ if __name__ == '__main__':
         A, b = map(ii_assemble, (a, L))
         A, b = apply_bc(A, b, bcs)
 
-        B = setup_preconditioner(facet_f, mms, bc_setup=args.bcs, hs_block=args.hs)
+        B = setup_preconditioner(W, facet_f, mms, bc_setup=args.bcs, hs_block=args.hs)
         
         wh = ii_Function(W)
         Ainv = MinRes(A, precond=B, tolerance=1E-10, show=0)

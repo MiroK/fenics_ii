@@ -14,20 +14,12 @@ from xii import *
 import ulfy 
 
 
-def setup_preconditioner(facet_f, mms, flux_deg, hs_block):
+def setup_preconditioner(W, facet_f, mms, flux_deg, hs_block):
     '''Preconditioner will be Riesz map H(div) x L^2 x H^{1/2}'''
-    mesh = facet_f.mesh()
-
     lm_tags, pressure_tags, flux_tags = (2, 4), (1, ), (3, )
-        
-    bmesh = EmbeddedMesh(facet_f, lm_tags)
-    bmesh_subd = bmesh.marking_function
 
-    S = FunctionSpace(mesh, 'RT', flux_deg)
-    V = FunctionSpace(mesh, 'DG', flux_deg-1)
-    Q = FunctionSpace(bmesh, 'DG', flux_deg-1)
-    W = [S, V, Q]
-
+    S, V, Q = W
+    
     sigma, u, p = map(TrialFunction, W)
     tau, v, q = map(TestFunction, W)
 
@@ -39,6 +31,7 @@ def setup_preconditioner(facet_f, mms, flux_deg, hs_block):
     aV = inner(u, v)*dx
     BV = assemble(aV)
     # H^s norm
+    bmesh = Q.mesh()
     facet_f = MeshFunction('size_t', bmesh, bmesh.topology().dim()-1, 0)    
     CompiledSubDomain('near(x[0], 1)').mark(facet_f, 1)
     Q_bcs = [(facet_f, 1)]
@@ -92,7 +85,7 @@ if __name__ == '__main__':
         A, b = map(ii_assemble, (a, L))
         A, b = apply_bc(A, b, bcs)
 
-        B = setup_preconditioner(facet_f, mms, flux_deg=args.flux_degree, hs_block=args.hs)
+        B = setup_preconditioner(W, facet_f, mms, flux_deg=args.flux_degree, hs_block=args.hs)
         
         wh = ii_Function(W)
         Ainv = MinRes(A, precond=B, tolerance=1E-10, show=0)
