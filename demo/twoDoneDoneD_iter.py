@@ -20,7 +20,7 @@ import ulfy
 
 
 def setup_preconditioner(W, i, mms, parameters, hs_block):
-    '''Solution of the Darcy-emmersed-Stokes test case'''
+    '''Preconditioner is H1 x H1 x H-0.5 cap H-1'''
     _, facet_f_ = mms['get_geometry'](i)
     [V, V1, Q] = W
     # We have different meshIds

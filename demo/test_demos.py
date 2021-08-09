@@ -74,6 +74,12 @@ demos = (('poisson_babuska.py', '--conformity', 'nested'),
          ('twoDoneDoneD_iter.py', '--param_kappa', '1E3'),
          ('twoDoneDoneD_iter.py', '--param_kappa1', '1E-2'),
          ('twoDoneDoneD_iter.py', '--param_kappa', '1E3', '--param_kappa1', '1E-3'),
+         #
+         ('layton_darcy_stokes_iter.py', ),
+         ('layton_darcy_stokes_iter.py', '--param_mu', '1E-3'),
+         ('layton_darcy_stokes_iter.py', '--param_K', '1E-4'),
+         ('layton_darcy_stokes_iter.py', '--param_K', '1E-4', '--param_mu', '1E-3'),
+         ('layton_darcy_stokes_iter.py', '--param_K', '1E-4', '--param_mu', '1E-3', '--stokes_CR', '1'),                  
 )
 
 

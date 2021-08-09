@@ -94,7 +94,7 @@ def setup_mms(material_parameters):
     
 
 def setup_problem(i, mms, parameters):
-    '''Solution of the Darcy-emmersed-Stokes test case'''
+    '''Solution of the 2d-1d-1d'''
     cell_f, facet_f = mms['get_geometry'](i)
 
     omega = cell_f.mesh()

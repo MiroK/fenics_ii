@@ -64,4 +64,4 @@ We provide robust preconditioners for selected problems (details are provided in
 - [x] `poisson_babuska_bc_iter.py` preconditioner based on well-posedness established in [Babuska](https://doi.org/10.1007/BF01436561)
 - [x] `mixed_poisson_babuska_bc_iter.py` preconditioner based on well-posedness established in [Babuska&Gatica](https://doi.org/10.1002/num.10040)
 - [x] `twoDoneDoneD_iter.py` precondiner based on analysis in [Kuchta et al](https://doi.org/10.1137/15M1052822)
-- [ ] `layton_darcy_stokes_iter.py` intersection space preconditioner from [Holter et al](https://arxiv.org/abs/2001.05527)
+- [x] `layton_darcy_stokes_iter.py` intersection space preconditioner from [Holter et al](https://arxiv.org/abs/2001.05527)
