@@ -69,6 +69,11 @@ demos = (('poisson_babuska.py', '--conformity', 'nested'),
          ('poisson_babuska_bc_iter.py', '--bcs', 'neu'),
          #
          ('mixed_poisson_babuska_iter.py', '--flux_degree', '1'),
+         #
+         ('twoDoneDoneD_iter.py', ),
+         ('twoDoneDoneD_iter.py', '--param_kappa', '1E3'),
+         ('twoDoneDoneD_iter.py', '--param_kappa1', '1E-2'),
+         ('twoDoneDoneD_iter.py', '--param_kappa', '1E3', '--param_kappa1', '1E-3'),
 )
 
 

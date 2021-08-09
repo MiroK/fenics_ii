@@ -41,21 +41,27 @@ Keeping the trace coupling we now consider different physics on different bulk d
 
 An extra feature of `FEniCS_ii` is coupling which bridges the topological gap larger
 than 1, in particular, we support 3d to 1d restriction by averaging over virtual surfaces
-(in addition to mathematically less sound 3d to 1d trace). Some other restriction
-operators provided are e.g. `Injection`, `PointTrace`
+(in addition to mathematically less sound 3d to 1d trace). 
 
 - [ ] `dq_3d_1d.py`
 - [ ] `laurino_3d_1d.py`
 - [ ] `lm_3d_1d.py`
+
+Some other restriction operators provided are e.g. `Injection`, `PointTrace`
+
 - [ ] `isoP2_stokes.py`
 - [ ] `point_trace.py`
+
+## Extras
+Some experimental extensions to transient or nonlinear problems are show cased in
+
 - [ ] `nonlinear_poisson_babuska.py`
 - [ ] `transient_poisson_babuska.py`
 
 ### Iterative
 We provide robust preconditioners for selected problems (details are provided in the referenced papers)
 
-- [ ] `poisson_babuska_bc_iter.py` preconditioner based on well-posedness established in [Babuska](https://doi.org/10.1007/BF01436561)
-- [ ] `mixed_poisson_babuska_bc_iter.py` preconditioner based on well-posedness established in [Babuska&Gatica](https://doi.org/10.1002/num.10040)
-- [ ] `twoDoneDoneD_iter.py`
-- [ ] `layton_darcy_stokes_iter.py`
+- [x] `poisson_babuska_bc_iter.py` preconditioner based on well-posedness established in [Babuska](https://doi.org/10.1007/BF01436561)
+- [x] `mixed_poisson_babuska_bc_iter.py` preconditioner based on well-posedness established in [Babuska&Gatica](https://doi.org/10.1002/num.10040)
+- [x] `twoDoneDoneD_iter.py` precondiner based on analysis in [Kuchta et al](https://doi.org/10.1137/15M1052822)
+- [ ] `layton_darcy_stokes_iter.py` intersection space preconditioner from [Holter et al](https://arxiv.org/abs/2001.05527)
