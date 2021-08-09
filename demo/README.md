@@ -55,7 +55,7 @@ operators provided are e.g. `Injection`, `PointTrace`
 ### Iterative
 We provide robust preconditioners for selected problems (details are provided in the referenced papers)
 
-- [ ] `poisson_babuska_bc_iter.py`
-- [ ] `mixed_poisson_babuska_bc_iter.py`
+- [ ] `poisson_babuska_bc_iter.py` preconditioner based on well-posedness established in [Babuska](https://doi.org/10.1007/BF01436561)
+- [ ] `mixed_poisson_babuska_bc_iter.py` preconditioner based on well-posedness established in [Babuska&Gatica](https://doi.org/10.1002/num.10040)
 - [ ] `twoDoneDoneD_iter.py`
 - [ ] `layton_darcy_stokes_iter.py`

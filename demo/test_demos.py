@@ -5,7 +5,7 @@ import pytest
 def run(cmd, *options):
     '''Run the demo convergence study'''
     cmd = ['python', cmd] + list(options)
-    p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     out, err = p.communicate()
 
     if 'Error' in out.decode():
@@ -38,8 +38,8 @@ demos = (('poisson_babuska.py', '--conformity', 'nested'),
          ('sym_grad_babuska.py', '--Bop', 'normal'),
          ('sym_grad_babuska.py', '--Bop', 'tangent'),
          #
-         ('bertoluzza.py', '--is_flat', '1'),
-         ('bertoluzza.py', '--is_flat', '0'),
+         ('bertoluzza_stokes.py', '--is_flat', '1'),
+         ('bertoluzza_stokes.py', '--is_flat', '0'),
          #
          ('dq_darcy_stokes.py', ),  # With default discretization and unit params
          ('dq_darcy_stokes.py', '--param_mu', '0.5', '--param_K', '2', '--param_alpha', '1'),
@@ -63,6 +63,12 @@ demos = (('poisson_babuska.py', '--conformity', 'nested'),
          #
          ('twoDoneDoneD.py', ),
          ('twoDoneDoneD.py', '--param_kappa', '2', '--param_kappa1', '3'),
+         #
+         ('poisson_babuska_bc_iter.py', '--bcs', 'dir_neu'),
+         ('poisson_babuska_bc_iter.py', '--bcs', 'dir'),
+         ('poisson_babuska_bc_iter.py', '--bcs', 'neu'),
+         #
+         ('mixed_poisson_babuska_iter.py', '--flux_degree', '1'),
 )
 
 

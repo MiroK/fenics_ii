@@ -34,7 +34,7 @@ def setup_mms():
     f = div(sigma)
     g_u = [u]*4  
     g_sigma = [sigma]*4
-
+    
     to_expr = lambda f: ulfy.Expression(f, degree=4)
     
     w = tuple(to_expr(x) for x in (sigma, u, p))
@@ -145,7 +145,6 @@ if __name__ == '__main__':
         clog.add((sigmah, uh, ph))
         print(clog.report_last(with_name=False))
 
-        
     eoc = 0.95 if args.flux_degree == 1 else 1.95
     # Match increamental and lstsq rate
     passed = all(clog[var].get_rate()[0] > eoc for var in ('sigma', 'u', 'p'))

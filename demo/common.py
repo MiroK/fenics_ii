@@ -39,7 +39,7 @@ def broken_norm(subdomains, norm_f):
 
 class VarHistory(list):
     '''History where only the value is interesting'''
-    def __init__(self, name, fmt=None):
+    def __init__(self, name, fmt=lambda s: f'{s:g}'):
         self.name = name
         self.fmt = fmt
         super(list).__init__()
@@ -119,7 +119,6 @@ class ConvergenceLog():
             else:
                 u, error_f, subscript = v                
                 avar_histories[k] = VarApproximationHistory(k, u, error_f, subscript)
-
         self.histories = ChainMap(avar_histories, var_histories)
 
     def __getitem__(self, key):
