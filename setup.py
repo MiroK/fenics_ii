@@ -8,6 +8,8 @@ setup(name = 'FEniCS_ii',
       author = 'Miroslav Kuchta',
       author_email = 'miroslav.kuchta@gmail.com',
       url = 'https://github.com/mirok/fenics_ii.git',
-      packages = ['fenics_ii'],
-      package_dir = {'fenics_ii': 'xii'}
+      packages = ['xii.linalg',
+                  'xii.assembler',
+                  'xii.meshing',
+                  'xii'],
 )

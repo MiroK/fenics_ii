@@ -1,5 +1,4 @@
 *.swp
-*.swp
 *~
 *~
 
@@ -22,3 +21,5 @@
 *.pdf
 *.ps
 *.tex
+
+*.egg-info
