@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from distutils.core import setup
+from setuptools import find_packages, setup
 
 setup(name = 'FEniCS_ii',
       version = '0.5',
@@ -8,8 +8,6 @@ setup(name = 'FEniCS_ii',
       author = 'Miroslav Kuchta',
       author_email = 'miroslav.kuchta@gmail.com',
       url = 'https://github.com/mirok/fenics_ii.git',
-      packages = ['xii.linalg',
-                  'xii.assembler',
-                  'xii.meshing',
-                  'xii'],
+      packages=find_packages(),
+      include_package_data=True
 )
