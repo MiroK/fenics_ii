@@ -21,6 +21,7 @@ In some of the demos
   
 ## Install
 Use pip/distutils or similar. E.g. for dev mode run e.g. `pip install -e .`
+or `pip install . --user`, `python3 setup.py install --user`
 
 ## Limitations
  - Trace(expr) where expr is not a UFL terminal isn't currently supported
@@ -41,4 +42,4 @@ Use pip/distutils or similar. E.g. for dev mode run e.g. `pip install -e .`
   </p>
   
   ## Citing
-  If you use FEniCS_ii for your work consider citing the arxiv [preprint](https://arxiv.org/abs/1912.09319)
+  If you use FEniCS_ii for your work please cite our [paper](https://link.springer.com/chapter/10.1007/978-3-030-55874-1_63)

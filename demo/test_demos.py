@@ -79,7 +79,11 @@ demos = (('poisson_babuska.py', '--conformity', 'nested'),
          ('layton_darcy_stokes_iter.py', '--param_mu', '1E-3'),
          ('layton_darcy_stokes_iter.py', '--param_K', '1E-4'),
          ('layton_darcy_stokes_iter.py', '--param_K', '1E-4', '--param_mu', '1E-3'),
-         ('layton_darcy_stokes_iter.py', '--param_K', '1E-4', '--param_mu', '1E-3', '--stokes_CR', '1'),                  
+         ('layton_darcy_stokes_iter.py', '--param_K', '1E-4', '--param_mu', '1E-3', '--stokes_CR', '1'),
+         #
+         ('isoP2_stokes.py', '--refinement', 'bisection', '--pressure_degree', '1'),
+         ('isoP2_stokes.py', '--refinement', 'bisection', '--pressure_degree', '0'),
+         ('isoP2_stokes.py', '--refinement', 'centroid', '--pressure_degree', '1')                  
 )
 
 

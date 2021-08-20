@@ -36,9 +36,15 @@ def Injection(v, fmesh):
     # Type check
     if hasattr(v, 'function_space'):
         cmesh = v.function_space().mesh()
-        assert cmesh.has_child() and fmesh.has_parent()
-        assert cmesh.child().id() == fmesh.id()
-        assert fmesh.parent().id() == cmesh.id()
+        #
+        has_data = False
+        try:
+            fmesh.data().array('parent_cell', fmesh.topology().dim())
+            has_data = True
+        except RuntimeError:
+            pass
+        
+        assert has_data or cmesh.id() in fmesh.parent_entity_map
 
     if isinstance(v, ufl.Coefficient):
         v =  df.Function(v.function_space(), v.vector())

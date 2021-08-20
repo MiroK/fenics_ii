@@ -31,16 +31,13 @@ def injection_matrix(Vc, Vf, fine_mesh, data):
     assert fine_mesh.id() == Vf.mesh().id()
     mesh_f = Vf.mesh()
 
-    assert mesh_f.has_parent() and mesh_c.has_child()
-    assert mesh_f.parent().id() == mesh_c.id()
-
     tdim = mesh_f.topology().dim()
-    # NOTE: if mesh_f came from adapt of coarse then we can access the
-    # data through API
-    if mesh_f.data().exists('parent_cell', tdim):
-        fine_to_coarse = mesh_f.data().array('parent_cell', tdim)
-    # FIXME: However, I can't do it when I refine myself to as a fall back
-    else:
+    # Refine was used to create it
+    try:
+        data = fine_mesh.data().array('parent_cell', tdim)
+        keys = np.arange(len(data))
+        fine_to_coarse = data
+    except RuntimeError:
         keys, fine_to_coarse = list(zip(*list(fine_mesh.parent_entity_map[mesh_c.id()][tdim].items())))
         fine_to_coarse = np.array(fine_to_coarse, dtype='uintp')
         fine_to_coarse[np.argsort(keys)] = fine_to_coarse

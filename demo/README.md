@@ -49,7 +49,8 @@ than 1, in particular, we support 3d to 1d restriction by averaging over virtual
 
 Some other restriction operators provided are e.g. `Injection`, `PointTrace`
 
-- [ ] `isoP2_stokes.py`
+- [x] `isoP2_stokes.py` stabilizing P1-(P1|P0) elements by considering coarser mesh for the pressure,
+see [Bercovier&Pironneau](https://doi.org/10.1007/BF01399555) or Chen Long's [experiments](https://www.math.uci.edu/~chenlong/ifemdoc/fem/StokesisoP2P0femrate.html)
 - [ ] `point_trace.py`
 
 ## Extras

@@ -56,9 +56,6 @@ def inner_point_refine(mesh, new_pts, strict):
     tdim = mesh.topology().dim()
     fine_mesh = make_mesh(fine_coords, fine_cells, tdim, mesh.geometry().dim())
     
-    fine_mesh.set_parent(mesh)
-    mesh.set_child(fine_mesh)
-
     fine_mesh.parent_entity_map = {mesh.id(): {0: dict(enumerate(range(mesh.num_vertices()))),
                                                tdim: dict(enumerate(child2parent))}}
        
