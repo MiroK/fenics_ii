@@ -8,7 +8,9 @@
 #
 
 from dolfin import *
+from block.algebraic.petsc import AMG
 from xii.meshing.refinement import centroid_refine
+from xii.meshing.dual_mesh import DualMesh
 from xii import *
 import ulfy 
 
@@ -42,9 +44,17 @@ def setup_problem(mesh_c, mms, pressure_deg, refinement):
     if refinement == 'bisection':
         # Each tri to 4 by bisecting edges
         mesh = refine(mesh_c)
-    else:
+        
+    elif refinement == 'centroid':
         # Each tri to 3 using center point of the mesh
         mesh = centroid_refine(mesh_c)
+
+    elif refinement == 'dual':
+        # Each tri yields 6 - dual mesh from FVM
+        mesh = DualMesh(mesh_c)
+
+    else:
+        raise ValueError
 
     V = VectorFunctionSpace(mesh, 'CG', 1)
     
@@ -81,21 +91,44 @@ def setup_problem(mesh_c, mms, pressure_deg, refinement):
 
     return a, L, W, W_bcs
 
+
+def setup_preconditioner(W, AA, bcs):
+    '''H1 x L2'''
+    # I don't want symgrad here because of AMG
+    V, Q, R = W
+
+    u, v = TrialFunction(V), TestFunction(V)
+    # Seminorm due to bcs
+    aV = inner(grad(u), grad(v))*dx
+    AV, _ = assemble_system(aV, inner(Constant((0, 0)), v)*dx, bcs[0])
+
+    p, q = TrialFunction(Q), TestFunction(Q)
+    # Pressure mass matrix is L2
+    aQ = inner(p, q)*dx
+    AQ = assemble(aQ)
+
+    AR = AA[2][2]
+
+    return block_diag_mat([AMG(AV), AMG(AQ), AMG(AR)])
+
 # ------------------------------------------------------------------------------
 
 if __name__ == '__main__':
     from common import ConvergenceLog, H1_norm, L2_norm
+    from block.iterative import MinRes
     import sys, argparse
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     # We will conside isoP2 with P1 or P0
     parser.add_argument('--pressure_degree', type=int, default=1, choices=[0, 1])
     # and the fine mesh obtained by refimenets with
-    parser.add_argument('--refinement', type=str, default='bisection', choices=['bisection', 'centroid'])    
+    parser.add_argument('--refinement', type=str, default='bisection', choices=['bisection', 'centroid', 'dual'])
+    #
+    parser.add_argument('--direct_solver', type=int, default=1, choices=[0, 1])    
     args, _ = parser.parse_known_args()
 
     if args.pressure_degree == 0:
-        assert args.refinement == 'bisection' 
+        assert args.refinement != 'centroid' 
 
     # Reduce verbosity
     set_log_level(40)
@@ -106,7 +139,8 @@ if __name__ == '__main__':
 
     clog = ConvergenceLog({
         'u': (u_true, H1_norm, '0'),
-        'p': (p_true, L2_norm, '0')
+        'p': (p_true, L2_norm, '0'),
+        'niters': None,
     })
 
     print(clog.header())
@@ -120,21 +154,33 @@ if __name__ == '__main__':
 
         A, b = map(ii_assemble, (a, L))
         A, b = apply_bc(A, b, bcs)
-        # Here A, b are cbc.block object so we need to convert them to matrices
-        A, b = map(ii_convert, (A, b))
+        
         # Now solve with direct solver
         wh = ii_Function(W)
-        solve(A, wh.vector(), b)
+        if args.direct_solver:
+            # Here A, b are cbc.block object so we need to convert them to matrices
+            A, b = map(ii_convert, (A, b))
+            solve(A, wh.vector(), b)
 
+            niters = 1
+        else:
+            B = setup_preconditioner(W, A, bcs)
+        
+            wh = ii_Function(W)
+            Ainv = MinRes(A, precond=B, tolerance=1E-10, show=0)
+            wh.vector()[:] = ii_convert(Ainv*b)
+
+            niters = len(Ainv.residuals)
         uh, ph, _ = wh
 
-        clog.add((uh, ph))
+        clog.add((uh, ph, niters))
         print(clog.report_last(with_name=False))
 
     # See for bisection
     # https://www.math.uci.edu/~chenlong/ifemdoc/fem/StokesisoP2P1femrate.html
     # https://www.math.uci.edu/~chenlong/ifemdoc/fem/StokesisoP2P0femrate.html
     passed = all((clog['u'].get_rate()[0] > 0.95,
-                  clog['p'].get_rate()[0] > (0.95 if args.pressure_degree == 0 else 1.5)))
+                  clog['p'].get_rate()[0] > (0.95 if args.pressure_degree == 0 else 1.5),
+                  all(count < 65 for count in clog['niters'])))        
 
     sys.exit(int(passed))

@@ -83,7 +83,11 @@ demos = (('poisson_babuska.py', '--conformity', 'nested'),
          #
          ('isoP2_stokes.py', '--refinement', 'bisection', '--pressure_degree', '1'),
          ('isoP2_stokes.py', '--refinement', 'bisection', '--pressure_degree', '0'),
-         ('isoP2_stokes.py', '--refinement', 'centroid', '--pressure_degree', '1')                  
+         ('isoP2_stokes.py', '--refinement', 'dual', '--pressure_degree', '1'),
+         ('isoP2_stokes.py', '--refinement', 'dual', '--pressure_degree', '0'),         
+         ('isoP2_stokes.py', '--refinement', 'centroid', '--pressure_degree', '1'),
+         ('isoP2_stokes.py', '--refinement', 'dual', '--pressure_degree', '1', '--direct_solver', '0'),
+         ('isoP2_stokes.py', '--refinement', 'dual', '--pressure_degree', '0', '--direct_solver', '0'),                  
 )
 
 
