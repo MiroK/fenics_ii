@@ -4,6 +4,7 @@ from xii import *
 
 from dolfin import PETScMatrix
 from petsc4py import PETSc
+import dolfin as df
 import numpy as np
 
 
@@ -31,16 +32,19 @@ def injection_matrix(Vc, Vf, fine_mesh, data):
     assert fine_mesh.id() == Vf.mesh().id()
     mesh_f = Vf.mesh()
 
+    if data['not_nested_method'] == 'interpolate':
+        return df.PETScDMCollection.create_transfer_matrix(Vc, Vf)
+    elif data['not_nested_method'] == 'project':
+        raise ValueError('Missing projection')
+
+    # Fallback to our interpolate with lookup, which, however is slower
+    # to `create_transfer_matrix`
+
     tdim = mesh_f.topology().dim()
     # Refine was used to create it
-    try:
-        data = fine_mesh.data().array('parent_cell', tdim)
-        keys = np.arange(len(data))
-        fine_to_coarse = data
-    except RuntimeError:
-        keys, fine_to_coarse = list(zip(*list(fine_mesh.parent_entity_map[mesh_c.id()][tdim].items())))
-        fine_to_coarse = np.array(fine_to_coarse, dtype='uintp')
-        fine_to_coarse[np.argsort(keys)] = fine_to_coarse
+    keys, fine_to_coarse = list(zip(*list(fine_mesh.parent_entity_map[mesh_c.id()][tdim].items())))
+    fine_to_coarse = np.array(fine_to_coarse, dtype='uintp')
+    fine_to_coarse[np.argsort(keys)] = fine_to_coarse
         
     # The idea is to evaluate Vf's degrees of freedom at basis functions of Vc
     fdmap = Vf.dofmap()

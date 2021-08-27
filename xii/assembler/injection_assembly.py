@@ -29,7 +29,7 @@ class InjectionFormAssembler(ReducedFormAssembler):
 
     def reduction_matrix_data(self, terminal):
         '''Dict of injection data'''
-        return {}
+        return {'not_nested_method': terminal.injection_['not_nested_method']}
 
     def reduced_space(self, V, fine_mesh):
         '''Construct an injection space for V on the mesh'''

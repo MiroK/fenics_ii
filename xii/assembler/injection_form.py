@@ -25,7 +25,7 @@ def injection_space(V, mesh):
     return df.FunctionSpace(mesh, V.ufl_element())
 
 
-def Injection(v, fmesh):
+def Injection(v, fmesh, not_nested_method='interpolate'):
     '''
     Annotated function for being a injection from space on coarse mesh 
     to space of fine mesh.
@@ -37,21 +37,31 @@ def Injection(v, fmesh):
     if hasattr(v, 'function_space'):
         cmesh = v.function_space().mesh()
         #
-        has_data = False
-        try:
-            fmesh.data().array('parent_cell', fmesh.topology().dim())
-            has_data = True
-        except RuntimeError:
-            pass
-        
-        assert has_data or cmesh.id() in fmesh.parent_entity_map
+        has_data = hasattr(fmesh, 'parent_entity_map')
+
+        if not has_data:
+            try:
+                cmap = fmesh.data().array('parent_cell', fmesh.topology().dim())
+                tdim = fmesh.topology().dim()
+                # NOTE: there is no vertex map
+                fmesh.parent_entity_map = {cmesh.id(): {tdim: dict(enumerate(cmap))}}
+                has_data = True
+                
+            except RuntimeError:
+                pass
+
+        if has_data:
+            assert cmesh.id() in fmesh.parent_entity_map
+        else:
+            assert not_nested_method in ('interpolate', 'project')
 
     if isinstance(v, ufl.Coefficient):
         v =  df.Function(v.function_space(), v.vector())
     else:
         v = [df.TestFunction, df.TrialFunction][v.number()](v.function_space())
 
-    v.injection_ = {'mesh': fmesh}
+    v.injection_ = {'mesh': fmesh,
+                    'not_nested_method': not_nested_method}
     
     return v
 

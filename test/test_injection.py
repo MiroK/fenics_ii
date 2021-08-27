@@ -2,82 +2,110 @@ from xii.meshing.refinement import centroid_refine
 from dolfin import *
 import numpy as np
 from xii import *
-import sympy as sp
+import pytest
+
+@pytest.mark.parametrize('refine_method', (refine, centroid_refine))
+@pytest.mark.parametrize('inject_method', (None, 'interpolate'))
+def test_P2_P1(refine_method, inject_method):
+    mesh = UnitSquareMesh(16, 16)
+    
+    rmesh = refine_method(mesh)
+
+    V = FunctionSpace(rmesh, 'CG', 1)
+    Q = FunctionSpace(mesh, 'CG', 2)
+
+    u, v = TrialFunction(V), TestFunction(V)
+    p, q = TrialFunction(Q), TestFunction(Q)
+    
+    m = inject_method
+    Ip, Iq = Injection(p, rmesh, not_nested_method=m), Injection(q, rmesh, not_nested_method=m)
+
+    M = ii_assemble(inner(Ip, v)*dx(domain=rmesh))
+
+    f = Expression('x[0]*x[0] + 2*x[1]*x[1]', degree=2)
+    g = Expression('x[0] + x[1]', degree=1)
+
+    value0 = assemble(inner(f, g)*dx(domain=mesh))
+    value = (interpolate(g, V).vector()).inner(M*(interpolate(f, Q).vector()))
+
+    assert abs(value - value0) < 1E-13
 
 
-n = 10
-mesh_c = UnitIntervalMesh(n)
-mesh = centroid_refine(mesh_c)    
+@pytest.mark.parametrize('refine_method', (refine, centroid_refine))
+@pytest.mark.parametrize('inject_method', (None, 'interpolate'))
+def test_P1_P1(refine_method, inject_method):
+    mesh = UnitSquareMesh(16, 16)
+    
+    rmesh = refine_method(mesh)
 
-U = VectorFunctionSpace(mesh, 'CG', 1, 2)
-Lc = VectorFunctionSpace(mesh_c, 'CG', 1, 2)
+    V = FunctionSpace(rmesh, 'CG', 1)
+    Q = FunctionSpace(mesh, 'CG', 1)
 
-W = [U, Lc]
-u, lmc = list(map(TrialFunction, W))
-v, gmc = list(map(TestFunction, W))
+    u, v = TrialFunction(V), TestFunction(V)
+    p, q = TrialFunction(Q), TestFunction(Q)
+    
+    m = inject_method
+    Ip, Iq = Injection(p, rmesh, not_nested_method=m), Injection(q, rmesh, not_nested_method=m)
 
-lm, gm = Injection(lmc, mesh), Injection(gmc, mesh)
-dx = Measure('dx', domain=mesh)
+    M = ii_assemble(inner(Ip, v)*dx(domain=rmesh))
 
-C_arr = np.array([[1, 2], [3, 4]])
-C = Constant(C_arr)
+    f = Expression('x[0] + 2*x[1]', degree=2)
+    g = Expression('x[0] + x[1]', degree=1)
 
-a = inner(u.dx(0) + dot(C, u), gm)*dx
-A = ii_assemble(a)
+    value0 = assemble(inner(f, g)*dx(domain=mesh))
+    value = (interpolate(g, V).vector()).inner(M*(interpolate(f, Q).vector()))
 
-x = sp.Symbol('x[0]')
-u = sp.Matrix([2*x - 1, 3*x+2])
+    assert abs(value - value0) < 1E-13
 
-g = sp.Matrix([3*x + 1, x])
 
-left = u.diff(x, 1) + sp.Matrix(sp.Matrix(C_arr).dot(u))
-left_expr = Expression(list(map(sp.printing.ccode, left)), degree=1)
+@pytest.mark.parametrize('refine_method', (refine, centroid_refine))
+@pytest.mark.parametrize('inject_method', (None, 'interpolate'))
+def test_P1_P0(refine_method, inject_method):
+    mesh = UnitSquareMesh(32, 32)
+    
+    rmesh = refine_method(mesh)
 
-u_expr = Expression(list(map(sp.printing.ccode, u)), degree=1)
-g_expr = Expression(list(map(sp.printing.ccode, g)), degree=1)
+    V = FunctionSpace(rmesh, 'DG', 0)
+    Q = FunctionSpace(mesh, 'CG', 1)
 
-reference = assemble(inner(left_expr, g_expr)*dx(domain=mesh))
+    u, v = TrialFunction(V), TestFunction(V)
+    p, q = TrialFunction(Q), TestFunction(Q)
+    
+    m = inject_method
+    Ip, Iq = Injection(p, rmesh, not_nested_method=m), Injection(q, rmesh, not_nested_method=m)
 
-u_ = interpolate(u_expr, U).vector()
-g_ = interpolate(g_expr, Lc).vector()
+    M = ii_assemble(inner(Ip, v)*dx(domain=rmesh))
 
-mine = g_.inner(A*u_)
+    f = Expression('x[0] + x[1]', degree=1)
+    
+    for g, tol in ((Constant(2), 1E-10), (Expression('x[0] + 2*x[1]', degree=1), 1E-2)):
+        g = interpolate(g, V)
 
-print(abs(mine - reference))
+        value0 = assemble(inner(f, g)*dx(domain=mesh))
+        value = (interpolate(g, V).vector()).inner(M*(interpolate(f, Q).vector()))
 
-# Let's try with convergence
-x = sp.Symbol('x[0]')
-u = sp.Matrix([2*x**2 - 1, 3*x**2+2])
-g = sp.Matrix([3*x**2 + 1, x**2])
+        assert abs(value - value0) < tol
 
-u_expr = Expression(list(map(sp.printing.ccode, u)), degree=1)
-g_expr = Expression(list(map(sp.printing.ccode, g)), degree=1)
 
-reference = sp.integrate((u.diff(x, 1) + sp.Matrix(sp.Matrix(C_arr).dot(u))).dot(g), (x, 0, 1))
+@pytest.mark.parametrize('refine_method', (refine, centroid_refine))
+def test_P2_P1_nn(refine_method):
+    mesh = UnitSquareMesh(16, 16)
+    rmesh = UnitSquareMesh(17, 19)
 
-for n in (8, 16, 32, 64, 128):
-    mesh_c = UnitIntervalMesh(n)
-    mesh = centroid_refine(mesh_c)    
+    V = FunctionSpace(rmesh, 'CG', 1)
+    Q = FunctionSpace(mesh, 'CG', 2)
 
-    U = VectorFunctionSpace(mesh, 'CG', 1, 2)
-    Lc = VectorFunctionSpace(mesh_c, 'CG', 1, 2)
+    u, v = TrialFunction(V), TestFunction(V)
+    p, q = TrialFunction(Q), TestFunction(Q)
+    
+    Ip, Iq = Injection(p, rmesh), Injection(q, rmesh)
 
-    W = [U, Lc]
-    u, lmc = list(map(TrialFunction, W))
-    v, gmc = list(map(TestFunction, W))
+    M = ii_assemble(inner(Ip, v)*dx(domain=rmesh))
 
-    lm, gm = Injection(lmc, mesh), Injection(gmc, mesh)
-    dx = Measure('dx', domain=mesh)
+    f = Expression('x[0]*x[0] + 2*x[1]*x[1]', degree=2)
+    g = Expression('x[0] + x[1]', degree=1)
 
-    C_arr = np.array([[1, 2], [3, 4]])
-    C = Constant(C_arr)
+    value0 = assemble(inner(f, g)*dx(domain=mesh))
+    value = (interpolate(g, V).vector()).inner(M*(interpolate(f, Q).vector()))
 
-    a = inner(u.dx(0) + dot(C, u), gm)*dx
-    A = ii_assemble(a)
-
-    u_ = interpolate(u_expr, U).vector()
-    g_ = interpolate(g_expr, Lc).vector()
-
-    mine = g_.inner(A*u_)
-
-    print(abs(mine - reference))
+    assert abs(value - value0) < 1E-13
