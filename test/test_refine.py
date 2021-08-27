@@ -1,6 +1,6 @@
 from xii.meshing.refinement import (centroid_refine, circumcenter_refine,
                                     point_is_inside)
-from xii.meshing.dual_mesh import DualMesh
+from xii.meshing.dual_mesh import dual_mesh
 
 try:
     from gmshnics import gUnitSquare
@@ -12,8 +12,12 @@ from dolfin import *
 import numpy as np
 import pytest
 
+# This should work on UnitSquare, we need delaunay for circumcenter below
 strategies = (centroid_refine,
-              lambda mesh: centroid_refine(mesh, 2))
+              lambda mesh: centroid_refine(mesh, nrefs=2),
+              dual_mesh,
+              lambda mesh: dual_mesh(mesh, nrefs=2))
+
 
 @pytest.mark.parametrize('refine_method', strategies)
 def test_vertices(refine_method):

@@ -49,7 +49,7 @@ def inner_point_refine(mesh, new_pts, strict, nrefs=1):
             assert len(ref_vertices) == len(root_vertices)
             new_mapping[0] = dict(zip(ref_vertices, root_vertices))
                 
-            mesh1.parent_entity_map[root_id] = new_mapping
+            mesh1.parent_entity_map = {root_id: new_mapping}
             
             mesh0 = mesh1
 

@@ -10,7 +10,7 @@
 from dolfin import *
 from block.algebraic.petsc import AMG
 from xii.meshing.refinement import centroid_refine
-from xii.meshing.dual_mesh import DualMesh
+from xii.meshing.dual_mesh import dual_mesh
 from xii import *
 import ulfy 
 
@@ -51,7 +51,7 @@ def setup_problem(mesh_c, mms, pressure_deg, refinement):
 
     elif refinement == 'dual':
         # Each tri yields 6 - dual mesh from FVM
-        mesh = DualMesh(mesh_c)
+        mesh = dual_mesh(mesh_c)
 
     else:
         raise ValueError
