@@ -275,7 +275,8 @@ PYBIND11_MODULE(SIGNATURE, m)
 codes = {(1, 2): code_1_2, (1, 3): code_1_3,
          (2, 3): code_2_3, (2, 2): code_2_2,
          (3, 3): code_3_3}
-    
+
+
 def CellCircumcenter(mesh, codes=codes):
     '''Circumcenter of cells in mesh'''
     assert mesh.ufl_cell().cellname() in ('interval', 'triangle', 'tetrahedron')
@@ -285,17 +286,15 @@ def CellCircumcenter(mesh, codes=codes):
     
     f = CompiledExpression(getattr(compile_cpp_code(codes[(tdim, gdim)]), f'Circumcenter_{tdim}_{gdim}')(),
                            degree=0, mesh=mesh)
-    
-    return f
+
+    V = df.VectorFunctionSpace(mesh, 'DG', 0)
+    return df.interpolate(f, V)
 
 
 def _CenterVector(mesh, Center):
     '''DLT vector pointing on each facet from one Center to the other'''
     # Cell-cell distance for the interior facet is defined as a distance 
     # of circumcenters. For exterior it is facet centor to circumcenter
-    V = df.VectorFunctionSpace(mesh, 'DG', 0)
-    cell_centers = df.interpolate(Center(mesh), V)
-
     # For facet centers we use DLT projection
     L = df.VectorFunctionSpace(mesh, 'Discontinuous Lagrange Trace', 0)
     fK = df.FacetArea(mesh)

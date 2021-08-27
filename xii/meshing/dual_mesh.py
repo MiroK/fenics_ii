@@ -10,17 +10,17 @@ class DualMesh(df.Mesh):
     Dual mesh (from FVM) is triangles is obtained by dividing each triangle 
     into 6 new ones containing cell (mid point|circumcenter) and edge midpoints.
     '''
-    def __init__(self, mesh, center='centroid'):
+    def __init__(self, mesh, center='centroid', nrefs=1):
         tdim, gdim = mesh.topology().dim(), mesh.geometry().dim()
         # Data for the mesh and mapping of old mesh vertex to cells of the dual patch
         coordinates, cells, mapping = DualMesh.dual_mesh_data(mesh, center)
 
-        df.Mesh.__init__(self)
-        # Fill
-        make_mesh(coordinates=coordinates, cells=cells, tdim=tdim, gdim=gdim, mesh=self)
-
-        # Attach data
-        self.parent_entity_map = {mesh.id(): mapping}
+        if nrefs == 1:
+            df.Mesh.__init__(self)
+            # Fill
+            make_mesh(coordinates=coordinates, cells=cells, tdim=tdim, gdim=gdim, mesh=self)
+            # Attach data
+            self.parent_entity_map = {mesh.id(): mapping}
 
     @staticmethod
     def dual_mesh_data(mesh, center):
