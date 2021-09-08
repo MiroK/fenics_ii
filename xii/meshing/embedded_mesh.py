@@ -1,3 +1,6 @@
+import xii
+
+from functools import reduce
 from itertools import chain, dropwhile
 from .make_mesh_cpp import make_mesh
 from .branching import color_branches, walk_cells, is_loop
@@ -141,55 +144,44 @@ class EmbeddedMesh(df.Mesh):
 
         if isinstance(tags, int): tags = [tags]
 
-        tagged_entities = np.hstack([np.where(other_entity_f.array() == tag)[0] for tag in tags])
-        assert len(tagged_entities)
-
         tree = self.bounding_box_tree()        
         # Collision by coordinates
         x, x_parent = self.coordinates(), parent_mesh.coordinates()
 
         entity_mapping, vertex_mapping = {}, {}
-        for entity in tagged_entities:
-            # We need to be able to embed all vertices in order to get a cell
-            entity_vertices = e2v(entity).tolist()
-            # The observation is that in working case there is one cell that
-            # can embedded all vertices of the entity
-            the_cell = set()
-            # The tree collisions can give false positives so shall compare
-            # coordinates with
-            is_reachable = True
-            while is_reachable and entity_vertices:
-                v = entity_vertices.pop()
-                v_cells = tree.compute_collisions(df.Point(x_parent[v]))
-                # True isect is a cell which has v
-                v_cells = [c for c in v_cells if min(np.linalg.norm(x_parent[v] - x[c2v(c)], 2, 1)) < tol]
+        
+        for tag in tags:
+            tagged_entities, = np.where(other_entity_f.array() == tag)
+            assert len(tagged_entities)
 
-                # Such cell is for such not the one that collides
-                is_reachable = bool(len(v_cells))            
-                (is_reachable and the_cell) and the_cell.intersection_update(v_cells)
-                (is_reachable and not the_cell) and the_cell.update(v_cells)
-
-            if is_reachable:
-                the_cell, = the_cell  # The uniqueness
-                entity_mapping[the_cell] = entity
-                
-                # And now pair the vertices
+            for entity in tagged_entities:
+                # We need to be able to embed all vertices in order to get a cell
                 entity_vertices = e2v(entity).tolist()
+                # The observation is that in working case there is one cell that
+                # can embedded all vertices of the entity
+                maybe = reduce(operator.and_,
+                               (set(tree.compute_collisions(df.Point(x_parent[v]))) for v in entity_vertices))
 
-                for vp in c2v(the_cell):
-                    if vp not in vertex_mapping:
-                        dist = np.linalg.norm(x[vp] - x_parent[entity_vertices], 2, 1)
-                        i = np.argmin(dist)
-                        assert dist[i] < tol
-                        
-                        vertex_mapping[vp] = entity_vertices[i]
-                    entity_vertices.remove(vertex_mapping[vp])
+                if len(maybe) == 1:
+                    the_cell, = maybe
+                    entity_mapping[the_cell] = entity
 
+                # When the collision produces several celss we will decide based
+                # on camparing cell vertices to vertices of the parent entity
+                entity_x = x_parent[entity_vertices]
+                matching = [(cell, max(min(np.linalg.norm(entity_x-xp, 2, axis=1)) for xp in x[c2v(cell)]))
+                            for cell in maybe]
+                the_cell, dist = min(matching, key=lambda p: p[1])
+                assert dist < tol
+
+                entity_mapping[the_cell] = entity
+
+                # FIXME: do we need vertex embedding here?
         self.parent_entity_map[parent_mesh.id()] = {0: vertex_mapping, tdim: entity_mapping}
 
         return self.parent_entity_map[parent_mesh.id()]
 
-    def translate_markers(self, entity_f, tags=None):
+    def translate_markers(self, entity_f, tags=None, marker_f=None):
         '''For entity_f.mesh being parent of self tranlate markers'''
         assert entity_f.mesh().id() in self.parent_entity_map
         assert 0 < entity_f.dim() < self.topology().dim()
@@ -213,7 +205,11 @@ class EmbeddedMesh(df.Mesh):
         ivertex_mapping = dict((v, k) for k, v in list(self.parent_entity_map[emesh.id()][0].items()))
         icell_mapping = dict((v, k) for k, v in list(self.parent_entity_map[emesh.id()][cell_dim].items()))
 
-        marker_f = df.MeshFunction('size_t', self, entity_dim, 0)
+        if marker_f is None:
+            marker_f = df.MeshFunction('size_t', self, entity_dim, 0)
+        else:
+            assert marker_f.dim() == entity_dim
+            
         for tag in tags:
             entities, = np.where(entity_f.array() == tag)  # parent
             # We encode them as vertices in the child
@@ -243,6 +239,31 @@ class OuterNormal(df.Function):
         if orientation is None:
             # We assume convex domain and take center as ...
             orientation = mesh.coordinates().mean(axis=0)
+
+        if isinstance(orientation, df.Mesh):
+            # We set surface normal as outer with respect to orientation mesh
+            assert orientation.id() in mesh.parent_entity_map
+
+            n = df.FacetNormal(orientation)
+            hA = df.FacetArea(orientation)
+            # Project normal, we have a function on mesh
+            DLT = df.VectorFunctionSpace(orientation, 'Discontinuous Lagrange Trace', 0)
+            n_ = df.Function(DLT)
+            df.assemble((1/hA)*df.inner(n, df.TestFunction(DLT))*df.ds, tensor=n_.vector())
+
+            # Now we get it to manifold
+            dx_ = df.Measure('dx', domain=mesh)
+            V = df.VectorFunctionSpace(mesh, 'DG', 0)
+
+            df.Function.__init__(self, V)                        
+
+            hK = df.CellVolume(mesh)
+            n_vec = xii.ii_convert(xii.ii_assemble((1/hK)*df.inner(xii.Trace(n_, mesh), df.TestFunction(V))*dx_))
+            
+            self.vector()[:] = n_vec
+
+            return None
+            
         # Manifold assumption
         assert 1 <= mesh.topology().dim() < mesh.geometry().dim()
         gdim = mesh.geometry().dim()

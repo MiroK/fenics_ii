@@ -303,7 +303,9 @@ def _CenterVector(mesh, Center):
     x = df.SpatialCoordinate(mesh)
     facet_centers = df.Function(L)
     df.assemble((1/fK)*df.inner(x, l)*df.ds, tensor=facet_centers.vector())
-        
+
+    cell_centers = Center(mesh)
+    
     cc = df.Function(L)
     # Finally we assemble magniture of the vector that is determined by the
     # two centers
