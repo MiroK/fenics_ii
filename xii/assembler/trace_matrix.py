@@ -123,8 +123,8 @@ def trace_mat_no_restrict(V, TV, trace_mesh=None, tag_data=None):
     rows, cols, values = [], [], []
 
     if len(trace_cells) > 10_000:
-        traces_cells = tqdm.tqdm(trace_cells, total=len(trace_cells),
-                                 prefix=f'Trace mat {TV.ufl_element()} -> {V.ufl_element()}')
+        print(f'Trace mat {TV.ufl_element()} -> {V.ufl_element()}')
+        trace_cells = tqdm.tqdm(trace_cells, total=len(trace_cells))
         
     for trace_cell in trace_cells:
         TV_dof.cell = trace_cell
