@@ -118,7 +118,7 @@ def trace_mat_no_restrict(V, TV, trace_mesh=None, tag_data=None):
     local_values = np.zeros((nbasis_elm, ndofs_elm))
     # DG spaces don't share rows between cells so we take advantage of
     # this in special branch
-    assert TV.ufl_element().family() == 'Discontinuous Lagrange':
+    assert TV.ufl_element().family() == 'Discontinuous Lagrange'
     # FIXME: Othewise we need to take care of duplicate entries    
     rows, cols, values = [], [], []
 
