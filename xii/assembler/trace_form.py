@@ -41,7 +41,7 @@ def trace_element(elm):
     # in the meantime KISS
     family = elm.family()
     
-    family_map = {'Lagrange': 'Lagrange'}
+    family_map = {}  #'Lagrange': 'Lagrange'}
     # This seems like a reasonable fall back option
     family = family_map.get(family, 'Discontinuous Lagrange')
 

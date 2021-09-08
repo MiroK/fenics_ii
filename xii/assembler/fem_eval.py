@@ -1,4 +1,4 @@
-from dolfin import Cell, UserExpression
+from dolfin import Cell, UserExpression, Function
 import numpy as np
 
 
@@ -43,29 +43,27 @@ class DegreeOfFreedom(object):
         self.__cell = cell_
 
     def eval(self, f):
-        return self.elm.evaluate_dofs(f.as_expression() if isinstance(f, FEBasisFunction) else f,
+        return self.elm.evaluate_dofs(f,
                                       self.__cell_vertex_x,
                                       self.__cell_orientation,
                                       self.__cell)[self.dof]
 
+    def eval_dofs(self, f):
+        return self.elm.evaluate_dofs(f,
+                                      self.__cell_vertex_x,
+                                      self.__cell_orientation,
+                                      self.__cell)
+
+
 # NOTE: this is a very silly construction. Basically the problem is
 # that Function cannot be properly overloaded beacsue SWIG does not 
 # expose eval.
-class FEBasisFunction(object):
+class FEBasisFunction(UserExpression):
     '''Evaluator of dof of V on functions'''
-    def __init__(self, V):
+    def __init__(self, V, **kwargs):
+        super().__init__(self, element=V.ufl_element(), **kwargs)
         self.elm = V.element()
         self.mesh = V.mesh()
-
-        shape = V.ufl_element().value_shape()
-        degree = V.ufl_element().degree()
-
-        # A fake instanc to talk to with the world
-        adapter = type('MiroHack',
-                       (UserExpression, ),
-                       {'value_shape': lambda self_, : shape,
-                        'eval': lambda self_, values, x: self.eval(values, x)})
-        self.__adapter = adapter(degree=degree)
 
         is_1d_in_3d = self.mesh.topology().dim() == 1 and self.mesh.geometry().dim() == 3
         self.orient_cell = cell_orientation(is_1d_in_3d)
@@ -97,7 +95,7 @@ class FEBasisFunction(object):
         self.__cell_orientation = self.orient_cell(cell_)
         self.__cell = cell_
 
-    def eval(self, values, x):
+    def eval_cell(self, values, x, cell):
         values[:] = self.elm.evaluate_basis(self.dof,
                                             x,
                                             self.__cell_vertex_x,
@@ -106,10 +104,6 @@ class FEBasisFunction(object):
     def __call__(self, x):
         self.eval(self.__values, x)
         return 1*self.__values
-
-    def as_expression(self):
-        return self.__adapter
-
 
 # --------------------------------------------------------------------
 
@@ -136,7 +130,7 @@ if __name__ == '__main__':
     dofs.cell = cell
     dofs.dof = local_dof
 
-    print(dofs.eval(f), dofs.eval(g.as_expression()))
+    print(dofs.eval(f), dofs.eval(g))#.as_expression()))
 
-    x = Cell(mesh, cell).midpoint().array()[:2]
-    print(f(x), g(x))
+    #x = Cell(mesh, cell).midpoint().array()[:2]
+    #print(f(x), g(x))

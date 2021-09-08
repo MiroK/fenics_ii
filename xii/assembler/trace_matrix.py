@@ -5,9 +5,13 @@ from xii.meshing.embedded_mesh import build_embedding_map
 from xii.assembler.nonconforming_trace_matrix import nonconforming_trace_mat
 
 from dolfin import Cell, PETScMatrix, warning, info, SubsetIterator, MeshFunction
+from scipy.sparse import csr_matrix
 import itertools, operator
 from petsc4py import PETSc
 import numpy as np
+
+import dolfin as df
+import tqdm
 
 # Restriction operators are potentially costly so we memoize the results.
 # Let every operator deal with cache keys as it sees fit
@@ -85,15 +89,19 @@ def trace_mat_no_restrict(V, TV, trace_mesh=None, tag_data=None):
         warning('Using non-conforming trace')
         # So non-conforming matrix returns PETSc.Mat
         return nonconforming_trace_mat(V, TV)
-        
+
+    if V.ufl_element().family() == 'HDiv Trace':
+        assert V.ufl_element().degree() == 0
+        # In this case
+        return DLT_trace_mat(V, TV, trace_mesh=trace_mesh, tag_data=tag_data)
+
     # We can get it
     mapping = trace_mesh.parent_entity_map[mesh.id()][fdim]  # Map cell of TV to cells of V
 
     mesh.init(fdim, fdim+1)
     f2c = mesh.topology()(fdim, fdim+1)  # Facets of V to cell of V
 
-    # The idea is to evaluate TV's degrees of freedom at basis functions
-    # of V
+    # The idea is to evaluate TV's degrees of freedom at basis functions of V
     Tdmap = TV.dofmap()
     TV_dof = DegreeOfFreedom(TV)
 
@@ -101,48 +109,102 @@ def trace_mat_no_restrict(V, TV, trace_mesh=None, tag_data=None):
     V_basis_f = FEBasisFunction(V)
 
     # Only look at tagged cells
-    trace_cells = itertools.chain(*[map(operator.methodcaller('index'),
+    trace_cells = list(itertools.chain(*[map(operator.methodcaller('index'),
                                                    SubsetIterator(trace_mesh_subdomains, tag))
-                                    for tag in tags])
+                                    for tag in tags]))
+
+
+    ndofs_elm, nbasis_elm = TV_dof.elm.space_dimension(), V_basis_f.elm.space_dimension()
+    local_values = np.zeros((nbasis_elm, ndofs_elm))
+    # DG spaces don't share rows between cells so we take advantage of
+    # this in special branch
+    assert TV.ufl_element().family() == 'Discontinuous Lagrange':
+    # FIXME: Othewise we need to take care of duplicate entries    
+    rows, cols, values = [], [], []
+
+    if len(trace_cells) > 10_000:
+        traces_cells = tqdm.tqdm(trace_cells, total=len(trace_cells),
+                                 prefix=f'Trace mat {TV.ufl_element()} -> {V.ufl_element()}')
+        
+    for trace_cell in trace_cells:
+        TV_dof.cell = trace_cell
+        # Many rows at once
+        trace_dofs = Tdmap.cell_dofs(trace_cell)
+        # Figure out the dofs of V to use here. Does not matter which
+        # cell of the connected ones we pick
+        cell = f2c(mapping[trace_cell])[0]
+        V_basis_f.cell = cell
+
+        # Columns for the rows
+        dofs = dmap.cell_dofs(cell)
+        for local, dof in enumerate(dofs):
+            # Set which basis foo
+            V_basis_f.dof = local
+            # Get all rows at once
+            local_values[local][:] = TV_dof.eval_dofs(V_basis_f)
+        # Indices for the filled piece
+        rows_ = np.tile(trace_dofs, nbasis_elm)
+        cols_ = np.repeat(dofs, ndofs_elm)
+
+        rows.extend(rows_)
+        cols.extend(cols_)
+        values.extend(local_values.flat)
+        
+    mat = csr_matrix((values, (rows, cols)), shape=(TV.dim(), V.dim()))        
+
+    return PETSc.Mat().createAIJ(comm=PETSc.COMM_WORLD,
+                                 size=mat.shape,
+                                 csr=(mat.indptr, mat.indices, mat.data))
+
+
+def DLT_trace_mat(V, TV, trace_mesh=None, tag_data=None):
+    '''Inject dofs from facets to DLT'''
+    mesh = V.mesh()
+
+    if trace_mesh is None: trace_mesh = TV.mesh()
+
+    fdim = trace_mesh.topology().dim()
+
+    # None means all
+    if tag_data is None:
+        try:
+            marking_function = trace_mesh.marking_function
+            tag_data = (marking_function, set(marking_function.array()))
+        except AttributeError:
+            tag_data = (MeshFunction('size_t', trace_mesh, trace_mesh.topology().dim(), 0),
+                        set((0, )))
+
+    trace_mesh_subdomains, tags = tag_data
+    # Init/extract the mapping
+    # We can get it
+    mapping = trace_mesh.parent_entity_map[mesh.id()][fdim]  # Map cell of TV to cells of V
+
+    if TV.num_sub_spaces() == 0:
+        Tdmaps = [TV.dofmap()]
+    else:
+        Tdmaps = [TV.sub(i).dofmap() for i in range(TV.num_sub_spaces())]
+
+    if V.num_sub_spaces() == 0:
+        dmap = V.dofmap()
+        facet2dofs = [dmap.entity_dofs(mesh, fdim)]
+    else:
+        facet2dofs = [V.sub(i).dofmap().entity_dofs(mesh, fdim) for i in range(V.num_sub_spaces())]
+
+    assert len(Tdmaps) == len(facet2dofs)
+
+    # Only look at tagged cells
+    trace_cells = list(itertools.chain(*[map(operator.methodcaller('index'),
+                                             SubsetIterator(trace_mesh_subdomains, tag))
+                                         for tag in tags]))
 
     # Rows
-    visited_dofs = [False]*TV.dim()
-    # Column values
-    dof_values = np.zeros(V_basis_f.elm.space_dimension(), dtype='double')
     with petsc_serial_matrix(TV, V) as mat:
 
-        for trace_cell in trace_cells:
-            # We might 
-            TV_dof.cell = trace_cell
-            trace_dofs = Tdmap.cell_dofs(trace_cell)
-
-            # Figure out the dofs of V to use here. Does not matter which
-            # cell of the connected ones we pick
-            cell = f2c(mapping[trace_cell])[0]
-            V_basis_f.cell = cell
-            
-            dofs = dmap.cell_dofs(cell)
-            for local_T, dof_T in enumerate(trace_dofs):
-
-                if visited_dofs[dof_T]:
-                    continue
-                else:
-                    visited_dofs[dof_T] = True
-
-                # Define trace dof
-                TV_dof.dof = local_T
-                
-                # Eval at V basis functions
-                for local, dof in enumerate(dofs):
-                    # Set which basis foo
-                    V_basis_f.dof = local
-                    
-                    dof_values[local] = TV_dof.eval(V_basis_f)
-
-                # Can fill the matrix now
-                col_indices = np.array(dofs, dtype='int32')
-                # Insert
-                mat.setValues([dof_T], col_indices, dof_values, PETSc.InsertMode.INSERT_VALUES)
+        for Tdmap, facet2dof in zip(Tdmaps, facet2dofs):
+            for trace_cell in trace_cells:
+                trace_dof, = Tdmap.cell_dofs(trace_cell)
+                DLT_dof = facet2dof[mapping[trace_cell]]
+                mat.setValues([trace_dof], [DLT_dof], [1.], PETSc.InsertMode.INSERT_VALUES)
     return mat
 
 
@@ -155,6 +217,11 @@ def trace_mat_one_restrict(V, TV, restriction, normal, trace_mesh=None, tag_data
     mesh = V.mesh()
     fdim = mesh.topology().dim() - 1
     if trace_mesh is None: trace_mesh = TV.mesh()
+
+
+    # if data['not_nested_method'] == 'interpolate':
+    return df.PETScDMCollection.create_transfer_matrix(Vc, Vf)
+    
     
     # None means all
     if tag_data is None:
