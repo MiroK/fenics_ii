@@ -116,39 +116,71 @@ def trace_mat_no_restrict(V, TV, trace_mesh=None, tag_data=None):
 
     ndofs_elm, nbasis_elm = TV_dof.elm.space_dimension(), V_basis_f.elm.space_dimension()
     local_values = np.zeros((nbasis_elm, ndofs_elm))
-    # DG spaces don't share rows between cells so we take advantage of
-    # this in special branch
-    assert TV.ufl_element().family() == 'Discontinuous Lagrange'
-    # FIXME: Othewise we need to take care of duplicate entries    
-    rows, cols, values = [], [], []
-
+    
     if len(trace_cells) > 10_000:
         print(f'Trace mat {TV.ufl_element()} -> {V.ufl_element()}')
         trace_cells = tqdm.tqdm(trace_cells, total=len(trace_cells))
-        
-    for trace_cell in trace_cells:
-        TV_dof.cell = trace_cell
-        # Many rows at once
-        trace_dofs = Tdmap.cell_dofs(trace_cell)
-        # Figure out the dofs of V to use here. Does not matter which
-        # cell of the connected ones we pick
-        cell = f2c(mapping[trace_cell])[0]
-        V_basis_f.cell = cell
 
-        # Columns for the rows
-        dofs = dmap.cell_dofs(cell)
-        for local, dof in enumerate(dofs):
-            # Set which basis foo
-            V_basis_f.dof = local
-            # Get all rows at once
-            local_values[local][:] = TV_dof.eval_dofs(V_basis_f)
-        # Indices for the filled piece
-        rows_ = np.tile(trace_dofs, nbasis_elm)
-        cols_ = np.repeat(dofs, ndofs_elm)
+    rows, cols, values = [], [], []
+    # DG spaces don't share rows between cells so we take advantage of
+    # this in special branch
+    if TV.ufl_element().family() == 'Discontinuous Lagrange':
+        for trace_cell in trace_cells:
+            TV_dof.cell = trace_cell
+            # Many rows at once
+            trace_dofs = Tdmap.cell_dofs(trace_cell)
+            # Figure out the dofs of V to use here. Does not matter which
+            # cell of the connected ones we pick
+            cell = f2c(mapping[trace_cell])[0]
+            V_basis_f.cell = cell
 
-        rows.extend(rows_)
-        cols.extend(cols_)
-        values.extend(local_values.flat)
+            # Columns for the rows
+            dofs = dmap.cell_dofs(cell)
+            for local, dof in enumerate(dofs):
+                # Set which basis foo
+                V_basis_f.dof = local
+                # Get all rows at once
+                local_values[local][:] = TV_dof.eval_dofs(V_basis_f)
+            # Indices for the filled piece
+            rows_ = np.tile(trace_dofs, nbasis_elm)
+            cols_ = np.repeat(dofs, ndofs_elm)
+
+            rows.extend(rows_)
+            cols.extend(cols_)
+            values.extend(local_values.flat)
+    # FIXME: Othewise we need to take care of duplicate entrieselse:
+    else:
+        needs_fill = np.ones(TV.dim(), dtype=bool)
+
+        for trace_cell in trace_cells:
+            TV_dof.cell = trace_cell
+            # Many rows at once
+            trace_dofs = Tdmap.cell_dofs(trace_cell)
+
+            # Don't add duplicates
+            unseen = needs_fill[trace_dofs]   # Some will be true and 
+            # For the future
+            needs_fill[trace_dofs[unseen]] = False
+            
+            # Figure out the dofs of V to use here. Does not matter which
+            # cell of the connected ones we pick
+            cell = f2c(mapping[trace_cell])[0]
+            V_basis_f.cell = cell
+
+            # Columns for the rows
+            dofs = dmap.cell_dofs(cell)
+            for local, dof in enumerate(dofs):
+                # Set which basis foo
+                V_basis_f.dof = local
+                # Get all rows at once
+                local_values[local][:] = TV_dof.eval_dofs(V_basis_f)
+            # Indices for the filled piece
+            rows_ = np.tile(trace_dofs[unseen], nbasis_elm)
+            cols_ = np.repeat(dofs, sum(unseen))
+
+            rows.extend(rows_)
+            cols.extend(cols_)
+            values.extend(local_values[:, unseen].flat)
         
     mat = csr_matrix((values, (rows, cols)), shape=(TV.dim(), V.dim()))        
 
@@ -221,8 +253,7 @@ def trace_mat_one_restrict(V, TV, restriction, normal, trace_mesh=None, tag_data
 
     # if data['not_nested_method'] == 'interpolate':
     return df.PETScDMCollection.create_transfer_matrix(Vc, Vf)
-    
-    
+        
     # None means all
     if tag_data is None:
         tag_data = (MeshFunction('size_t', trace_mesh, trace_mesh.topology().dim(), 0),

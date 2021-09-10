@@ -23,3 +23,5 @@
 *.tex
 
 *.egg-info
+build/
+dist/
