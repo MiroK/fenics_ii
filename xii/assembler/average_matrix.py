@@ -132,7 +132,7 @@ def average_matrix(V, TV, shape):
                     mat.setValues([row], column_indices, column_values, PETSc.InsertMode.INSERT_VALUES)
             # On to next avg point
         # On to next cell
-    return PETScMatrix(mat)
+    return mat
 
 
 def trace_3d1d_matrix(V, TV, reduced_mesh):
@@ -201,7 +201,7 @@ def trace_3d1d_matrix(V, TV, reduced_mesh):
 
             for scalar_row, avg_point in zip(scalar_dofs, scalar_dofs_x):
                 # 3d at point
-                Vel.evaluate_basis_all(basis_values, avg_point, vertex_coordinates, cell_orientation)
+                basis_values[:] = Vel.evaluate_basis_all(avg_point, vertex_coordinates, cell_orientation)
                 # The thing now is that with data we can assign to several
                 # rows of the matrix. Shift determines the (x, y, ... ) or
                 # (xx, xy, yx, ...) component of Q
@@ -211,7 +211,7 @@ def trace_3d1d_matrix(V, TV, reduced_mesh):
                     mat.setValues([row], column_indices, column_values, PETSc.InsertMode.INSERT_VALUES)
             # On to next avg point
         # On to next cell
-    return PETScMatrix(mat)
+    return mat
 
 
 def MeasureFunction(averaged):
