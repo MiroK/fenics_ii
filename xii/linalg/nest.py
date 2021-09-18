@@ -4,7 +4,7 @@ from petsc4py import PETSc
 
 from xii.linalg.matrix_utils import as_petsc
 from xii.linalg.convert import convert
-from block.algebraic.petsc import LU, SUPERLU_LU
+from block.algebraic.petsc import LU, SUPERLU_LU, AMG, Elasticity
 from block.algebraic.petsc.precond import precond
 from block import block_mat, block_vec
 import numpy as np
@@ -41,10 +41,17 @@ def pc_nest(block_pc, pc, Amat):
         if isinstance(block, LU):
             pci.setType('lu')
             pci.setFactorPivot(1E-16)
+            
         elif isinstance(block, SUPERLU_LU):
             pci.setType('lu')
             pci.setFactorPivot(1E-16)            
             pci.setFactorSolverType('superlu')
+
+        elif isinstance(block, AMG):
+            pci.setType('hypre')
+
+        elif isinstance(block, Elasticity):
+            pci.setType('gamg')
         else:
             assert False, type(block)
 
