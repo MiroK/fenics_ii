@@ -6,6 +6,7 @@ from . block_utils import (block_diag_mat, ii_PETScOperator, ii_PETScPreconditio
 from . function import ii_Function, as_petsc_nest
 from . bc_apply import apply_bc
 from . block_nullspace import BlockNullspace
+from . nest import nest, pc_nest
 
 try:
     from . hsmg_utils import inverse
