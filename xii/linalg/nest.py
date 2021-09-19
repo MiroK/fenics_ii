@@ -2,11 +2,11 @@ import sys, petsc4py
 petsc4py.init(sys.argv)
 from petsc4py import PETSc
 
-from xii.linalg.matrix_utils import as_petsc
+from xii.linalg.matrix_utils import as_petsc, diagonal_matrix
 from xii.linalg.convert import convert
 from block.algebraic.petsc import LU, SUPERLU_LU, AMG, Elasticity
 from block.algebraic.petsc.precond import precond
-from block import block_mat, block_vec, block_mul
+from block import block_mat, block_vec, block_mul, block_add
 import numpy as np
 
 
@@ -65,26 +65,47 @@ def pc_nest(pc, block_pc, Amat):
         pci = pc_ksp.getPC()
 
         block = block_pc[i][i]
-
         if isinstance(block, LU):
             pci.setType('lu')
             pci.setFactorPivot(1E-16)
+            mat = block.A
             
         elif isinstance(block, SUPERLU_LU):
             pci.setType('lu')
             pci.setFactorPivot(1E-16)            
             pci.setFactorSolverType('superlu')
+            mat = block.A            
 
         elif isinstance(block, AMG):
             pci.setType('hypre')
+            mat = block.A            
 
         elif isinstance(block, Elasticity):
             pci.setType('gamg')
+            mat = block.A
+
+        # FIXME: Very add hoc support for sum, this should recursive
+        elif isinstance(block, block_add):
+            this, that = block.A, block.B
+            assert isinstance(this, precond) and isinstance(that, precond)
+            
+            pci.setType('composite')
+            pci.setCompositeType(PETSc.PC.CompositeType.ADDITIVE)
+
+            pci.addCompositePC('lu')
+            pci.addCompositePC('lu')
+
+            for sub, op in enumerate((this, that)):
+                pci_sub = pci.getCompositePC(sub)
+                pci_sub.setOperators(as_petsc(op.A))
+                pci_sub.setFactorPivot(1E-16)            
+                pci_sub.setFactorSolverType('superlu')
+
+            mat = diagonal_matrix(op.A.size(0), 1)
         else:
             assert False, type(block)
 
-        Bmat[i][i] = block.A
-        
+        Bmat[i][i] = mat
     # Return out for setOperators
     return nest(Bmat)
 
