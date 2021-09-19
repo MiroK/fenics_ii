@@ -350,11 +350,11 @@ class ReductionOperator(RearangeOperator):
     def __init__(self, offsets, W):
         assert len(W) == offsets[-1]
         assert is_increasing(offsets)
-
+        
         offsets = [0] + offsets
         mapping = tuple(tuple(range(f, l)) for f, l in zip(offsets[:-1], offsets[1:]))
         RearangeOperator.__init__(self, mapping, W)
-        
+        self.offsets = offsets
     
 class RegroupOperator(block_base):
     '''Block vec to Block vec of block_vec/vecs.'''

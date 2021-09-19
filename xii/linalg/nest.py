@@ -6,16 +6,44 @@ from xii.linalg.matrix_utils import as_petsc
 from xii.linalg.convert import convert
 from block.algebraic.petsc import LU, SUPERLU_LU, AMG, Elasticity
 from block.algebraic.petsc.precond import precond
-from block import block_mat, block_vec
+from block import block_mat, block_vec, block_mul
 import numpy as np
 
 
-def pc_nest(block_pc, pc, Amat):
+def pc_nest(pc, block_pc, Amat):
     '''Setup field split and its operators'''
-    isets, _ = Amat.getNestISs()
+    isets, jsets = Amat.getNestISs()
+    # Sanity
+    assert len(isets) == len(jsets)
+    assert all(i.equal(j) for i, j in zip(isets, jsets)), [(i.array[[0, -1]], j.array[[0, -1]]) for i, j in zip(isets, jsets)]
+    
     # We target block matrices
     assert len(isets) > 1
-    pc.setFieldSplitIS(*[(str(i), iset) for i, iset in enumerate(isets)])
+
+    grouped_isets = []
+    # It may be that block_pc requires different grouping if indinces.
+    # This is signaled by presence of RestrictionOperator
+    if isinstance(block_pc, block_mul):
+        Rt, block_pc, R = block_pc.chain
+        assert Rt.A == R
+
+        offsets = R.offsets
+        assert len(offsets) == len(isets)
+
+        for first, last in zip(R.offsets[:-1], R.offsets[1:]):
+            if last - first == 1:
+                grouped_isets.append(isets[first])
+            else:
+                group = isets[first]
+                for i in range(first+1, last):
+                    group = group.union(isets[i])
+                grouped_isets.append(group)
+    else:
+        grouped_isets = isets
+
+    assert not isinstance(block_pc, block_mat) or set(block_pc.blocks.shape) == set((len(grouped_isets), ))
+
+    pc.setFieldSplitIS(*[(str(i), iset) for i, iset in enumerate(grouped_isets)])
     
     # The preconditioner will always be fieldsplit
     assert pc.getType() == 'fieldsplit'
@@ -27,10 +55,10 @@ def pc_nest(block_pc, pc, Amat):
     # For now we can only do pure block_mats
     assert isinstance(block_pc, block_mat)
     # Consistency        
-    assert len(isets) == nblocks
+    assert len(grouped_isets) == nblocks
     # ... and the have to be diagonal
     assert all(i == j or block_pc[i][j] == 0 for i in range(nblocks) for j in range(nblocks))
-    
+
     Bmat = block_mat([[0 for i in range(nblocks)] for j in range(nblocks)])
     for i, pc_ksp in enumerate(pc_ksps):
         pc_ksp.setType('preonly')
@@ -56,6 +84,7 @@ def pc_nest(block_pc, pc, Amat):
             assert False, type(block)
 
         Bmat[i][i] = block.A
+        
     # Return out for setOperators
     return nest(Bmat)
 
