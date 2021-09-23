@@ -10,6 +10,54 @@ from block import block_mat, block_vec, block_mul, block_add
 import numpy as np
 
 
+def pc_mat(pc, block):
+    '''Set pc for (non-block) operator'''
+    if isinstance(block, LU):
+        pc.setType('lu')
+        pc.setFactorPivot(1E-18)
+        return block.A
+            
+    if isinstance(block, SUPERLU_LU):
+        pc.setType('lu')
+        pc.setFactorPivot(1E-18)            
+        pc.setFactorSolverType('superlu')
+        return block.A
+
+    if isinstance(block, AMG):
+        pc.setType('hypre')
+        return block.A
+
+    if isinstance(block, Elasticity):
+        pc.setType('gamg')
+        return block.A
+
+    # FIXME: Very add hoc support for sum, this should recursive
+    if isinstance(block, block_add):
+        this, that = block.A, block.B
+        assert isinstance(this, precond) and isinstance(that, precond)
+            
+        pc.setType('composite')
+        pc.setCompositeType(PETSc.PC.CompositeType.ADDITIVE)
+
+        for sub, op in enumerate((this, that)):
+            # Fake it 
+            pc_ = PETSc.PC().create()
+            A = pc_mat(pc_, op)
+
+            pc.addCompositePC(pc_.getType())
+
+            pc_sub = pc.getCompositePC(sub)            
+            # Make it
+            pc_mat(pc_sub, op)
+            pc_sub.setOperators(as_petsc(A))
+
+        mat = diagonal_matrix(op.A.size(0), 1)
+
+        return mat
+
+    assert False, type(block)
+
+
 def pc_nest(pc, block_pc, Amat):
     '''Setup field split and its operators'''
     isets, jsets = Amat.getNestISs()
@@ -18,7 +66,9 @@ def pc_nest(pc, block_pc, Amat):
     assert all(i.equal(j) for i, j in zip(isets, jsets)), [(i.array[[0, -1]], j.array[[0, -1]]) for i, j in zip(isets, jsets)]
     
     # We target block matrices
-    assert len(isets) > 1
+    if len(isets) == 1:
+        A = pc_mat(pc, block_pc[0][0])
+        return as_petsc(A)
 
     grouped_isets = []
     # It may be that block_pc requires different grouping if indinces.
@@ -47,7 +97,7 @@ def pc_nest(pc, block_pc, Amat):
     
     # The preconditioner will always be fieldsplit
     assert pc.getType() == 'fieldsplit'
-    
+
     pc_ksps = pc.getFieldSplitSubKSP()
     
     nblocks, = set(block_pc.blocks.shape)
@@ -63,47 +113,9 @@ def pc_nest(pc, block_pc, Amat):
     for i, pc_ksp in enumerate(pc_ksps):
         pc_ksp.setType('preonly')
         pci = pc_ksp.getPC()
-
+        # Set individual preconds for blocks
         block = block_pc[i][i]
-        if isinstance(block, LU):
-            pci.setType('lu')
-            pci.setFactorPivot(1E-16)
-            mat = block.A
-            
-        elif isinstance(block, SUPERLU_LU):
-            pci.setType('lu')
-            pci.setFactorPivot(1E-16)            
-            pci.setFactorSolverType('superlu')
-            mat = block.A            
-
-        elif isinstance(block, AMG):
-            pci.setType('hypre')
-            mat = block.A            
-
-        elif isinstance(block, Elasticity):
-            pci.setType('gamg')
-            mat = block.A
-
-        # FIXME: Very add hoc support for sum, this should recursive
-        elif isinstance(block, block_add):
-            this, that = block.A, block.B
-            assert isinstance(this, precond) and isinstance(that, precond)
-            
-            pci.setType('composite')
-            pci.setCompositeType(PETSc.PC.CompositeType.ADDITIVE)
-
-            pci.addCompositePC('lu')
-            pci.addCompositePC('lu')
-
-            for sub, op in enumerate((this, that)):
-                pci_sub = pci.getCompositePC(sub)
-                pci_sub.setOperators(as_petsc(op.A))
-                pci_sub.setFactorPivot(1E-16)            
-                pci_sub.setFactorSolverType('superlu')
-
-            mat = diagonal_matrix(op.A.size(0), 1)
-        else:
-            assert False, type(block)
+        mat = pc_mat(pci, block)
 
         Bmat[i][i] = mat
     # Return out for setOperators
