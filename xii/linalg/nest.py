@@ -78,7 +78,6 @@ def pc_nest(pc, block_pc, Amat):
         assert Rt.A == R
 
         offsets = R.offsets
-        assert len(offsets) == len(isets)
 
         for first, last in zip(R.offsets[:-1], R.offsets[1:]):
             if last - first == 1:

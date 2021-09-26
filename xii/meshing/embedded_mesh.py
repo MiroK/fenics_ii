@@ -212,6 +212,7 @@ class EmbeddedMesh(df.Mesh):
             
         for tag in tags:
             entities, = np.where(entity_f.array() == tag)  # parent
+
             # We encode them as vertices in the child
             as_vertices = [set(ivertex_mapping.get(v, -1) for v in e2v_parent(e)) for e in entities]
             # The above was an attempt. Continue with those that could be embeded
@@ -219,13 +220,13 @@ class EmbeddedMesh(df.Mesh):
                 if any(v == -1 for v in as_vertex): continue
 
                 parent_cells = [c for c in e2c(e) if c in icell_mapping]
-
                 found = None
                 while not found and parent_cells:
                     child_entities = c2e(icell_mapping[parent_cells.pop()])
                     matches = [e_ for e_ in child_entities if set(e2v(e_)) == as_vertex]
 
                     found = bool(matches)
+
                     e_, = matches
                     if found:
                         marker_f[int(e_)] = entity_f[e]
