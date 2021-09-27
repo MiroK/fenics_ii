@@ -15,7 +15,6 @@ def pc_mat(pc, block):
     if isinstance(block, LU):
         pc.setType('lu')
         pc.setFactorPivot(1E-18)
-        pc.setFactorSolverType('mumps')        
         return block.A
             
     if isinstance(block, SUPERLU_LU):
