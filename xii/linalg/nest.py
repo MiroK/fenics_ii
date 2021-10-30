@@ -98,7 +98,7 @@ def pc_nest(pc, block_pc, Amat):
     assert pc.getType() == 'fieldsplit'
 
     pc_ksps = pc.getFieldSplitSubKSP()
-    
+
     nblocks, = set(block_pc.blocks.shape)
 
     # For now we can only do pure block_mats

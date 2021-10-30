@@ -67,6 +67,23 @@ def identity_matrix(V):
     return mat
 
 
+def block_reshape(AA, offsets):
+    '''Group rows/cols according to offsets'''
+    nblocks = len(offsets)
+    mat = block_mat([[0]*nblocks for _ in range(nblocks)])
+
+    offsets = [0] + list(offsets)
+    AA = AA.blocks
+    for row, (ri, rj) in enumerate(zip(offsets[:-1], offsets[1:])):
+        for col, (ci, cj) in enumerate(zip(offsets[:-1], offsets[1:])):
+            if rj-ri == 1 and cj -ci == 1:
+                mat[row][col] = AA[ri, ci]
+            else:
+                mat[row][col] = block_mat(AA[ri:rj, ci:cj])
+
+    return mat
+
+
 def zero_matrix(nrows, ncols):
     '''Zero matrix'''
     mat = csr_matrix((np.zeros(nrows, dtype=float),  # Data
