@@ -246,9 +246,9 @@ def render_avg_surface(Pi):
     surface = []
     
     dm = Pi_V.dofmap()
-    dofs_x = Pi_V.tabulate_dof_coordinates().reshape((Pi_V.dim(), -1))
+    dofs_x = np.array(Pi_V.tabulate_dof_coordinates()).reshape((Pi_V.dim(), -1))
     for cell in df.cells(line_mesh):
-        v0, v1 = cell.get_vertex_coordinates().reshape((2, 3))
+        v0, v1 = np.array(cell.get_vertex_coordinates()).reshape((2, 3))
         n = v1 - v0
 
         for dof_x in dofs_x[dm.cell_dofs(cell.index())]:
