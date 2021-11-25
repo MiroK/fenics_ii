@@ -1,7 +1,7 @@
 import xii
 
 from functools import reduce
-from itertools import chain, dropwhile
+from itertools import chain, dropwhile, repeat
 from .make_mesh_cpp import make_mesh
 from .branching import color_branches, walk_cells, is_loop
 from collections import defaultdict
@@ -496,15 +496,17 @@ class TangentCurve(df.Function):
 
         X = mesh.coordinates()
         c2v = mesh.topology()(1, 0)
+        _, v2c = mesh.init(0, 1), mesh.topology()(0, 1)
         
-        values = []
-
         cell_f, bcolors, lcolors = color_branches(mesh)
-        colors = bcolors + lcolors
+        loop_flags = chain(repeat(False, len(bcolors)), repeat(True, len(lcolors)))
+        colors = chain(bcolors, lcolors)
+
+        cell_f = cell_f.array()
 
         values = np.zeros(V.dim()).reshape((-1, gdim))
-        for color in colors:
-            for cell, orient in walk_cells(cell_f, tag=color):
+        for color, lf in zip(colors, loop_flags):
+            for cell, orient in walk_cells(cell_f, tag=color, c2v=c2v, v2c=v2c, is_loop=lf):
                 v0, v1 = X[c2v(cell) if orient else c2v(cell)[::-1]]
                 t = (v1 - v0)/np.linalg.norm(v1-v0)
                 values[cell][:] = t
