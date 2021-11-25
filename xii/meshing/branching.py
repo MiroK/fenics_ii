@@ -78,9 +78,9 @@ def color_branches(mesh):
 
 def walk_vertices(arg, tag=None):
     '''Walk vertices in a linked way'''
-    assert isinstance(arg, df.Mesh) or isinstance(arg, df.MeshFunctionSizet)
+    assert isinstance(arg, df.Mesh) or isinstance(arg, df.cpp.mesh.MeshFunctionSizet)
     # Branch
-    if isinstance(arg, df.MeshFunctionSizet):
+    if isinstance(arg, df.cpp.mesh.MeshFunctionSizet):
         mesh = arg.mesh()
         assert arg.dim() == 1
     else:
@@ -107,9 +107,9 @@ def walk_cells(arg, tag=None):
     '''Walk loop mesh of tagged branch of mesh'''
     # We return cell index together with orientation, i.e. True if link
     # is v0, v1 False if link is v1, v0
-    assert isinstance(arg, df.Mesh) or isinstance(arg, df.MeshFunctionSizet)
+    assert isinstance(arg, df.Mesh) or isinstance(arg, df.cpp.mesh.MeshFunctionSizet)
     # Branch
-    if isinstance(arg, df.MeshFunctionSizet):
+    if isinstance(arg, df.cpp.mesh.MeshFunctionSizet):
         mesh = arg.mesh()
         assert arg.dim() == 1
     else:
