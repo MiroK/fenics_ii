@@ -296,7 +296,11 @@ def _CenterVector(mesh, Center):
     # Cell-cell distance for the interior facet is defined as a distance 
     # of circumcenters. For exterior it is facet centor to circumcenter
     # For facet centers we use DLT projection
-    L = df.VectorFunctionSpace(mesh, 'Discontinuous Lagrange Trace', 0)
+    if mesh.topology().dim() > 1:
+        L = df.VectorFunctionSpace(mesh, 'Discontinuous Lagrange Trace', 0)
+    else:
+        L = df.VectorFunctionSpace(mesh, 'CG', 1)
+        
     fK = df.FacetArea(mesh)
     l = df.TestFunction(L)
 
@@ -316,9 +320,14 @@ def _CenterVector(mesh, Center):
     return cc
 
 
+
 def _CenterDistance(mesh, Center):
     '''Magnitude of Centervector as a DLT function'''
-    L = df.FunctionSpace(mesh, 'Discontinuous Lagrange Trace', 0)
+    if mesh.topology().dim() > 1:
+        L = df.FunctionSpace(mesh, 'Discontinuous Lagrange Trace', 0)
+    else:
+        L = df.FunctionSpace(mesh, 'CG', 1)
+        
     fK = df.FacetArea(mesh)
     l = df.TestFunction(L)
     

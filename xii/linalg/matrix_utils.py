@@ -98,6 +98,24 @@ def zero_matrix(nrows, ncols):
     return PETScMatrix(A)
 
 
+def row_matrix(rows):
+    '''Short and fat matrix'''
+    ncols, = set(row.size() for row in rows)
+    nrows = len(rows)
+
+    indptr = np.cumsum(np.array([0]+[ncols]*nrows))
+    indices = np.tile(np.arange(ncols), nrows)
+    data = np.hstack([row.get_local() for row in rows])
+
+    mat = csr_matrix((data, indices, indptr), shape=(nrows, ncols))
+    
+    A = PETSc.Mat().createAIJ(size=[[nrows, nrows], [ncols, ncols]],
+                              csr=(mat.indptr, mat.indices, mat.data))
+    A.assemble()
+
+    return PETScMatrix(A)
+
+
 @contextmanager
 def petsc_serial_matrix(test_space, trial_space, nnz=None):
     '''
