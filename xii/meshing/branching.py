@@ -84,7 +84,7 @@ def color_branches(mesh):
     return cell_f, branch_colors, loop_colors
 
 
-def walk_vertices(arg, tag=None):
+def walk_vertices(arg, tag=None, is_loop=False):
     '''Walk vertices in a linked way'''
     assert isinstance(arg, df.Mesh) or isinstance(arg, df.cpp.mesh.MeshFunctionSizet)
     # Branch
@@ -99,8 +99,9 @@ def walk_vertices(arg, tag=None):
     assert mesh.num_cells() > 1
     
     c2v = mesh.topology()(1, 0)
+    _, v2c = mesh.init(0, 1), mesh.topology()(0, 1)
 
-    cells = walk_cells(arg, tag=tag)
+    cells = walk_cells(arg.array(), tag=tag, c2v=c2v, v2c=v2c, is_loop=is_loop)
     cell, orient = next(cells)
 
     vertices = c2v(cell) if orient else reversed(c2v(cell))
@@ -117,6 +118,7 @@ def walk_cells(cell_f, tag, c2v, v2c, is_loop):
     # Localize to tags
     c2v = {c: c2v(c) for c in cell_indices}
     v2c = imap(c2v)
+
     # We return cell index together with orientation, i.e. True if link
     # is v0, v1 False if link is v1, v0
     def next_vertex(c, v, c2v=c2v):

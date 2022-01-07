@@ -143,7 +143,7 @@ def nest(tensor, elim_zeros_tol=1E-15, W=None):
             for j in range(ncols):
 
                 if isinstance(tensor[i][j], (int, float)):
-                    assert i != j
+                    # assert i != j, (i, j, tensor[i][j])
                     block = None
                 else:
                     # Optimize for zeros and insert None                       

@@ -109,19 +109,22 @@ def average_matrix(V, TV, shape):
                     c = tree.compute_first_entity_collision(Point(*ip))
                     if c >= limit: continue
 
-                    Vcell = Cell(mesh, c)
-                    vertex_coordinates = Vcell.get_vertex_coordinates()
-                    cell_orientation = Vcell.orientation()
-                    basis_values[:] = Vel.evaluate_basis_all(ip, vertex_coordinates, cell_orientation)
+                    cs = tree.compute_entity_collisions(Point(*ip))
+                    # assert False
+                    for c in cs[:1]:
+                        Vcell = Cell(mesh, c)
+                        vertex_coordinates = Vcell.get_vertex_coordinates()
+                        cell_orientation = Vcell.orientation()
+                        basis_values[:] = Vel.evaluate_basis_all(ip, vertex_coordinates, cell_orientation)
 
-                    cols_ip = V_dm.cell_dofs(c)
-                    values_ip = basis_values*wq[index]
-                    # Add
-                    for col, value in zip(cols_ip, values_ip.reshape((-1, value_size))):
-                        if col in data:
-                            data[col] += value/curve_measure
-                        else:
-                            data[col] = value/curve_measure
+                        cols_ip = V_dm.cell_dofs(c)
+                        values_ip = basis_values*wq[index]
+                        # Add
+                        for col, value in zip(cols_ip, values_ip.reshape((-1, value_size))):
+                            if col in data:
+                                data[col] += value/curve_measure
+                            else:
+                                data[col] = value/curve_measure
                             
                 # The thing now that with data we can assign to several
                 # rows of the matrix

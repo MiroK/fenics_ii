@@ -36,7 +36,7 @@ def worker(f, n, radius=0.3, degree=8):
 
     cylinder = Circle(radius, degree)
 
-    Pi = average_matrix(V, TV, cylinder)
+    Pi = PETScMatrix(average_matrix(V, TV, cylinder))
     # print('\t', Pi.norm('linf'), max(len(Pi.getrow(i)[0]) for i in range(TV.dim())))
     
     Pi_f = Function(TV)
@@ -44,7 +44,7 @@ def worker(f, n, radius=0.3, degree=8):
 
     return Pi_f
 
-radius = 0.2
+radius = 0.1
 
 fs = (Expression('x[2]', degree=1),
       Expression('x[0]*x[0] + x[1]*x[1]', degree=2),
@@ -63,6 +63,51 @@ def test_avg(f, Pi_f0, radius=radius):
     e0, n0 = None, None
     for n in (4, 8, 16, 32):
         Pi_f = worker(f, n, radius=radius)
+        assert Pi_f.vector().norm('l2') > 0
+        e = sqrt(abs(assemble(inner(Pi_f0 - Pi_f, Pi_f0 - Pi_f)*dx)))
+
+        if e0 is not None:
+            rate = ln(e/e0)/ln(float(n0)/n)
+        else:
+            rate = np.inf
+
+        assert rate == np.inf or abs(e) < 1E-10 or rate > 1
+        
+        n0, e0 = n, e
+
+# --------------------------------------------------------------------
+
+radius = 0.1
+
+def worker_(f, n, radius=radius, degree=8):
+    '''Check integrals due to averaging operator'''
+    from weak_bcs.paper_daq.utils import circle_3d1d_conform
+    
+    mesh, entity_fs = circle_3d1d_conform(n=n, rad=radius)
+
+    line_mesh = EmbeddedMesh(entity_fs[1], 1)
+
+    V = FunctionSpace(mesh, 'CG', 1)
+    TV = FunctionSpace(line_mesh, 'DG', 1)
+
+    f = interpolate(f, V)
+
+    cylinder = Circle(radius, degree)
+
+    Pi = PETScMatrix(average_matrix(V, TV, cylinder))
+    # print('\t', Pi.norm('linf'), max(len(Pi.getrow(i)[0]) for i in range(TV.dim())))
+    
+    Pi_f = Function(TV)
+    Pi.mult(f.vector(), Pi_f.vector())
+
+    return Pi_f
+
+
+@pytest.mark.parametrize(('f', 'Pi_f0'), tuple(zip(fs, Pi_fs)))
+def test_avg_(f, Pi_f0, radius=radius):
+    e0, n0 = None, None
+    for n in (4, 8, 16, 32):
+        Pi_f = worker_(f, n, radius=radius)
         assert Pi_f.vector().norm('l2') > 0
         e = sqrt(abs(assemble(inner(Pi_f0 - Pi_f, Pi_f0 - Pi_f)*dx)))
 
