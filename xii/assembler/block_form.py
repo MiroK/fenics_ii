@@ -143,7 +143,10 @@ def block_form(W, arity):
     assert isinstance(W, (list, tuple))
     
     if arity == 1:
-        return _block_form([inner(null(V), TestFunction(V))*dx for V in W], W)
+        is_trace_elm = lambda e: e.family() == 'HDiv Trace'
+        return _block_form([inner(null(V), TestFunction(V))*dx
+                            if not is_trace_elm(V.ufl_element())
+                            else (inner(null(V), TestFunction(V))*ds + inner(null(V), avg(TestFunction(V)))*dS) for V in W], W)
     return _block_form([[0]*len(W) for _ in range(len(W))], W)
 
 

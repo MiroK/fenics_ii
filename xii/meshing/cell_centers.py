@@ -299,15 +299,12 @@ def _CenterVector(mesh, Center):
     if mesh.topology().dim() > 1:
         L = df.VectorFunctionSpace(mesh, 'Discontinuous Lagrange Trace', 0)
     else:
-        L = df.VectorFunctionSpace(mesh, 'CG', 1)
+        L = df.VectorFunctionSpace(mesh, 'DG', 0)
         
     fK = df.FacetArea(mesh)
     l = df.TestFunction(L)
 
-    x = df.SpatialCoordinate(mesh)
-    facet_centers = df.Function(L)
-    df.assemble((1/fK)*df.inner(x, l)*df.ds, tensor=facet_centers.vector())
-
+    facet_centers = FacetCentroid(mesh)
     cell_centers = Center(mesh)
     
     cc = df.Function(L)
@@ -326,7 +323,7 @@ def _CenterDistance(mesh, Center):
     if mesh.topology().dim() > 1:
         L = df.FunctionSpace(mesh, 'Discontinuous Lagrange Trace', 0)
     else:
-        L = df.FunctionSpace(mesh, 'CG', 1)
+        L = df.FunctionSpace(mesh, 'DG', 0)
         
     fK = df.FacetArea(mesh)
     l = df.TestFunction(L)
@@ -341,6 +338,75 @@ def _CenterDistance(mesh, Center):
     return distance    
 
 
+def _CenterDistance2(mesh, Center):
+    '''Sum Magnitude of CenterVectors as a DLT function'''
+    if mesh.topology().dim() > 1:
+        L = df.FunctionSpace(mesh, 'Discontinuous Lagrange Trace', 0)
+    else:
+        L = df.FunctionSpace(mesh, 'DG', 0)
+        
+    fK = df.FacetArea(mesh)
+    l = df.TestFunction(L)
+    
+    cc = Center(mesh)
+    cc0, cc1 = df.split(cc)
+
+    fc = FacetCentroid(mesh)
+    
+    distance = df.Function(L)
+    # We use P0 projection
+    df.assemble(1/fK('+')*df.inner(df.sqrt(df.dot(cc0('+')-fc('+'), cc0('+')-fc('+'))), l('+'))*df.dS +
+                1/fK('+')*df.inner(df.sqrt(df.dot(cc1('-')-fc('-'), cc1('-')-fc('-'))), l('+'))*df.dS
+                # NOTE: on the boundary the cc1 is 0
+                + df.Constant(0.5)*(1/fK*df.inner(df.sqrt(df.dot(cc0-fc, cc0-fc)), l)*df.ds+
+                                    1/fK*df.inner(df.sqrt(df.dot(cc1-fc, cc1-fc)), l)*df.ds),
+                tensor=distance.vector())
+
+    return distance
+
+# -----------------------------------------------------------------------------
+
+def _CenterVectors(mesh, Center):
+    '''DLT ...'''
+    # Cell-cell distance for the interior facet is defined as a distance 
+    # of circumcenters. For exterior it is facet centor to circumcenter
+    # For facet centers we use DLT projection
+    cell = mesh.ufl_cell()
+    if mesh.topology().dim() > 1:
+        elm = df.VectorElement('HDiv Trace', cell, 0)
+    else:
+        elm = df.VectorElement('Lagrange', cell, 1)
+    LL = df.FunctionSpace(mesh, df.MixedElement([elm, elm]))
+    L = LL.sub(0).collapse()
+                          
+    fK = df.FacetArea(mesh)
+    l = df.TestFunction(L)
+
+    cell_centers = Center(mesh)
+
+    plus = df.Function(L)
+    # Finally we assemble magniture of the vector that is determined by the
+    # two centers
+    df.assemble((1/fK('+'))*df.inner(cell_centers('+'), l('+'))*df.dS +
+                (1/fK)*df.inner(cell_centers, l)*df.ds,
+                tensor=plus.vector())
+    assert plus.vector().norm('linf') > 0
+    
+    minus = df.Function(L)    
+    df.assemble((1/fK('-'))*df.inner(cell_centers('-'), l('-'))*df.dS +
+                (1/fK)*df.inner(cell_centers, l)*df.ds,
+                tensor=minus.vector())
+    assert minus.vector().norm('linf') > 0
+    
+    cc = df.Function(LL)
+    df.assign(cc, [plus, minus])
+
+    assert cc.vector().norm('linf') > 0    
+
+    return cc
+
+# --------------------------------------------------------------------
+
 def CircumDistance(mesh):
     '''Magnitude of Circumvector as a DLT function'''
     return _CenterDistance(mesh, Center=CircumVector)
@@ -349,6 +415,17 @@ def CircumDistance(mesh):
 def CircumVector(mesh):
     '''DLT vector pointing on each facet from one circumcenter to the other'''
     return _CenterVector(mesh, Center=CellCircumcenter)
+
+# --------------------------------------------------------------------
+
+def CircumDistance2(mesh):
+    '''Magnitude of Circumvector as a DLT function'''
+    return _CenterDistance2(mesh, Center=CircumVector2)
+
+                           
+def CircumVector2(mesh):
+    '''DLT vector pointing on each facet from one circumcenter to the other'''
+    return _CenterVectors(mesh, Center=CellCircumcenter)
 
 # --------------------------------------------------------------------
 
@@ -374,3 +451,118 @@ def CentroidDistance(mesh):
 def CentroidVector(mesh):
     '''DLT vector pointing on each facet from one centroid to the other'''
     return _CenterVector(mesh, Center=CellCentroid)
+
+
+def CentroidDistance2(mesh):
+    '''Magnitude of CentroidVector as a DLT function'''
+    return _CenterDistance(mesh, Center=CentroidVector2)
+
+                           
+def CentroidVector2(mesh):
+    '''DLT vector pointing on each facet from one centroid to the other'''
+    return _CenterVectors(mesh, Center=CellCentroid)
+
+# --------------------------------------------------------------------
+
+def FacetCentroid(mesh):
+    '''[DLT]^d function'''
+    xs = df.SpatialCoordinate(mesh)
+
+    V = df.FunctionSpace(mesh, 'Discontinuous Lagrange Trace', 0)
+    v = df.TestFunction(V)
+    hF = df.FacetArea(mesh)
+
+    xi_foos = []
+    for xi in xs:
+        form = (1/df.avg(hF))*df.inner(xi, df.avg(v))*df.dS + (1/hF)*df.inner(xi, v)*df.ds
+        xi = df.assemble(form)
+
+        xi_foo = df.Function(V)
+        xi_foo.vector()[:] = xi
+        xi_foos.append(xi_foo)
+
+    V = df.VectorFunctionSpace(mesh, 'Discontinuous Lagrange Trace', 0)
+    x = df.Function(V)
+    for i, xi in enumerate(xi_foos):
+        df.assign(x.sub(i), xi)
+
+    return x
+
+
+def is_delaunay_interior(mesh, _tol=1E-10):
+    '''We are always parallel with facet normal vector'''
+    n = df.FacetNormal(mesh)
+    nu = CircumVector(mesh)   # Is this what we want?
+
+    V = df.FunctionSpace(mesh, 'Discontinuous Lagrange Trace', 0)
+    q = df.TestFunction(V)
+
+    foo = df.assemble(df.inner(q('+'), df.sqrt(df.dot(nu('+'), nu('+'))))*df.dS
+                      +df.inner(q, df.sqrt(df.dot(nu, nu)))*df.ds)
+    print(np.where(np.abs(foo.get_local()) < 1E-10), V.dim())
+    
+    hF = df.FacetArea(mesh)
+
+    nu = nu/df.sqrt(df.dot(nu, nu))
+    # Compute the dot product between vector connecting points and the facet normal
+    L = (1/hF('+'))*df.inner(df.dot(n('+'), nu('+')), q('+'))*df.dS
+    # We are interested in this only on the interior facets
+    Lmask = (1/hF('+'))*df.inner(df.dot(n('+'), n('+')), q('+'))*df.dS
+    
+    f = df.Function(V)
+    df.assemble(L, f.vector())
+
+    g = f.copy()
+    df.assemble(Lmask, g.vector())
+    mask = np.abs(g.vector().get_local() > _tol)
+
+    assert np.linalg.norm(f.vector().get_local()[~mask], 2) < _tol
+    # Ideally these guys will now be close to 1 in abslolute value
+    coefs = f.vector().get_local()[mask]
+    coefs = np.abs(coefs)
+
+    return np.linalg.norm(np.abs(coefs-1), np.inf)
+    
+    
+def is_delaunay_exterior(mesh, _tol=1E-10):
+    '''We are always parallel with facet normal vector'''
+    n = df.FacetNormal(mesh)
+    nu = CircumVector(mesh)   # Is this what we want?
+    nu = nu/df.sqrt(df.dot(nu, nu))
+
+    V = df.FunctionSpace(mesh, 'Discontinuous Lagrange Trace', 0)
+    q = df.TestFunction(V)
+
+    hF = df.FacetArea(mesh)
+    # Compute the dot product between vector connecting points and the facet normal
+    L = (1/hF)*df.inner(df.dot(n, nu), q)*df.ds
+    # We are interested in this only on the interior facets
+    Lmask = (1/hF)*df.inner(df.dot(n, n), q)*df.ds
+    
+    f = df.Function(V)
+    df.assemble(L, f.vector())
+
+    g = f.copy()
+    df.assemble(Lmask, g.vector())
+    mask = np.abs(g.vector().get_local()) > _tol
+
+    assert np.linalg.norm(f.vector().get_local()[~mask], 2) < _tol
+    # Ideally these guys will now be close to 1 in abslolute value
+    coefs = f.vector().get_local()[mask]
+    coefs = np.abs(coefs)
+
+    return np.linalg.norm(np.abs(coefs-1), np.inf)
+
+
+def is_delaunay(mesh, _tol=1E-10):
+    '''Look at the property separately on interior and exterior'''
+    return (is_delaunay_interior(mesh, _tol),
+            is_delaunay_exterior(mesh, _tol))
+
+# --------------------------------------------------------------------
+
+if __name__ == '__main__':
+    mesh = df.UnitSquareMesh(1, 1)
+    
+    c = FacetCentroid(mesh)
+    print(c.vector().get_local().reshape((-1, 2)))
