@@ -28,7 +28,7 @@ def extension_cell(o):
         return ufl.Cell('triangle', gdim)
     # Line in 2d extends to line in 3d
     else:
-        return ufl.Cell('interval', gdim)
+        return ufl.Cell('triangle', gdim)
 
     
 def extension_element(elm):

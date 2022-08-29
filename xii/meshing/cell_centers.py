@@ -468,7 +468,10 @@ def FacetCentroid(mesh):
     '''[DLT]^d function'''
     xs = df.SpatialCoordinate(mesh)
 
-    V = df.FunctionSpace(mesh, 'Discontinuous Lagrange Trace', 0)
+    if mesh.topology().dim() == 1:
+        V = df.FunctionSpace(mesh, 'Lagrange', 1)
+    else:
+        V = df.FunctionSpace(mesh, 'Discontinuous Lagrange Trace', 0)
     v = df.TestFunction(V)
     hF = df.FacetArea(mesh)
 
@@ -481,7 +484,11 @@ def FacetCentroid(mesh):
         xi_foo.vector()[:] = xi
         xi_foos.append(xi_foo)
 
-    V = df.VectorFunctionSpace(mesh, 'Discontinuous Lagrange Trace', 0)
+    if mesh.topology().dim() == 1:
+        V = df.VectorFunctionSpace(mesh, 'Lagrange', 1)
+    else:
+        V = df.VectorFunctionSpace(mesh, 'Discontinuous Lagrange Trace', 0)
+        
     x = df.Function(V)
     for i, xi in enumerate(xi_foos):
         df.assign(x.sub(i), xi)

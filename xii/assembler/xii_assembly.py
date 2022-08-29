@@ -22,7 +22,7 @@ def assemble(form):
     modules = (xii.assembler.trace_assembly,        # To Codimension 1
                xii.assembler.average_assembly,      # To Codimension 2 via surface of bding curve
                # xii.assembler.extension_assembly,    # From dim 1 to 2
-               # xii.assembler.restriction_assembly,
+               xii.assembler.restriction_assembly,
                xii.assembler.injection_assembly)  # Between Codimension 0
 
     names = ('trace', 'average', 'extension', 'restriction', 'injection')
