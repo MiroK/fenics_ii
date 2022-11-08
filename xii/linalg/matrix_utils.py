@@ -61,6 +61,9 @@ def identity_matrix(V):
     if isinstance(V, FunctionSpace):
         return diagonal_matrix(V.dim(), 1)
 
+    if isinstance(V, int):
+        return diagonal_matrix(V, 1)
+
     mat = block_mat([[0]*len(V) for _ in range(len(V))])
     for i in range(len(mat)):
         mat[i][i] = identity_matrix(V[i])

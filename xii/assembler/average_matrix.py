@@ -3,8 +3,10 @@ from xii.assembler.average_form import average_cell, average_space
 
 from numpy.polynomial.legendre import leggauss
 from dolfin import PETScMatrix, cells, Point, Cell, Function
+import scipy.sparse as sp
 from petsc4py import PETSc
 import numpy as np
+import tqdm
 
 
 def memoize_average(average_mat):
@@ -69,6 +71,9 @@ def average_matrix(V, TV, shape):
     # have to evaluate at same x number of component times.
     value_size = TV.ufl_element().value_size()
 
+    if value_size == 1:
+        return scalar_average_matrix(V, TV, shape)
+    
     mesh = V.mesh()
     # Eval at points will require serch
     tree = mesh.bounding_box_tree()
@@ -87,7 +92,7 @@ def average_matrix(V, TV, shape):
     basis_values = np.zeros(V.element().space_dimension()*value_size)
     with petsc_serial_matrix(TV, V) as mat:
 
-        for line_cell in cells(line_mesh):
+        for line_cell in tqdm.tqdm(cells(line_mesh), desc=f'Averaging over {line_mesh.num_cells()} cells'):
             # Get the tangent (normal of the plane which cuts the virtual
             # surface to yield the bdry curve
             v0, v1 = mesh_x[line_cell.entities(0)]
@@ -107,11 +112,16 @@ def average_matrix(V, TV, shape):
                 data = {}
                 for index, ip in enumerate(integration_points):
                     c = tree.compute_first_entity_collision(Point(*ip))
-                    if c >= limit: continue
+                    if c >= limit:
+                        c = None
+                        continue
 
-                    cs = tree.compute_entity_collisions(Point(*ip))
+                    if c is None:
+                        cs = tree.compute_entity_collisions(Point(*ip))[:1]
+                    else:
+                        cs = (c, )
                     # assert False
-                    for c in cs[:1]:
+                    for c in cs:
                         Vcell = Cell(mesh, c)
                         vertex_coordinates = Vcell.get_vertex_coordinates()
                         cell_orientation = Vcell.orientation()
@@ -135,6 +145,103 @@ def average_matrix(V, TV, shape):
                     mat.setValues([row], column_indices, column_values, PETSc.InsertMode.INSERT_VALUES)
             # On to next avg point
         # On to next cell
+    return mat
+
+
+def scalar_average_matrix(V, TV, shape):
+    '''
+    Averaging matrix for reduction of g in V to TV by integration over shape.
+    '''
+    # We build a matrix representation of u in V -> Pi(u) in TV where
+    #
+    # Pi(u)(s) = |L(s)|^-1*\int_{L(s)}u(t) dx(s)
+    #
+    # Here L is the shape over which u is integrated for reduction.
+    # Its measure is |L(s)|.
+    
+    mesh_x = TV.mesh().coordinates()
+    # The idea for point evaluation/computing dofs of TV is to minimize
+    # the number of evaluation. I mean a vector dof if done naively would
+    # have to evaluate at same x number of component times.
+    value_size = TV.ufl_element().value_size()
+
+    mesh = V.mesh()
+    # Eval at points will require serch
+    tree = mesh.bounding_box_tree()
+    limit = mesh.num_cells()
+
+    TV_coordinates = TV.tabulate_dof_coordinates().reshape((TV.dim(), -1))
+    line_mesh = TV.mesh()
+    
+    TV_dm = TV.dofmap()
+    V_dm = V.dofmap()
+
+    Vel = V.element()               
+    basis_values = np.zeros(V.element().space_dimension()*value_size)
+
+
+    II, JJ, VALS = [], [], []
+    nnz = 0
+    for line_cell in tqdm.tqdm(cells(line_mesh), desc=f'Averaging over {line_mesh.num_cells()} cells'):
+        # Get the tangent (normal of the plane which cuts the virtual
+        # surface to yield the bdry curve
+        v0, v1 = mesh_x[line_cell.entities(0)]
+        n = v0 - v1
+
+        # The idea is now to minimize the point evaluation
+        scalar_dofs = TV_dm.cell_dofs(line_cell.index())
+        scalar_dofs_x = TV_coordinates[scalar_dofs]
+        for scalar_row, avg_point in zip(scalar_dofs, scalar_dofs_x):
+            # Avg point here has the role of 'height' coordinate
+            quadrature = shape.quadrature(avg_point, n)
+            integration_points = quadrature.points
+            wq = quadrature.weights
+
+            curve_measure = sum(wq)
+
+            data = {}
+            for index, ip in enumerate(integration_points):
+                c = tree.compute_first_entity_collision(Point(*ip))
+                if c >= limit:
+                    c = None
+                    continue
+
+                if c is None:
+                    cs = tree.compute_entity_collisions(Point(*ip))[:1]
+                else:
+                    cs = (c, )
+                c = cs[0]
+                Vcell = Cell(mesh, c)
+                vertex_coordinates = Vcell.get_vertex_coordinates()
+                cell_orientation = Vcell.orientation()
+                basis_values[:] = Vel.evaluate_basis_all(ip, vertex_coordinates, cell_orientation)
+
+                cols_ip = V_dm.cell_dofs(c)
+                values_ip = basis_values*wq[index]
+                # Add
+                for col, value in zip(cols_ip, values_ip):
+                    if col in data:
+                        data[col] += value/curve_measure
+                    else:
+                        data[col] = value/curve_measure
+
+            column_indices, column_values = zip(*data.items())
+            rows = [scalar_row]*len(column_indices)
+            nnz = max(nnz, len(column_indices))
+
+            II.extend(rows)
+            JJ.extend(column_indices)
+            VALS.extend(column_values)
+        # On to next avg point
+    # On to next cell
+
+    csr = sp.csr_matrix((np.array(VALS), (np.array(II, dtype='int32'), np.array(JJ, dtype='int32'))),
+                        shape=(TV.dim(), V.dim()))
+
+    mat = PETSc.Mat().createAIJ(comm=PETSc.COMM_WORLD,
+                                size=csr.shape,
+                                csr=(csr.indptr, csr.indices, csr.data))
+    
     return mat
 
 
@@ -183,7 +290,7 @@ def trace_3d1d_matrix(V, TV, reduced_mesh):
     basis_values = np.zeros(V.element().space_dimension()*value_size)
     with petsc_serial_matrix(TV, V) as mat:
 
-        for line_cell in cells(line_mesh):
+        for line_cell in tqdm.tqdm(cells(line_mesh), desc=f'Averaging over {line_mesh.num_cells()} cells'):
             # Get the tangent => orthogonal tangent vectors
             # The idea is now to minimize the point evaluation
             scalar_dofs = TV_dm.cell_dofs(line_cell.index())
