@@ -255,6 +255,8 @@ def is_increasing(seq):
 class SubSelectOperator(block_base):
     '''R((0, 1))*[u0, u1, u2] = [u0, u1]'''
     def __init__(self, indices, W):
+        if isinstance(indices, int):
+            indices = (indices, )
         self.indices = indices
         self.W = W
 

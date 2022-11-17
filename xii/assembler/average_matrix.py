@@ -225,6 +225,9 @@ def scalar_average_matrix(V, TV, shape):
                     else:
                         data[col] = value/curve_measure
 
+            # All points outside it seems
+            if not data: continue
+            
             column_indices, column_values = zip(*data.items())
             rows = [scalar_row]*len(column_indices)
             nnz = max(nnz, len(column_indices))
