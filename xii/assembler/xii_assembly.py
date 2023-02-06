@@ -3,6 +3,7 @@ import xii.assembler.average_assembly
 import xii.assembler.restriction_assembly
 import xii.assembler.extension_assembly
 import xii.assembler.injection_assembly
+import xii.assembler.point_trace_assembly
 
 from xii.linalg.matrix_utils import is_number
 from xii.assembler.ufl_utils import form_arity
@@ -22,6 +23,7 @@ def assemble(form):
     modules = (xii.assembler.trace_assembly,        # To Codimension 1
                xii.assembler.average_assembly,      # To Codimension 2 via surface of bding curve
                # xii.assembler.extension_assembly,    # From dim 1 to 2
+               xii.assembler.point_trace_assembly, 
                xii.assembler.restriction_assembly,
                xii.assembler.injection_assembly)  # Between Codimension 0
 

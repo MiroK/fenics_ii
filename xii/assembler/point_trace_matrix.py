@@ -45,7 +45,7 @@ def point_trace_matrix(V, TV, x0):
     value_size = V.ufl_element().value_size()
     basis_values = np.zeros(V.element().space_dimension()*value_size)
 
-    Vel.evaluate_basis_all(basis_values, x0, vertex_coordinates, cell_orientation)
+    basis_values[:] = Vel.evaluate_basis_all(x0, vertex_coordinates, cell_orientation)
 
     with petsc_serial_matrix(TV, V) as mat:
 
@@ -59,7 +59,6 @@ def point_trace_matrix(V, TV, x0):
         for row in map(int, TV.dofmap().cell_dofs(cell)):  # R^n components
             sub_dofs = component_dofs(row)
             sub_dofs_local = [all_dofs.index(dof) for dof in sub_dofs]
-            print(row, sub_dofs, sub_dofs_local, basis_values[sub_dofs_local])
             
             mat.setValues([row], sub_dofs, basis_values[sub_dofs_local],
                           PETSc.InsertMode.INSERT_VALUES)
