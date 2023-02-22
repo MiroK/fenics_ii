@@ -9,6 +9,7 @@
 # Solve with RT_0-P_0-P_0 or RT_1-P_1-P_1 to showcase higher order
 from block.algebraic.petsc import LU
 from hsmg.hseig import HsEig
+from hsmg.hs_mg import HsNormAMG
 from dolfin import *
 from xii import *
 import ulfy 
@@ -32,16 +33,21 @@ def setup_preconditioner(W, facet_f, mms, flux_deg, hs_block):
     BV = assemble(aV)
     # H^s norm
     bmesh = Q.mesh()
-    facet_f = MeshFunction('size_t', bmesh, bmesh.topology().dim()-1, 0)    
-    CompiledSubDomain('near(x[0], 1)').mark(facet_f, 1)
+    facet_f = MeshFunction('size_t', bmesh, bmesh.topology().dim()-1, 0)
+    bdry = CompiledSubDomain('near(x[0], 1)')
+    bdry.mark(facet_f, 1)
     Q_bcs = [(facet_f, 1)]
 
     if hs_block == 'eig':
         BQ = HsEig(Q, s=0.5, bcs=Q_bcs)
+        BQ = BQ**-1
     else:
-        raise NotImplementedError
+        from pyamg.aggregation import smoothed_aggregation_solver
 
-    return block_diag_mat([LU(BS), LU(BV), BQ**-1])
+        BQ = HsNormAMG(Q, s=0.5, bdry=bdry,
+                       mg_params={'pyamg_solver': smoothed_aggregation_solver})        
+
+    return block_diag_mat([LU(BS), LU(BV), BQ])
 
 # ------------------------------------------------------------------------------
 

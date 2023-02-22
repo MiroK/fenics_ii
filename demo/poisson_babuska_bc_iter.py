@@ -6,6 +6,7 @@
 # New thing here will be the bcs and also broken norm computations of
 # the multiplier error. NOTE: this is `poisson_babuska_bc.py --bcs mixed` option.
 from block.algebraic.petsc import LU
+from hsmg.hs_mg import HsNormAMG
 from hsmg.hseig import HsEig
 from dolfin import *
 from xii import *
@@ -45,20 +46,26 @@ def setup_preconditioner(W, facet_f, mms, bc_setup, hs_block):
     bmesh = Q.mesh()
     facet_f = MeshFunction('size_t', bmesh, bmesh.topology().dim()-1, 0)
     if bc_setup == 'dir_neu':
-        CompiledSubDomain('near(x[0], 0)').mark(facet_f, 1)
+        bdry = CompiledSubDomain('near(x[0], 0)')
+        bdry.mark(facet_f, 1)
         Q_bcs = [(facet_f, 1)]
     elif bc_setup == 'dir':  # Both endpoints
-        DomainBoundary().mark(facet_f, 1)
+        bdry = DomainBoundary()
+        bdry.mark(facet_f, 1)
         Q_bcs = [(facet_f, 1)]
     else:
+        bdry = None
         Q_bcs = None
 
     if hs_block == 'eig':
-        BQ = HsEig(Q, s=-0.5, bcs=Q_bcs)
+        BQ = HsEig(Q, s=-0.5, bcs=Q_bcs)**-1
     else:
-        raise NotImplementedError
+        from pyamg.aggregation import smoothed_aggregation_solver
 
-    return block_diag_mat([LU(BV), BQ**-1])
+        BQ = HsNormAMG(Q, s=-0.5, bdry=bdry,
+                       mg_params={'pyamg_solver': smoothed_aggregation_solver})        
+
+    return block_diag_mat([LU(BV), BQ])
 
 # ------------------------------------------------------------------------------
 

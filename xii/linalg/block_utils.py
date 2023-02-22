@@ -317,7 +317,8 @@ class RearangeOperator(block_base):
                 reshaped.append(b.blocks[indices[0]])
             else:
                 reshaped.append(PETScVector(as_petsc_nest(block_vec([b.blocks[idx] for idx in indices]))))
-        return block_vec(reshaped) if len(reshaped) > 1 else reshaped[0]
+        ans = block_vec(reshaped) if len(reshaped) > 1 else reshaped[0]
+        return ans
 
     def transpmult(self, b):
         '''Unpack'''
@@ -336,9 +337,8 @@ class RearangeOperator(block_base):
                 subvecs = [PETScVector(x_petsc.getSubVector(dofs)) for dofs in block_dofs]
                 for j, subvec in zip(blocks, subvecs):
                     unpacked[j] = subvec
-
-                    
-        return block_vec(unpacked)
+        ans = block_vec(unpacked)
+        return ans
 
     
 class ReductionOperator(RearangeOperator):
