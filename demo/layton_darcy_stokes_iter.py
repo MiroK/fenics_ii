@@ -81,8 +81,8 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     # Decide material parameters ...
-    parser.add_argument('--param_mu', type=float, default=1, help='Stokes viscosity')
-    parser.add_argument('--param_K', type=float, default=1, help='Darcy conductivity')
+    parser.add_argument('--param_mu', type=float, default=1E-2, help='Stokes viscosity')
+    parser.add_argument('--param_K', type=float, default=1E-5, help='Darcy conductivity')
     parser.add_argument('--param_alpha', type=float, default=1, help='BJS')
     # ... and whether to use CR-P0 discretization for Stokes
     parser.add_argument('--stokes_CR', type=int, default=0, choices=[0, 1])

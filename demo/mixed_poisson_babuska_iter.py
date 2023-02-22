@@ -41,11 +41,17 @@ def setup_preconditioner(W, facet_f, mms, flux_deg, hs_block):
     if hs_block == 'eig':
         BQ = HsEig(Q, s=0.5, bcs=Q_bcs)
         BQ = BQ**-1
-    else:
+    elif hs_block == 'mg':
         from pyamg.aggregation import smoothed_aggregation_solver
 
         BQ = HsNormAMG(Q, s=0.5, bdry=bdry,
-                       mg_params={'pyamg_solver': smoothed_aggregation_solver})        
+                       mg_params={'pyamg_solver': smoothed_aggregation_solver})
+
+    else:
+        from hsra import HsRA
+        # This is here just to get the matrices
+        foo = HsEig(Q, s=0.5, bcs=Q_bcs)
+        BQ = HsRA(foo.A, foo.M, a0=1, s0=0.5, ra_tol=1E-10, a1=0, s1=0)        
 
     return block_diag_mat([LU(BS), LU(BV), BQ])
 
@@ -62,7 +68,7 @@ if __name__ == '__main__':
     parser.add_argument('--flux_degree', type=int, default=1, choices=[1])
     # FIXME: degree 2 neets to fix eig penalty
     parser.add_argument('--hs', type=str, default='eig',
-                        choices=['eig', 'mg'], help='Realization of fractional preconditioner')    
+                        choices=['eig', 'mg', 'ra'], help='Realization of fractional preconditioner')    
     args, _ = parser.parse_known_args()
 
     # Reduce verbosity
@@ -109,5 +115,7 @@ if __name__ == '__main__':
     passed = all(clog[var].get_rate()[0] > eoc for var in ('sigma', 'u', 'p'))
     passed = passed and all(clog[var].get_rate()[1] > eoc for var in ('sigma', 'u', 'p'))
     passed = passed and all(count < 40 for count in clog['niters'])
+
+    print(clog['niters'])
     
     sys.exit(int(passed))

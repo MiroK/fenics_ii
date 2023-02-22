@@ -59,11 +59,18 @@ def setup_preconditioner(W, facet_f, mms, bc_setup, hs_block):
 
     if hs_block == 'eig':
         BQ = HsEig(Q, s=-0.5, bcs=Q_bcs)**-1
-    else:
+        
+    elif hs_block == 'mg':
         from pyamg.aggregation import smoothed_aggregation_solver
 
         BQ = HsNormAMG(Q, s=-0.5, bdry=bdry,
-                       mg_params={'pyamg_solver': smoothed_aggregation_solver})        
+                       mg_params={'pyamg_solver': smoothed_aggregation_solver})
+
+    else:
+        from hsra import HsRA
+        # This is here just to get the matrices
+        foo = HsEig(Q, s=0.5, bcs=Q_bcs)
+        BQ = HsRA(foo.A, foo.M, a0=1, s0=-0.5, ra_tol=1E-10, a1=0, s1=0)        
 
     return block_diag_mat([LU(BV), BQ])
 
@@ -80,7 +87,7 @@ if __name__ == '__main__':
     parser.add_argument('--bcs', type=str, default='dir_neu',
                         choices=['dir', 'neu', 'dir_neu'])
     parser.add_argument('--hs', type=str, default='eig',
-                        choices=['eig', 'mg'], help='Realization of fractional preconditioner')
+                        choices=['eig', 'mg', 'ra'], help='Realization of fractional preconditioner')
     args, _ = parser.parse_known_args()
     
     # Reduce verbosity
@@ -131,6 +138,8 @@ if __name__ == '__main__':
     else:
         passed = all((iru > 0.95, fru > 0.95, irp > 0.45, frp > 0.45))
 
-    passed = passed and all(count < 40 for count in clog['niters'])        
+    passed = passed and all(count < 40 for count in clog['niters'])
+
+    print(clog['niters'])
         
     sys.exit(int(passed))
