@@ -148,7 +148,8 @@ def nest(tensor, elim_zeros_tol=1E-15, W=None):
                 else:
                     # Optimize for zeros and insert None                       
                     block = as_petsc(convert(tensor[i][j]))
-                    if block.norm(2) < elim_zeros_tol:
+                    # But only for the offdiagonals (to keep shape info)
+                    if i != j and block.norm(2) < elim_zeros_tol:
                         block = None
                 A[i][j] = block
 
