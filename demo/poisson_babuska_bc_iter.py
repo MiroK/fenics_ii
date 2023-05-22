@@ -63,7 +63,7 @@ def setup_preconditioner(W, facet_f, mms, bc_setup, hs_block):
     elif hs_block == 'mg':
         from pyamg.aggregation import smoothed_aggregation_solver
 
-        BQ = HsNormAMG(Q, s=-0.5, bdry=bdry,
+        BQ = HsNormAMG(Q, s=-0.5, bdry=bdry, neg_mg='bpl',
                        mg_params={'pyamg_solver': smoothed_aggregation_solver})
 
     else:

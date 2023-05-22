@@ -64,7 +64,6 @@ def average_matrix(V, TV, shape):
     #
     # Here L is the shape over which u is integrated for reduction.
     # Its measure is |L(s)|.
-    
     mesh_x = TV.mesh().coordinates()
     # The idea for point evaluation/computing dofs of TV is to minimize
     # the number of evaluation. I mean a vector dof if done naively would
@@ -92,7 +91,8 @@ def average_matrix(V, TV, shape):
     basis_values = np.zeros(V.element().space_dimension()*value_size)
     with petsc_serial_matrix(TV, V) as mat:
 
-        for line_cell in tqdm.tqdm(cells(line_mesh), desc=f'Averaging over {line_mesh.num_cells()} cells'):
+        for line_cell in tqdm.tqdm(cells(line_mesh), desc=f'Averaging over {line_mesh.num_cells()} cells',
+                                   total=line_mesh.num_cells()):
             # Get the tangent (normal of the plane which cuts the virtual
             # surface to yield the bdry curve
             v0, v1 = mesh_x[line_cell.entities(0)]
@@ -119,6 +119,7 @@ def average_matrix(V, TV, shape):
                     if c is None:
                         cs = tree.compute_entity_collisions(Point(*ip))[:1]
                     else:
+                        print('>>>', len(tree.compute_entity_collisions(Point(*ip))))
                         cs = (c, )
                     # assert False
                     for c in cs:
@@ -182,7 +183,8 @@ def scalar_average_matrix(V, TV, shape):
 
     II, JJ, VALS = [], [], []
     nnz = 0
-    for line_cell in tqdm.tqdm(cells(line_mesh), desc=f'Averaging over {line_mesh.num_cells()} cells'):
+    for line_cell in tqdm.tqdm(cells(line_mesh), desc=f'Averaging over {line_mesh.num_cells()} cells',
+                               total=line_mesh.num_cells()):
         # Get the tangent (normal of the plane which cuts the virtual
         # surface to yield the bdry curve
         v0, v1 = mesh_x[line_cell.entities(0)]
@@ -293,7 +295,8 @@ def trace_3d1d_matrix(V, TV, reduced_mesh):
     basis_values = np.zeros(V.element().space_dimension()*value_size)
     with petsc_serial_matrix(TV, V) as mat:
 
-        for line_cell in tqdm.tqdm(cells(line_mesh), desc=f'Averaging over {line_mesh.num_cells()} cells'):
+        for line_cell in tqdm.tqdm(cells(line_mesh), desc=f'Averaging over {line_mesh.num_cells()} cells',
+                                   total=line_mesh.num_cells()):
             # Get the tangent => orthogonal tangent vectors
             # The idea is now to minimize the point evaluation
             scalar_dofs = TV_dm.cell_dofs(line_cell.index())

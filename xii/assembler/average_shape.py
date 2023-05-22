@@ -256,7 +256,28 @@ def render_avg_surface(Pi):
             surface.append(x)
 
     return surface
-        
+
+
+def tube_render_avg_surface(Pi):
+    '''Set things for tube filter.'''
+    V = Pi.function_space()
+
+    line_mesh = Pi.average_['mesh']
+    shape = Pi.average_['shape']
+    # Where the average will be represented
+    Pi_V = average_space(V, line_mesh)
+
+    # We want points cells and point values
+    tubes = []
+    for cell in df.cells(line_mesh):
+        v0, v1 = np.array(cell.get_vertex_coordinates()).reshape((2, 3))
+        n = v1 - v0
+
+        tubes.append((np.row_stack(shape.quadrature(v0, n).points),
+                      np.row_stack(shape.quadrature(v1, n).points)))
+
+    return tubes
+
 # --------------------------------------------------------------------
 
 if __name__ == '__main__':
