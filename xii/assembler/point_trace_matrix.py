@@ -5,6 +5,21 @@ from petsc4py import PETSc
 import numpy as np
 
 
+def memoize_point_trace(foo):
+    '''Cached trace'''
+    cache = {}
+    def cached_trace_mat(V, TV, trace_mesh, data):
+        key = ((V.ufl_element(), V.mesh().id()),
+               (TV.ufl_element(), TV.mesh().id()), tuple(data['point']))
+               
+        if key not in cache:
+            cache[key] = foo(V, TV, trace_mesh, data)
+        return cache[key]
+
+    return cached_trace_mat
+
+
+@memoize_point_trace
 def point_trace_mat(V, TV, trace_mesh, data):
     '''
     Let u in V; u = ck phi_k then u(x0) \in TV = ck phi_k(x0). So this 
@@ -86,9 +101,3 @@ if __name__ == '__main__':
     a10 = inner(Du, q)*dx
 
     x = ii_convert(ii_assemble(a01))
-    
-    f = Function(V)
-    f.vector().set_local(x.get_local())
-    f.vector().apply('insert')
-
-    print(f(*x0))
