@@ -1,5 +1,4 @@
-from xii.linalg.matrix_utils import petsc_serial_matrix
-
+from scipy.sparse import csr_matrix
 from dolfin import PETScMatrix, Point, Cell
 from petsc4py import PETSc
 import numpy as np
@@ -62,23 +61,28 @@ def point_trace_matrix(V, TV, x0):
 
     Vel.evaluate_basis_all(basis_values, x0, vertex_coordinates, cell_orientation)
 
-    with petsc_serial_matrix(TV, V) as mat:
 
-        # Scalar gets all
-        if value_size == 1:
-            component_dofs = lambda component: V.dofmap().cell_dofs(cell)
-        # Slices
-        else:
-            component_dofs = lambda component: V.sub(component).dofmap().cell_dofs(cell)
+    # Scalar gets all
+    if value_size == 1:
+        component_dofs = lambda component: V.dofmap().cell_dofs(cell)
+    # Slices
+    else:
+        component_dofs = lambda component: V.sub(component).dofmap().cell_dofs(cell)
         
-        for row in map(int, TV.dofmap().cell_dofs(cell)):  # R^n components
-            sub_dofs = component_dofs(row)
-            sub_dofs_local = [all_dofs.index(dof) for dof in sub_dofs]
-            print(row, sub_dofs, sub_dofs_local, basis_values[sub_dofs_local])
-            
-            mat.setValues([row], sub_dofs, basis_values[sub_dofs_local],
-                          PETSc.InsertMode.INSERT_VALUES)
-    return mat
+    rows, cols, values = [], [], []
+    for row in map(int, TV.dofmap().cell_dofs(cell)):  # R^n components
+        sub_dofs = component_dofs(row)
+        sub_dofs_local = [all_dofs.index(dof) for dof in sub_dofs]
+
+        rows.extend([row]*len(sub_dofs))
+        cols.extend(sub_dofs)
+        values.extend(basis_values[sub_dofs_local].flat)
+
+    mat = csr_matrix((values, (rows, cols)), shape=(TV.dim(), V.dim()))        
+
+    return PETSc.Mat().createAIJ(comm=PETSc.COMM_WORLD,
+                                 size=mat.shape,
+                                 csr=(mat.indptr, mat.indices, mat.data))
 
 # --------------------------------------------------------------------
 
@@ -101,3 +105,4 @@ if __name__ == '__main__':
     a10 = inner(Du, q)*dx
 
     x = ii_convert(ii_assemble(a01))
+    
