@@ -269,11 +269,18 @@ class SubSelectOperator(block_base):
 
     def matvec(self, b):
         '''Extract'''
+        if len(self.indices) == 1:
+            assert isinstance(b, block_vec)
+            return b[self.indices[0]]
         return block_vec([b[index] for index in self.indices])
 
     def transpmult(self, b):
         '''Fill the rest with zeros'''
         ans = self.create_vec(dim=1)
+
+        if len(self.indices) == 1:
+            assert not isinstance(b, block_vec)
+            b = [b]
         
         for source, dest in enumerate(self.indices):
             ans[dest] = b[source]

@@ -112,14 +112,13 @@ def cbc_solve(method, AA, bb, tol, M, x0, maxiter=None, **kwargs):
                     'cgn': cbc.CGN,
                     'symmlq': cbc.SymmLQ,
                     'tfqmr': cbc.TFQMR,
-                    'minres': cbc.SubMinRes}[method]
+                    'minres': cbc.MinRes}[method]
 
     AAinv = krylov_solve(A=AA,
                          precond=M,
                          tolerance=tol,
                          initial_guess=x0,
                          maxiter=maxiter,
-                         show=3,
                          relativeconv=True)
     residuals = []
 

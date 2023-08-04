@@ -9,6 +9,8 @@ template=r'''
 \usepackage{pgfplotstable}
 \usepackage{amsmath, amssymb}
 
+%(colors)s
+
 \begin{document}
 \begin{tikzpicture}
 %(body)s
@@ -16,7 +18,8 @@ template=r'''
 \end{document}
 '''
 
-def tikzify_2d_mesh(facet_info, cell_info=None, vertex_info=None):
+
+def tikzify_2d_mesh(facet_info, cell_info=None, vertex_info=None, colors=None):
     '''Standalone Tikz representation of the mesh'''
     body = []
     if cell_info is not None:
@@ -48,12 +51,15 @@ def tikzify_2d_mesh(facet_info, cell_info=None, vertex_info=None):
         mesh.init(dim, 0)
 
         line = r'\draw[%(style)s] (%(x00)g, %(x01)g) -- (%(x10)g, %(x11)g);'
-        for facet in facets(mesh):
-            style = facet_style_map[facet_markers[facet]]
-            if style is not None:
+        for color, facet_style in facet_style_map.items():
+
+            if facet_style is None:
+                continue
+            
+            for facet in SubsetIterator(facet_markers, color):
                 x0, x1 = x[facet.entities(0)]
 
-                body.append(line % {'style': style, 'x00': x0[0], 'x01': x0[1],
+                body.append(line % {'style': facet_style, 'x00': x0[0], 'x01': x0[1],
                                     'x10': x1[0], 'x11': x1[1]})
 
 
@@ -77,7 +83,15 @@ def tikzify_2d_mesh(facet_info, cell_info=None, vertex_info=None):
                 
     body = '\n'.join(body)
 
-    return template % {'body': body}
+    if colors is None:
+        colors = ''
+    else:
+        print(colors)
+        color_code = '\definecolor{%(color)s}{rgb}{%(RED)s, %(BLUE)s, %(GREEN)s}'
+        colors = '\n'.join([color_code % {'color': color, 'RED': str(RGB[0]), 'BLUE': str(RGB[1]), 'GREEN': str(RGB[2])}
+                            for color, RGB in colors.items()])
+        print(colors)
+    return template % {'body': body, 'colors': colors}
 
 
 def load_mesh(h5_file, data_sets):

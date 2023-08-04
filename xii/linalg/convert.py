@@ -253,6 +253,7 @@ def numpy_to_petsc(mat):
     A = PETSc.Mat().createAIJ(comm=COMM,
                               size=mat.shape,
                               csr=(mat.indptr, mat.indices, mat.data))
+    
     A.assemble()
     return PETScMatrix(A)
 
