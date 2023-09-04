@@ -152,6 +152,10 @@ def collapse_tr(bmat):
 def collapse_add(bmat):
     '''A + B to single matrix'''
     A, B = bmat.A, bmat.B
+    if is_petsc_mat(A) and is_number(B) and abs(B) < 1E-14:
+        return A
+    if is_petsc_mat(B) and is_number(A) and abs(A) < 1E-14:
+        return B    
     # Base case
     if is_petsc_mat(A) and is_petsc_mat(B):
         A_ = as_petsc(A)

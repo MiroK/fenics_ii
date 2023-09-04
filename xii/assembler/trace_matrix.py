@@ -250,10 +250,6 @@ def trace_mat_one_restrict(V, TV, restriction, normal, trace_mesh=None, tag_data
     fdim = mesh.topology().dim() - 1
     if trace_mesh is None: trace_mesh = TV.mesh()
 
-
-    # if data['not_nested_method'] == 'interpolate':
-    return df.PETScDMCollection.create_transfer_matrix(Vc, Vf)
-        
     # None means all
     if tag_data is None:
         tag_data = (MeshFunction('size_t', trace_mesh, trace_mesh.topology().dim(), 0),

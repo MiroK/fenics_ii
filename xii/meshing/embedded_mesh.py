@@ -517,6 +517,16 @@ class TangentCurve(df.Function):
         self.vector().set_local(n_values)
         self.vector().apply('insert')
 
+
+def Skeleton(mesh):
+    '''Mesh of interior facets'''
+    tdim = mesh.topology().dim()
+    assert tdim > 1
+    facet_f = df.MeshFunction('size_t', mesh, tdim-1, 1)
+    df.DomainBoundary().mark(facet_f, 0)
+
+    return EmbeddedMesh(facet_f, 1)
+
 # -------------------------------------------------------------------
 
 
