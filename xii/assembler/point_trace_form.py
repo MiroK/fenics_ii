@@ -26,7 +26,7 @@ def point_trace_space(V, mesh):
         return df.TensorFunctionSpace(mesh, 'R', 0, shape)
     
 
-def PointTrace(v, mmesh):
+def PointTrace(v, point, tangent=None):
     '''Annotatef v copy for being a point trace at point'''
     # Prevent Restriction(grad(u)). But it could be interesting to have this
     assert is_terminal(v)
@@ -34,10 +34,11 @@ def PointTrace(v, mmesh):
     # dofs
     assert v.ufl_element().family() in ('Lagrange', 'Discontinuous Lagrange')
     # Don't allow point because then it's difficult to check len
-    assert isinstance(mmesh, (list, tuple, np.ndarray))
+    assert isinstance(point, (int, np.int32, np.int64, list, tuple, np.ndarray))
+
     # A copy!
     v = reconstruct(v)
-    v.dirac_ = {'point': mmesh}
+    v.dirac_ = {'point': point, 'tangent': tangent}
 
     return v
 
