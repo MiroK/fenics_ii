@@ -62,32 +62,24 @@ def point_trace_matrix_DG(V, TV, x0, tangent):
     '''
     mesh = V.mesh()
     x = mesh.coordinates()
-
-    this_vertex = x[x0]
     
     tree = mesh.bounding_box_tree()
-    cells = tree.compute_entity_collisions(Point(*this_vertex))
+    cells = tree.compute_entity_collisions(Point(x[x0]))
     # Let's make sure we found all cells according to the bifurcation degree
     _, v2c = mesh.init(0, 1), mesh.topology()(0, 1)
     assert set(v2c(x0)) == set(cells)
 
     _, c2v = mesh.init(1, 0), mesh.topology()(1, 0)
 
-    scale = 1 # 1./sum(c.volume() for c in df.cells(mesh))
-    
     Vel = V.element()
-    component_dofs = lambda component: V.dofmap().cell_dofs(cell)    
-
+    V_dofs_x = V.tabulate_dof_coordinates().reshape((-1, mesh.geometry().dim()))
+    
     rows, cols, values = [], [], []
     for cell in cells:
-
-        other_vertex,  = set(c2v(cell)) - set((x0, ))
-        other_vertex = x[other_vertex]
-        # Candidate tangent
-        cell_tangent_ = this_vertex - other_vertex
-        # On the cell
-        cell_tangent = tangent(0.5*(other_vertex + this_vertex))
-        sign = -np.sign(np.dot(cell_tangent, cell_tangent_))
+        v0, v1 = x[c2v(cell)]
+        mid = 0.5*(v0 + v1)
+        # Get tangent of the cell
+        cell_tangent = tangent(mid)
         
         # Cell for restriction
         Vcell = Cell(mesh, cell)
@@ -98,15 +90,20 @@ def point_trace_matrix_DG(V, TV, x0, tangent):
         all_dofs = V.dofmap().cell_dofs(cell).tolist()
 
         value_size = V.ufl_element().value_size()
-        basis_values = Vel.evaluate_basis_all(this_vertex, vertex_coordinates, cell_orientation)
+        # Take trace at point x0
+        basis_values = Vel.evaluate_basis_all(x[x0], vertex_coordinates, cell_orientation)
         
-        for row in map(int, TV.dofmap().cell_dofs(cell)):  # R^n components
-            sub_dofs = component_dofs(row)
-            sub_dofs_local = [all_dofs.index(dof) for dof in sub_dofs]
+        row, = TV.dofmap().cell_dofs(cell)
+        
+        rows.extend([row]*len(all_dofs))
+        cols.extend(all_dofs)
 
-            rows.extend([row]*len(sub_dofs))
-            cols.extend(sub_dofs)
-            values.extend(sign*scale*basis_values[sub_dofs_local].flatten())
+        # Now we need sign of the dof
+        sign_x = V_dofs_x[all_dofs[np.argmax(basis_values)]]
+        cell_tangent_ = sign_x - mid
+        sign = np.sign(np.dot(cell_tangent, cell_tangent_))
+        
+        values.extend(sign*basis_values)
 
     mat = csr_matrix((values, (rows, cols)), shape=(TV.dim(), V.dim()))        
 
