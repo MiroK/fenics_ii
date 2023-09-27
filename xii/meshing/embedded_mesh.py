@@ -487,7 +487,7 @@ def NormalCurve(mesh, outside=None, tol=1E-2):
 class TangentCurve(df.Function):
     '''Unit tangent vector of a curve'''
     def __init__(self, mesh):
-        assert 1 <= mesh.topology().dim() < mesh.geometry().dim()
+        assert mesh.topology().dim() == 1
         gdim = mesh.geometry().dim()
 
         V = df.VectorFunctionSpace(mesh, 'DG', 0, gdim)
@@ -511,9 +511,12 @@ class TangentCurve(df.Function):
                 t = (v1 - v0)/np.linalg.norm(v1-v0)
                 values[cell][:] = t
 
-        for sub in range(gdim):
-            dofs = V.sub(sub).dofmap().dofs()
-            n_values[dofs] = values[:, sub]
+        if gdim == 1:
+            n_values[V.dofmap().dofs()] = values.flatten()
+        else:
+            for sub in range(gdim):
+                dofs = V.sub(sub).dofmap().dofs()
+                n_values[dofs] = values[:, sub]
         self.vector().set_local(n_values)
         self.vector().apply('insert')
 

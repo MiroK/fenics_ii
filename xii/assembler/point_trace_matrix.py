@@ -16,6 +16,11 @@ def memoize_point_trace(foo):
             key = key + tuple(data['point'])
         except:
             key = key + (data['point'], )
+
+        try:
+            key = key + tuple(data['cell'])
+        except:
+            key = key + (data['cell'], )            
                
         if key not in cache:
             cache[key] = foo(V, TV, trace_mesh, data)
@@ -36,7 +41,7 @@ def point_trace_mat(V, TV, trace_mesh, data):
     assert V.ufl_element().value_shape() == TV.ufl_element().value_shape()
     assert V.mesh().id() == TV.mesh().id() == trace_mesh.id()
 
-    x0 = data['point']
+    x0, cell = data['point'], data['cell']
     if V.ufl_element().family() == 'Lagrange':
         assert len(x0) == V.mesh().geometry().dim()        
         Tmat = point_trace_matrix_CG(V, TV, x0)
@@ -46,16 +51,16 @@ def point_trace_mat(V, TV, trace_mesh, data):
         # FIXME: for now assume scalar
         assert V.ufl_element().value_shape() == ()
         # FIXME: also assume that the bifurcation is given as an index 
-        assert isinstance(x0, (np.int32, np.int64, int)), x0
-
-        tangent = data['tangent']
-        Tmat = point_trace_matrix_DG(V, TV, x0, tangent=tangent)
+        assert isinstance(x0, (np.int32, np.int64, np.uint32, np.uint64, int)), x0
+        assert isinstance(cell, (np.int32, np.int64, np.uint32, np.uint64, int)), cell        
+        
+        Tmat = point_trace_matrix_DG(V, TV, x0, cell=cell)
         
     return PETScMatrix(Tmat)
 
 # ----
 
-def point_trace_matrix_DG(V, TV, x0, tangent):
+def point_trace_matrix_DG(V, TV, x0, cell):
     '''
     Let u in V; u = ck phi_k then u(x0) \in TV = ck phi_k(x0). So this 
     is a 1 by dim(V) matrix where the column values are phi_k(x0).
@@ -65,25 +70,19 @@ def point_trace_matrix_DG(V, TV, x0, tangent):
     
     tree = mesh.bounding_box_tree()
     cells = tree.compute_entity_collisions(Point(x[x0]))
-    # Let's make sure we found all cells according to the bifurcation degree
-    _, v2c = mesh.init(0, 1), mesh.topology()(0, 1)
-    assert set(v2c(x0)) == set(cells)
+    assert cell in cells
 
-    _, c2v = mesh.init(1, 0), mesh.topology()(1, 0)
+    cells = (cell, )
 
     Vel = V.element()
     V_dofs_x = V.tabulate_dof_coordinates().reshape((-1, mesh.geometry().dim()))
-    
+
     rows, cols, values = [], [], []
     for cell in cells:
-        v0, v1 = x[c2v(cell)]
-        mid = 0.5*(v0 + v1)
-        # Get tangent of the cell
-        cell_tangent = tangent(mid)
-        
         # Cell for restriction
         Vcell = Cell(mesh, cell)
         vertex_coordinates = Vcell.get_vertex_coordinates()
+
         cell_orientation = Vcell.orientation()
 
         # Columns - get all components at once
@@ -92,6 +91,8 @@ def point_trace_matrix_DG(V, TV, x0, tangent):
         value_size = V.ufl_element().value_size()
         # Take trace at point x0
         basis_values = Vel.evaluate_basis_all(x[x0], vertex_coordinates, cell_orientation)
+
+        assert np.linalg.norm(basis_values) > 0
         
         row, = TV.dofmap().cell_dofs(cell)
         
@@ -99,11 +100,7 @@ def point_trace_matrix_DG(V, TV, x0, tangent):
         cols.extend(all_dofs)
 
         # Now we need sign of the dof
-        sign_x = V_dofs_x[all_dofs[np.argmax(basis_values)]]
-        cell_tangent_ = sign_x - mid
-        sign = np.sign(np.dot(cell_tangent, cell_tangent_))
-        
-        values.extend(sign*basis_values)
+        values.extend(basis_values)
 
     mat = csr_matrix((values, (rows, cols)), shape=(TV.dim(), V.dim()))        
 
