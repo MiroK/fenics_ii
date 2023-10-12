@@ -181,6 +181,10 @@ def setup_problem(facet_f, mms, flat_gamma):
     # We now define the system as
     a = block_form(W, 2)
     a[0][0] = Constant(2)*inner(sym(grad(u)), sym(grad(v)))*dx
+
+    hF = CentroidDistance(mesh)
+    a[0][0] += Constant(2)/avg(hF)*inner(jump(u), jump(v))*dS
+    
     a[0][1] = -inner(div(v), p)*dx
     a[0][2] = inner(l, dot(Tv, n_))*dx_
     a[1][0] = -inner(div(u), q)*dx
