@@ -521,11 +521,15 @@ class TangentCurve(df.Function):
         self.vector().apply('insert')
 
 
-def Skeleton(mesh):
+def Skeleton(mesh, include_boundary=False):
     '''Mesh of interior facets'''
     tdim = mesh.topology().dim()
     assert tdim > 1
     facet_f = df.MeshFunction('size_t', mesh, tdim-1, 1)
+
+    if include_boundary:
+        return EmbeddedMesh(facet_f, 1)
+    # Wipe out boundary
     df.DomainBoundary().mark(facet_f, 0)
 
     return EmbeddedMesh(facet_f, 1)
