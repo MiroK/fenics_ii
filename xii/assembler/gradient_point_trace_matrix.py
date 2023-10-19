@@ -79,7 +79,7 @@ def gradient_point_trace_matrix_DG(V, TV, x0, cell, tangent):
 
         # Take trace at point x0
         basis_values = Vel.evaluate_basis_derivatives_all(1, x[x0], vertex_coordinates, cell_orientation)
-        basis_values = basis_values.reshape((gdim, len(all_dofs)))
+        basis_values = basis_values.reshape((len(all_dofs), gdim))
 
         assert np.linalg.norm(basis_values) > 0
         
