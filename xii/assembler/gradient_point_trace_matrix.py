@@ -45,6 +45,8 @@ def gradient_point_trace_matrix_DG(V, TV, x0, cell, tangent):
     '''
     mesh = V.mesh()
     x = mesh.coordinates()
+
+    gdim = mesh.geometry().dim()
     
     tree = mesh.bounding_box_tree()
     cells = tree.compute_entity_collisions(Point(x[x0]))
@@ -55,15 +57,17 @@ def gradient_point_trace_matrix_DG(V, TV, x0, cell, tangent):
     Vel = V.element()
     V_dofs_x = V.tabulate_dof_coordinates().reshape((-1, mesh.geometry().dim()))
 
-    if isinstance(tangent, df.Constant):
-        tau = tangent.values()
-    elif isinstance(tangent, df.Function):
-        tau = tangent(x[x0])
-    else:
-        tau = tangent
     
     rows, cols, values = [], [], []
     for cell in cells:
+
+        if isinstance(tangent, df.Constant):
+            tau = tangent.values()
+        elif isinstance(tangent, df.Function):
+            tau = tangent(Cell(mesh, cell).midpoint().array()[:gdim])
+        else:
+            tau = tangent
+        
         # Cell for restriction
         Vcell = Cell(mesh, cell)
         vertex_coordinates = Vcell.get_vertex_coordinates()
@@ -75,7 +79,7 @@ def gradient_point_trace_matrix_DG(V, TV, x0, cell, tangent):
 
         # Take trace at point x0
         basis_values = Vel.evaluate_basis_derivatives_all(1, x[x0], vertex_coordinates, cell_orientation)
-        basis_values = basis_values.reshape((-1, len(all_dofs)))
+        basis_values = basis_values.reshape((gdim, len(all_dofs)))
 
         assert np.linalg.norm(basis_values) > 0
         
@@ -85,7 +89,7 @@ def gradient_point_trace_matrix_DG(V, TV, x0, cell, tangent):
         cols.extend(all_dofs)
 
         # Now we need sign of the dof
-        values.extend(basis_values@tau)
+        values.extend(np.dot(basis_values, tau).flatten())
 
     mat = csr_matrix((values, (rows, cols)), shape=(TV.dim(), V.dim()))        
 
