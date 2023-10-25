@@ -3,7 +3,7 @@ import xii
 from functools import reduce
 from itertools import chain, dropwhile, repeat
 from .make_mesh_cpp import make_mesh
-from .branching import color_branches, walk_cells, is_loop
+import networkx as nx
 from collections import defaultdict
 import dolfin as df
 import numpy as np
@@ -486,7 +486,7 @@ def NormalCurve(mesh, outside=None, tol=1E-2):
 
 class TangentCurve(df.Function):
     '''Unit tangent vector of a curve'''
-    def __init__(self, mesh):
+    def __init__(self, mesh, root=None):
         assert mesh.topology().dim() == 1
         gdim = mesh.geometry().dim()
 
@@ -497,19 +497,24 @@ class TangentCurve(df.Function):
         X = mesh.coordinates()
         c2v = mesh.topology()(1, 0)
         _, v2c = mesh.init(0, 1), mesh.topology()(0, 1)
+
+        roots = [v for v in range(mesh.num_vertices()) if len(v2c(v)) == 1]
+        if root is not None:
+            assert root in roots
+        else:
+            root = roots.pop()
         
-        cell_f, bcolors, lcolors = color_branches(mesh)
-        loop_flags = chain(repeat(False, len(bcolors)), repeat(True, len(lcolors)))
-        colors = chain(bcolors, lcolors)
-
-        cell_f = cell_f.array()
-
         values = np.zeros(V.dim()).reshape((-1, gdim))
-        for color, lf in zip(colors, loop_flags):
-            for cell, orient in walk_cells(cell_f, tag=color, c2v=c2v, v2c=v2c, is_loop=lf):
-                v0, v1 = X[c2v(cell) if orient else c2v(cell)[::-1]]
-                t = (v1 - v0)/np.linalg.norm(v1-v0)
-                values[cell][:] = t
+
+        g = nx.Graph()
+        g.add_edges_from(mesh.cells())
+        assert len(list(nx.algorithms.connected_components(g))) == 1
+        
+        for (v0, v1) in nx.algorithms.traversal.dfs_edges(g, root):
+            cell, = set(v2c(v0)) & set(v2c(v1))
+            v0, v1 = X[v0], X[v1]
+            t = (v1 - v0)/np.linalg.norm(v1-v0)
+            values[cell][:] = t
 
         if gdim == 1:
             n_values[V.dofmap().dofs()] = values.flatten()
