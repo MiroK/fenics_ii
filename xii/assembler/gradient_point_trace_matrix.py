@@ -72,7 +72,10 @@ def gradient_point_trace_matrix_DG(V, TV, x0, cell, tangent):
         Vcell = Cell(mesh, cell)
         vertex_coordinates = Vcell.get_vertex_coordinates()
 
-        cell_orientation = Vcell.orientation()
+        try:
+            cell_orientation = Vcell.orientation()
+        except:
+            cell_orientation = 0
 
         # Columns - get all components at once
         all_dofs = V.dofmap().cell_dofs(cell).tolist()
