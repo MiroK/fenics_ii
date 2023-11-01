@@ -1,3 +1,4 @@
+from . collapse_iter import monolithic
 from . convert import convert as ii_convert
 from . convert import collapse as ii_collapse
 from . convert import set_lg_map

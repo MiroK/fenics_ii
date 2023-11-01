@@ -1,12 +1,16 @@
 from collections import defaultdict
 from functools import reduce
+from itertools import chain
 import operator
 
 import networkx as nx
 import dolfin as df
-from block import block_add, block_sub, block_mul, block_transpose
+import numpy as np
+from block import (block_add, block_sub, block_mul, block_transpose, block_mat,
+                   block_vec)
 from xii.linalg.matrix_utils import (is_petsc_vec, is_petsc_mat, is_number,
                                      as_petsc)
+import xii.linalg.convert as xii_convert 
 from petsc4py import PETSc
 
 
@@ -26,7 +30,8 @@ def get_children(expr):
 
 def is_terminal(expr):
     '''Root node in cbc.block tree'''
-    return not get_children(expr)
+    return is_number(expr) or isinstance(expr, (df.Matrix, df.PETScMatrix,
+                                                df.Vector, df.GenericVector, df.PETScVector))
 
 
 def expr2graph(expr):
@@ -40,6 +45,10 @@ def expr2graph(expr):
 
         return g, terminal_labels
 
+    # NOTE: in the following we insert operators as nodes using the 
+    # fact that they are unique (objects). This simplifis implementation
+    # but is not nice. Ideally we would like to have just "+" for all instances
+    # of block_add
     terminal_counter = 0
     subexpr = [expr]
     while subexpr:
@@ -51,7 +60,7 @@ def expr2graph(expr):
             child, *rest = children
 
             if isinstance(parent, block_mul):
-                op = operator.mul
+                op = block_mul
             else:
                 raise ValueError
             
@@ -238,6 +247,10 @@ def collapse(expr):
     '''To single matrix'''
     if is_terminal(expr): return expr
 
+    if isinstance(expr, block_mat):
+        blocks = np.array([collapse(sub) for sub in chain(*expr.blocks)])
+        return block_mat(blocks.reshape(expr.blocks.shape))
+    
     graph, terminals = expr2graph(expr)
     # Here terminals is terminal -> it's name; we need to flip it
     terminals = {val: key for (key, values) in terminals.items() for val in values}
@@ -258,13 +271,32 @@ def collapse(expr):
             
     return expr
 
+
+def monolithic(expr):
+    '''Get Matrix or vector'''
+    if is_terminal(expr):
+        return expr
+    
+    if isinstance(expr, block_vec):
+        return xii_convert.convert(expr)
+
+    # The idea here is to avoid recursion in ii_convert so we collapse first ...
+    A = collapse(expr)
+    if is_terminal(A):
+        return A
+    # ... and in case we have block we make it a single matrix by
+    return xii_convert.convert(A)
+    
 # --------------------------------------------------------------------
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     from xii import ii_convert
     import dolfin as df
-    import numpy as np    
+    import numpy as np
+    
+    from copy import deepcopy, copy
+    import random
     
     mesh = df.UnitSquareMesh(16, 16)
     V = df.FunctionSpace(mesh, 'CG', 1)
@@ -273,17 +305,39 @@ if __name__ == '__main__':
     M = df.assemble(df.inner(u, v)*df.dx)
     B = df.assemble(df.Constant(3)*df.inner(u, v)*df.dx)    
 
+    def random_expr(niters, terminals=[M, B]):
+
+        arg_count = {block_add: 2,
+                     block_sub: 2,
+                     block_transpose: 1,
+                     block_mul: 2}
+
+        ops = list(arg_count.keys())
+        for k in range(niters):
+            op = random.choice(ops)
+            nargs = arg_count[op]
+
+            args = [random.choice(terminals) for _ in range(nargs)]
+            expr = op(*args)
+            terminals.append(expr)
+
+        return expr
+
+    
     # 
     #
     #
     #
-    expr = 2*M + 3*M + M.T + M*M*M - M + B*M*B.T 
-    
-    g, terminals = expr2graph(expr)
+    expr = 2*M + 3*M + M.T + M*M*M - M + B*M*B.T
+    expr = random_expr(20)
 
+    print(expr)
+    
     dt = df.Timer()
     A = collapse(expr)
     print(dt.stop())
+
+    A = ii_convert(A)
 
     dt = df.Timer()    
     B = ii_convert(expr)
