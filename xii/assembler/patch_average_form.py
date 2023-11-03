@@ -34,7 +34,7 @@ def patch_average_space(V, mesh, data):
     return TV
 
 
-def CellPatchAverage(v, vertex_f, patch_f):
+def CellPatchAverage(v, vertex_f, patch_f, patch_coloring=None):
     '''
     CellPathcAverage(v, ...) as a P1 function on the network (mesh of 
     vertex_f) whose values are obtained by patch averaging
@@ -58,7 +58,7 @@ def CellPatchAverage(v, vertex_f, patch_f):
         # Object copy?
         v = [df.TestFunction, df.TrialFunction][v.number()](v.function_space())
 
-    v.patch_average_ = {'vertex_f': vertex_f, 'patch_f': patch_f}
+    v.patch_average_ = {'vertex_f': vertex_f, 'patch_f': patch_f, 'patch_coloring': patch_coloring}
 
     return v
 

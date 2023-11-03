@@ -22,7 +22,8 @@ class PatchAverageFormAssembler(ReducedFormAssembler):
     def reduction_matrix_data(self, terminal):
         '''Dict of reduction data and optinal normal'''
         return {'vertex_f': terminal.patch_average_['vertex_f'],
-                'patch_f': terminal.patch_average_['patch_f']}
+                'patch_f': terminal.patch_average_['patch_f'],
+                'patch_coloring': terminal.patch_average_['patch_coloring']}
 
     def reduced_space(self, V, reduced_mesh, data):
         '''Construct a reduced space for V on the mesh'''
@@ -32,6 +33,6 @@ class PatchAverageFormAssembler(ReducedFormAssembler):
         '''Algebraic representation of the reduction'''
         return patch_avg_mat(V, TV, reduced_mesh, data)
 
-# Expose
+# Exposep
 def assemble_form(form, arity, assembler=PatchAverageFormAssembler()):
     return assembler.assemble(form, arity)
