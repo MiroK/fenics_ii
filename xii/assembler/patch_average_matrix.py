@@ -121,9 +121,11 @@ def patch_avg_mat_coloring(V, TV, reduced_mesh, data):
     assert V.mesh().geometry().dim() == TV.mesh().geometry().dim()
     assert V.mesh().id() == patch_f.mesh().id()
 
+    color_ids = vertex_f.vector().get_local()    
     # We will do the integration a group at a time
     groups = defaultdict(list)
-    for (color, group) in coloring.items():
+    for color in np.asarray(color_ids, dtype='uintp'):
+        group = coloring[color]
         groups[group].append(color)
 
     omega = patch_f.mesh()
@@ -140,7 +142,6 @@ def patch_avg_mat_coloring(V, TV, reduced_mesh, data):
     
     patch_volumes = np.array([cell.volume() for cell in df.cells(patch_f.mesh())])
     patch_f = patch_f.array()
-    color_ids = vertex_f.vector().get_local()
 
     # The new thing here is to assemble once over all the patches that are not neighbors. 
     ii, jj, values = [], [], []
