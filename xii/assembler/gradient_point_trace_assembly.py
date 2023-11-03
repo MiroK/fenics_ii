@@ -24,7 +24,7 @@ class GradientPointTraceFormAssembler(ReducedFormAssembler):
         '''Dict of reduction data and optinal normal'''
         return terminal.grad_dirac_
 
-    def reduced_space(self, V, reduced_mesh):
+    def reduced_space(self, V, reduced_mesh, data=None):
         '''Construct a reduced space for V on the mesh'''
         return gradient_point_trace_space(V, reduced_mesh)
 

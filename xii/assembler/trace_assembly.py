@@ -34,7 +34,7 @@ class TraceFormAssembler(ReducedFormAssembler):
 
         return {'restriction': rtype, 'normal': normal, 'tag_data': tag_data}
     
-    def reduced_space(self, V, reduced_mesh):
+    def reduced_space(self, V, reduced_mesh, data=None):
         '''Construct a reduced space for V on the mesh'''
         return trace_space(V, reduced_mesh)
 
