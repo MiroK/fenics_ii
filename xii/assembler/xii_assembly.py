@@ -41,7 +41,10 @@ def assemble(form):
         arity = form_arity(form)
         # Try with our reduced assemblers
         for name, module in zip(names, modules):
-            tensor = module.assemble_form(form, arity)
+            try:
+                tensor = module.assemble_form(form, arity)
+            except:
+                tensor = None
             if tensor is not None:
                 return tensor
         # Fallback
