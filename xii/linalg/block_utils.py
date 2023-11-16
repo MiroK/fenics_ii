@@ -10,6 +10,7 @@ from block import block_mat, block_vec
 from dolfin import (PETScVector, as_backend_type, Function, Vector, GenericVector,
                     Matrix, PETScMatrix)
 from petsc4py import PETSc
+import itertools
 import numpy as np
 
 
@@ -295,15 +296,21 @@ class RearangeOperator(block_base):
         # With matvec R*u we will recombine
         self.mapping = mapping
         # When doing R.T*v we have to extract
-        dofs = [Wi.dofmap().dofs() for Wi in W]
-
+        dofs = [np.array(Wi.dofmap().dofs()) for Wi in W]
         index_sets = []
         for indices in mapping:
             offsets = np.cumsum(np.r_[0, [len(dofs[i]) for i in indices]])
             index_sets.append(tuple(PETSc.IS().createGeneral((offset + dofs[i]).tolist())
                                  for offset, i in zip(offsets, indices)))
         self.index_sets = index_sets
-                
+
+        petsc_index_sets = []
+        shift = 0
+        for (Wi, dofs_i) in zip(W, dofs):
+            petsc_index_sets.append(PETSc.IS().createGeneral((dofs_i + shift).tolist()))
+            shift += Wi.dim()
+        self.petsc_index_sets = petsc_index_sets
+        
         # Handle get_dims
         self.__sizes__ = (sum(Wi.dim() for Wi in W), )*2
 
@@ -318,6 +325,17 @@ class RearangeOperator(block_base):
 
     def matvec(self, b):
         '''Reduce'''
+        # Breaking up one monolithic petsc vector instead of blockvec
+        if isinstance(b, PETScVector) and b.size() == self.__sizes__[0]:
+            b_ = as_backend_type(b).vec()
+            b_blocks = []
+            for index_set in self.petsc_index_sets:
+                vals = b_.getValues(index_set)
+                element = PETSc.Vec().createWithArray(vals)
+                element.assemble()
+                b_blocks.append(PETScVector(element))
+            b = block_vec(b_blocks)
+
         reshaped = []
         for indices in self.mapping:
             if len(indices) == 1:
