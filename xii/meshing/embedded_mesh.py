@@ -509,12 +509,24 @@ class TangentCurve(df.Function):
         g = nx.Graph()
         g.add_edges_from(mesh.cells())
         assert len(list(nx.algorithms.connected_components(g))) == 1
-        
+
+        visited = np.zeros(mesh.num_cells(), dtype=bool)
         for (v0, v1) in nx.algorithms.traversal.dfs_edges(g, root):
             cell, = set(v2c(v0)) & set(v2c(v1))
             v0, v1 = X[v0], X[v1]
+
             t = (v1 - v0)/np.linalg.norm(v1-v0)
-            values[cell][:] = t
+            values[cell, :] = t
+            visited[cell] = True
+
+        for cell in np.where(~visited)[0]:
+            v0, v1 = c2v(cell)
+            v0, v1 = X[v0], X[v1]
+
+            t = (v1 - v0)/np.linalg.norm(v1-v0)
+            values[cell, :] = t
+            visited[cell] = True
+        assert np.all(visited)
 
         if gdim == 1:
             n_values[V.dofmap().dofs()] = values.flatten()

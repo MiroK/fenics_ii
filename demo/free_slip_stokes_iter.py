@@ -158,9 +158,9 @@ def setup_problem(facet_f, mms, flat_gamma):
     dx_ = Measure('dx', domain=bmesh, subdomain_data=bmesh.marking_function)
 
     # Velocity, pressure and LM spaces
-    V = VectorFunctionSpace(mesh, 'CG', 2)
-    Q = FunctionSpace(mesh, 'CG', 1)
-    M = FunctionSpace(bmesh, 'CG', 2)
+    V = VectorFunctionSpace(mesh, 'CR', 1)
+    Q = FunctionSpace(mesh, 'DG', 0)
+    M = FunctionSpace(bmesh, 'CG', 1)
     W = [V, Q, M]
 
     u, p, l = map(TrialFunction, W)
