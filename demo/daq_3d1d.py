@@ -16,7 +16,7 @@ def setup_problem(i, f, eps=None):
     alpha1, alpha0 = Constant(2), Constant(0.01)
     beta = Constant(10)
 
-    n = 10*(2**i)
+    n = 2**i
 
     mesh = UnitCubeMesh(n, n, 2*n)
     radius = 0.01           # Averaging radius for cyl. surface
@@ -73,3 +73,20 @@ def setup_error_monitor(true, history, path=''):
     '''We measure error in H1 and L2 for simplicity'''
     from common import monitor_error, H1_norm, L2_norm
     return monitor_error(true, [], history, path=path)
+
+# --------------------------------------------------------------------
+
+if __name__ == '__main__':
+    i = 4
+    f = Constant(2)
+    a, L, W = setup_problem(i, f, eps=None)
+
+    A, b = map(ii_assemble, (a, L))
+
+    # Here we solve the problem by a direct solver
+    wh = ii_Function(W)
+    solve(ii_convert(A), wh.vector(), ii_convert(b))
+
+    uh3d, uh1d = wh
+    File('uh3d.pvd') << uh3d
+    File('uh1d.pvd') << uh1d    

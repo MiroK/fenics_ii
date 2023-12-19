@@ -33,7 +33,7 @@ class ExtensionFormAssembler(ReducedFormAssembler):
 
         return data 
     
-    def reduced_space(self, V, extended_mesh):
+    def reduced_space(self, V, extended_mesh, data=None):
         '''Construct a reduced space for V on the mesh'''
         return extension_space(V, extended_mesh)
 

@@ -163,6 +163,10 @@ class Circle(BoundingSurface):
         # to the one with normal  n. First thing to do is to figure out
         # the axis along which we will rotate ...
         axis = np.cross(ez, n)
+        if np.linalg.norm(axis) < 1E-13:
+            axis = ez
+        else:
+            axis = axis / np.linalg.norm(axis)
         # ... and by how much
         ctheta = np.dot(ez, n)
         stheta = np.sqrt(1 - ctheta**2)
@@ -170,12 +174,15 @@ class Circle(BoundingSurface):
         Rot = ctheta*np.eye(3) + stheta*np.array([[0, -axis[2], axis[1]],
                                                   [axis[2], 0, -axis[0]],
                                                   [-axis[1], axis[0], 0]]) + (1-ctheta)*np.outer(axis, axis)
+
         def transform(x, x0=x0, n=n, R=R, Rot=Rot):
             norm = np.dot(x, x)
+            assert abs(np.linalg.norm(n) - 1) < 1E-13
             # Check assumptions
             assert abs(norm - 1) < 1E-13 and abs(x[2]) < 1E-13
 
             y = Rot@x
+
             # And then we just shift the origin
             return x0 + R*y
 
@@ -221,6 +228,11 @@ class Disk(BoundingSurface):
         # The idea here is to rotatate our z plane passing through origin
         # to the one with normal  n ...
         axis = np.cross(ez, n)
+        if np.linalg.norm(axis) < 1E-13:
+            axis = ez
+        else:
+            axis = axis / np.linalg.norm(axis)        
+        
         ctheta = np.dot(ez, n)
         stheta = np.sqrt(1 - ctheta**2)
         # Rotation matrix

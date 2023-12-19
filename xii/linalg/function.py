@@ -11,7 +11,9 @@ def as_petsc_nest(bvec):
     '''Represent bvec as PETSc nested vector'''
     assert isinstance(bvec, block_vec)
     nest = [as_backend_type(v).vec() for v in bvec]
-    return PETSc.Vec().createNest(nest)
+    vec = PETSc.Vec().createNest(nest)
+    vec.assemble()
+    return vec
 
 
 class ii_Function(object):

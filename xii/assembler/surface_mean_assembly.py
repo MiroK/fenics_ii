@@ -24,7 +24,7 @@ class SurfaceMeanFormAssembler(ReducedFormAssembler):
         '''Dict of reduction data and optinal normal'''
         return terminal.surface_mean_
 
-    def reduced_space(self, V, reduced_mesh):
+    def reduced_space(self, V, reduced_mesh, data=None):
         '''Construct a reduced space for V on the mesh'''
         return surface_mean_space(V, reduced_mesh)
 

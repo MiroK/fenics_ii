@@ -246,6 +246,9 @@ def trace_mat_one_restrict(V, TV, restriction, normal, trace_mesh=None, tag_data
     for which the vector cell.midpoint - facet.midpoint agrees in orientation
     with the normal on the facet.
     '''
+    assert normal.function_space().ufl_element().family() == 'Discontinuous Lagrange'
+    assert normal.function_space().ufl_element().degree() == 0
+    
     mesh = V.mesh()
     fdim = mesh.topology().dim() - 1
     if trace_mesh is None: trace_mesh = TV.mesh()
@@ -282,6 +285,8 @@ def trace_mat_one_restrict(V, TV, restriction, normal, trace_mesh=None, tag_data
     visited_dofs = [False]*TV.dim()
     # Column values
     dof_values = np.zeros(V_basis_f.elm.space_dimension(), dtype='double')
+
+    normal_values = normal.vector().get_local().reshape((-1, gdim))
     with petsc_serial_matrix(TV, V) as mat:
 
         for trace_cell in trace_cells:
@@ -298,13 +303,18 @@ def trace_mat_one_restrict(V, TV, restriction, normal, trace_mesh=None, tag_data
             # Search which cell has the right sign
             else:
                 signs = []
+                t_mp = Cell(trace_mesh, trace_cell).midpoint().array()[:gdim]
+                trace_cell_normal = normal_values[trace_cell]
                 for fcell in facet_cells:
-                    t_mp = Cell(trace_mesh, trace_cell).midpoint().array()[:gdim]
                     mp = Cell(mesh, fcell).midpoint().array()[:gdim]
+                    
+                    r = mp - t_mp
+                    r = r / np.linalg.norm(r)
 
-                    sign = '+' if np.inner(mp - t_mp, normal(t_mp)) > 0 else '-'
+                    sign = '+' if np.inner(r, trace_cell_normal) > 0 else '-'
                     signs.append(sign)
                 cell = facet_cells[signs.index(restriction)]
+                    
             V_basis_f.cell = cell
             
             dofs = dmap.cell_dofs(cell)
