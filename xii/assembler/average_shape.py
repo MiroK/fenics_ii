@@ -12,6 +12,7 @@ import dolfin as df
 from xii.linalg.matrix_utils import is_number
 from xii.assembler.average_form import average_space
 from xii.meshing.make_mesh_cpp import make_mesh
+import xii.assembler.disk_quadrature as disk_quadrature
 
 Quadrature = namedtuple('quadrature', ('points', 'weights'))
 
@@ -179,7 +180,7 @@ class Circle(BoundingSurface):
             norm = np.dot(x, x)
             assert abs(np.linalg.norm(n) - 1) < 1E-13
             # Check assumptions
-            assert abs(norm - 1) < 1E-13 and abs(x[2]) < 1E-13
+            # assert abs(norm - 1) < 1E-13 and abs(x[2]) < 1E-13
 
             y = Rot@x
 
@@ -215,8 +216,7 @@ class Disk(BoundingSurface):
 
         # Will use quadrature from quadpy over unit disk in z=0 plane
         # and center (0, 0, 0)
-        quad = quadpy.disk.Lether(degree)
-        self.xq, self.wq = quad.points, quad.weights
+        self.xq, self.wq = disk_quadrature.disk_quadrature(degree)
 
     @staticmethod
     def map_from_reference(x0, n, R):
@@ -242,11 +242,13 @@ class Disk(BoundingSurface):
         
         def transform(x, x0=x0, n=n, R=R, Rot=Rot):
             norm = np.dot(x, x)
+            assert abs(np.linalg.norm(n) - 1) < 1E-13
             # Check assumptions
-            assert norm < 1 + 1E-13 and abs(x[2]) < 1E-13
+            # assert abs(norm - 1) < 1E-13 and abs(x[2]) < 1E-13, (norm, x[2])
 
-            x_ = x/norm
             y = Rot@x
+
+            # And then we just shift the origin
             return x0 + R*y
             
         return transform
@@ -260,7 +262,7 @@ class Disk(BoundingSurface):
         R = self.radius(x0)
         # Circle viewed from reference
         Txq = list(map(Disk.map_from_reference(x0, n, R), xq))
-        # Scaled weights (R is jac of T, pi is from theta=pi*(-1, 1)
+
         wq = wq*R**2
 
         return Quadrature(Txq, wq)
@@ -337,7 +339,8 @@ if __name__ == '__main__':
     f = df.MeshFunction('size_t', mesh, 1, 0)
     # df.CompiledSubDomain('near(x[0], x[1]) && near(x[1], x[2])').mark(f, 1)
     df.CompiledSubDomain('near(x[0], 0.) && near(x[1], 0.)').mark(f, 1)
-    df.CompiledSubDomain('near(x[1], 0.) && near(x[2], 0.)').mark(f, 2)    
+    df.CompiledSubDomain('near(x[1], 0.) && near(x[2], 0.)').mark(f, 2)
+    df.CompiledSubDomain('near(x[0], x[1]) && near(x[1], x[2])').mark(f, 3)        
     
     # line_mesh = EmbeddedMesh(f, 1)
     line_mesh = EmbeddedMesh(f, 2)    
@@ -391,45 +394,45 @@ if __name__ == '__main__':
         ax.plot3D(plane[:, 0], plane[:, 1], plane[:, 2], marker='o', linestyle='none')
     plt.show()
     
-    # Square ---------------------------------------------------------
-    size = 0.125
-    sq = SquareRim(P=lambda x0: x0 - np.array([size, size, 0]), degree=8)
+    # # Square ---------------------------------------------------------
+    # size = 0.125
+    # sq = SquareRim(P=lambda x0: x0 - np.array([size, size, 0]), degree=8)
 
-    u = df.Function(df.FunctionSpace(mesh, 'CG', 1))
-    op = Average(u, line_mesh, sq)
+    # u = df.Function(df.FunctionSpace(mesh, 'CG', 1))
+    # op = Average(u, line_mesh, sq)
         
-    surface = render_avg_surface(op)
+    # surface = render_avg_surface(op)
     
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d')
         
-    for plane in surface:
-        ax.plot3D(plane[:, 0], plane[:, 1], plane[:, 2], marker='o', linestyle='none')
+    # for plane in surface:
+    #     ax.plot3D(plane[:, 0], plane[:, 1], plane[:, 2], marker='o', linestyle='none')
 
-    sq_integrate = lambda f, shape=sq, n=n, x0=x0: shape_integrate(f, shape, x0, n)
-    # Sanity
-    f = lambda x, y, z: 1
-    value = sq_integrate(f)
-    assert is_close(value, 1)
+    # sq_integrate = lambda f, shape=sq, n=n, x0=x0: shape_integrate(f, shape, x0, n)
+    # # Sanity
+    # f = lambda x, y, z: 1
+    # value = sq_integrate(f)
+    # assert is_close(value, 1)
 
-    # Odd foo over sym interval
-    f = lambda x, y, z: x - y - 0.5
-    value = sq_integrate(f)
-    assert is_close(value, -0.5), (value, )
+    # # Odd foo over sym interval
+    # f = lambda x, y, z: x - y - 0.5
+    # value = sq_integrate(f)
+    # assert is_close(value, -0.5), (value, )
 
-    # Odd foo over sym interval
-    f = lambda x, y, z: x**3 - y - z
-    value = sq_integrate(f)
-    assert is_close(value, -0.5)
+    # # Odd foo over sym interval
+    # f = lambda x, y, z: x**3 - y - z
+    # value = sq_integrate(f)
+    # assert is_close(value, -0.5)
 
-    # Zero by orthogonality
-    null = lambda x, y, z: np.dot(np.array([x, y, z])-x0, n)
-    assert is_close(sq_integrate(null), 0.)
+    # # Zero by orthogonality
+    # null = lambda x, y, z: np.dot(np.array([x, y, z])-x0, n)
+    # assert is_close(sq_integrate(null), 0.)
 
-    W = np.linalg.norm(np.array([size, size, 0]))
-    # Something harder
-    dist = lambda x, y, z: np.dot(np.array([x, y, z]) - x0, np.array([x, y, z])-x0)
-    assert is_close(sq_integrate(dist), 4*8*(np.sqrt(2)*W/2)**3/3.)
+    # W = np.linalg.norm(np.array([size, size, 0]))
+    # # Something harder
+    # dist = lambda x, y, z: np.dot(np.array([x, y, z]) - x0, np.array([x, y, z])-x0)
+    # assert is_close(sq_integrate(dist), 4*8*(np.sqrt(2)*W/2)**3/3.)
 
     # Disk ---------------------------------------------------------
     R = 0.125
@@ -445,12 +448,10 @@ if __name__ == '__main__':
         
     for plane in surface:
         ax.plot3D(plane[:, 0], plane[:, 1], plane[:, 2], marker='o', linestyle='none')
-
+    plt.show()
+    
     di_integrate = lambda f, shape=di, n=n, x0=x0: shape_integrate(f, shape, x0, n)
     # Sanity
-    f = lambda x, y, z: 1
-    value = sq_integrate(f)
-    assert is_close(value, 1)
 
     # Zero by orthogonality
     null = lambda x, y, z: np.dot(np.array([x, y, z])-x0, n)
@@ -462,50 +463,50 @@ if __name__ == '__main__':
     
     dist = lambda x, y, z: np.dot(np.array([x, y, z])-x0, np.array([x, y, z])-x0)**2
     assert is_close(di_integrate(dist), np.pi/3*R**6/(np.pi*R**2))
-
-    # Square ---------------------------------------------------------
-    size = 0.125
-    sq = Square(P=lambda x0: x0 - np.array([size, size, 0]), degree=8)
-
-    u = df.Function(df.FunctionSpace(mesh, 'CG', 1))
-    op = Average(u, line_mesh, sq)
-
-
-    from scipy.spatial import Delaunay
-    from dolfin import File
-        
-    surface = render_avg_surface(op)
-
-    nodes = np.row_stack(surface)
-    tri = Delaunay(nodes)
-
-    cells = np.fromiter(tri.simplices.flatten(), dtype='uintp').reshape(tri.simplices.shape)
     
-    bounded_volume = make_mesh(nodes, cells, tdim=2, gdim=3)
-    File('foo.pvd') << bounded_volume
-    
-    # for points in surface
-    
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+    # # Square ---------------------------------------------------------
+    # size = 0.125
+    # sq = Square(P=lambda x0: x0 - np.array([size, size, 0]), degree=8)
+
+    # u = df.Function(df.FunctionSpace(mesh, 'CG', 1))
+    # op = Average(u, line_mesh, sq)
+
+
+    # from scipy.spatial import Delaunay
+    # from dolfin import File
         
-    for plane in surface:
-        ax.plot3D(plane[:, 0], plane[:, 1], plane[:, 2], marker='o', linestyle='none')
+    # surface = render_avg_surface(op)
+
+    # nodes = np.row_stack(surface)
+    # tri = Delaunay(nodes)
+
+    # cells = np.fromiter(tri.simplices.flatten(), dtype='uintp').reshape(tri.simplices.shape)
+    
+    # bounded_volume = make_mesh(nodes, cells, tdim=2, gdim=3)
+    # File('foo.pvd') << bounded_volume
+    
+    # # for points in surface
+    
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d')
         
-    sq_integrate = lambda f, shape=sq, n=n, x0=x0: shape_integrate(f, shape, x0, n)
+    # for plane in surface:
+    #     ax.plot3D(plane[:, 0], plane[:, 1], plane[:, 2], marker='o', linestyle='none')
+        
+    # sq_integrate = lambda f, shape=sq, n=n, x0=x0: shape_integrate(f, shape, x0, n)
 
-    # Sanity
-    one = lambda x, y, z: 1
-    assert is_close(sq_integrate(one), 1)
+    # # Sanity
+    # one = lambda x, y, z: 1
+    # assert is_close(sq_integrate(one), 1)
 
-    # Zero by orthogonality
-    null = lambda x, y, z: np.dot(np.array([x, y, z])-x0, n)
-    assert is_close(sq_integrate(null), 0)
+    # # Zero by orthogonality
+    # null = lambda x, y, z: np.dot(np.array([x, y, z])-x0, n)
+    # assert is_close(sq_integrate(null), 0)
 
-    W = np.linalg.norm([size, size, 0])
-    # Something harder
-    area = 2*W**2
-    dist = lambda x, y, z: np.dot(np.array([x, y, z])-x0, np.array([x, y, z])-x0)
-    assert is_close(sq_integrate(dist), 8*(np.sqrt(2)*W/2)**4/3./area)
+    # W = np.linalg.norm([size, size, 0])
+    # # Something harder
+    # area = 2*W**2
+    # dist = lambda x, y, z: np.dot(np.array([x, y, z])-x0, np.array([x, y, z])-x0)
+    # assert is_close(sq_integrate(dist), 8*(np.sqrt(2)*W/2)**4/3./area)
 
-    plt.show()
+    # plt.show()

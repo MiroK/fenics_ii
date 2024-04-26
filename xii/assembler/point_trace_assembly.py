@@ -24,7 +24,7 @@ class PointTraceFormAssembler(ReducedFormAssembler):
         '''Dict of reduction data and optinal normal'''
         return terminal.dirac_
 
-    def reduced_space(self, V, reduced_mesh):
+    def reduced_space(self, V, reduced_mesh, data=None):
         '''Construct a reduced space for V on the mesh'''
         return point_trace_space(V, reduced_mesh)
 

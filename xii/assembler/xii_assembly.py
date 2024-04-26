@@ -6,6 +6,7 @@ import xii.assembler.injection_assembly
 import xii.assembler.surface_mean_assembly
 import xii.assembler.gradient_point_trace_assembly
 import xii.assembler.point_trace_assembly
+import xii.assembler.patch_average_assembly
 
 from xii.linalg.matrix_utils import is_number
 from xii.assembler.ufl_utils import form_arity
@@ -24,6 +25,7 @@ def assemble(form):
     # dolfin can handle (hopefully)
     modules = (xii.assembler.trace_assembly,        # To Codimension 1
                xii.assembler.average_assembly,      # To Codimension 2 via surface of bding curve
+               xii.assembler.patch_average_assembly,
                # xii.assembler.extension_assembly,    # From dim 1 to 2
                xii.assembler.point_trace_assembly,
                xii.assembler.gradient_point_trace_assembly,               
@@ -31,13 +33,18 @@ def assemble(form):
                xii.assembler.restriction_assembly,
                xii.assembler.injection_assembly)  # Between Codimension 0
 
-    names = ('trace', 'average', 'point_trace', 'gradient_point_trace', 'surface_mean', 'restriction', 'injection')
+    names = ('trace', 'average', 'patch_average',
+             'point_trace', 'gradient_point_trace',
+             'surface_mean', 'restriction', 'injection')
     
     if isinstance(form, Form):
         arity = form_arity(form)
         # Try with our reduced assemblers
         for name, module in zip(names, modules):
+            #try:
             tensor = module.assemble_form(form, arity)
+            #except:
+            #    tensor = None
             if tensor is not None:
                 return tensor
         # Fallback

@@ -158,9 +158,9 @@ def setup_problem(facet_f, mms, flat_gamma):
     dx_ = Measure('dx', domain=bmesh, subdomain_data=bmesh.marking_function)
 
     # Velocity, pressure and LM spaces
-    V = VectorFunctionSpace(mesh, 'CR', 1)
-    Q = FunctionSpace(mesh, 'DG', 0)
-    M = FunctionSpace(bmesh, 'CG', 1)
+    V = VectorFunctionSpace(mesh, 'CG', 2)
+    Q = FunctionSpace(mesh, 'CG', 1)
+    M = FunctionSpace(bmesh, 'CG', 2)
     W = [V, Q, M]
 
     u, p, l = map(TrialFunction, W)
@@ -181,10 +181,6 @@ def setup_problem(facet_f, mms, flat_gamma):
     # We now define the system as
     a = block_form(W, 2)
     a[0][0] = Constant(2)*inner(sym(grad(u)), sym(grad(v)))*dx
-
-    hF = CentroidDistance(mesh)
-    a[0][0] += Constant(2)/avg(hF)*inner(jump(u), jump(v))*dS
-    
     a[0][1] = -inner(div(v), p)*dx
     a[0][2] = inner(l, dot(Tv, n_))*dx_
     a[1][0] = -inner(div(u), q)*dx
@@ -209,13 +205,36 @@ def setup_problem(facet_f, mms, flat_gamma):
     A, b = apply_bc(A, b, W_bcs)
 
     # Let's also build a preconditioner
-    B0 = LU(A[0][0])
-    B1 = LU(assemble(inner(p, q)*dx))
+    if True:
+        B0 = LU(A[0][0])
+        B1 = LU(assemble(inner(p, q)*dx))
+        
+        M_facet_f = MeshFunction('size_t', M.mesh(), M.mesh().topology().dim()-1, 0)
+        DomainBoundary().mark(M_facet_f, 1)
 
-    M_facet_f = MeshFunction('size_t', M.mesh(), M.mesh().topology().dim()-1, 0)
-    DomainBoundary().mark(M_facet_f, 1)
-    B2 = LU(HsEig(M, s=-0.5, bcs=[(M_facet_f, 1)]).collapse())
+        # Wishful thinking (which for now only points to importance of fractional laplacian
+        # h = CellDiameter(M.mesh())
+        # alpha = 0.5
+        # b2_form = (h**alpha)*inner(l, m)*dx
+        # B2, _ = assemble_system(b2_form,
+        #                         inner(Constant(0), m)*dx,
+        #                         None) #DirichletBC(M, Constant(0), M_facet_f, 1))
+        # B2 = LU(B2)
+        
+        B2 = LU(HsEig(M, s=-0.5, bcs=[(M_facet_f, 1)]).collapse())
+    else:
+        h_ = CellDiameter(bmesh)
+        y = Constant(0.0)
+        
+        a_prec = block_form(W, 2)
+        a_prec[0][0] = Constant(2)*inner(sym(grad(u)), sym(grad(v)))*dx
+        a_prec[1][1] = inner(p, q)*dx
+        a_prec[2][2] = inner(m, l)*dx
 
+        B = ii_assemble(a_prec)
+        B, _ = apply_bc(B, b, W_bcs)
+        B0, B1, B2 = (LU(B[i][i]) for i in range(len(W)))
+        
     B = block_diag_mat([B0, B1, B2])
         
     return A, b, W, B

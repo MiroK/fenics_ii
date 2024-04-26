@@ -499,22 +499,34 @@ class TangentCurve(df.Function):
         _, v2c = mesh.init(0, 1), mesh.topology()(0, 1)
 
         roots = [v for v in range(mesh.num_vertices()) if len(v2c(v)) == 1]
-        if root is not None:
-            assert root in roots
-        else:
-            root = roots.pop()
-        
         values = np.zeros(V.dim()).reshape((-1, gdim))
-
-        g = nx.Graph()
-        g.add_edges_from(mesh.cells())
-        assert len(list(nx.algorithms.connected_components(g))) == 1
+        visited = np.zeros(mesh.num_cells(), dtype=bool)        
+        if roots:
+            if root is not None:
+                assert root in roots
+            else:
+                root = roots.pop()
+                
+            g = nx.Graph()
+            g.add_edges_from(mesh.cells())
+            assert len(list(nx.algorithms.connected_components(g))) == 1
         
-        for (v0, v1) in nx.algorithms.traversal.dfs_edges(g, root):
-            cell, = set(v2c(v0)) & set(v2c(v1))
+            for (v0, v1) in nx.algorithms.traversal.dfs_edges(g, root):
+                cell, = set(v2c(v0)) & set(v2c(v1))
+                v0, v1 = X[v0], X[v1]
+
+                t = (v1 - v0)/np.linalg.norm(v1-v0)
+                values[cell, :] = t
+                visited[cell] = True
+
+        for cell in np.where(~visited)[0]:
+            v0, v1 = c2v(cell)
             v0, v1 = X[v0], X[v1]
+
             t = (v1 - v0)/np.linalg.norm(v1-v0)
-            values[cell][:] = t
+            values[cell, :] = t
+            visited[cell] = True
+        assert np.all(visited)
 
         if gdim == 1:
             n_values[V.dofmap().dofs()] = values.flatten()
