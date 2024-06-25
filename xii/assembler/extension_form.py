@@ -1,7 +1,7 @@
-from ufl.corealg.traversal import traverse_unique_terminals
+from ufl_legacy.corealg.traversal import traverse_unique_terminals
 from xii.assembler.ufl_utils import *
 import dolfin as df
-import ufl
+import ufl_legacy
 
 
 def extension_cell(o):
@@ -25,10 +25,10 @@ def extension_cell(o):
 
     # Line in 3d extends to 'cylinder' surface around it
     if gdim == 3:
-        return ufl.Cell('triangle', gdim)
+        return ufl_legacy.Cell('triangle', gdim)
     # Line in 2d extends to line in 3d
     else:
-        return ufl.Cell('triangle', gdim)
+        return ufl_legacy.Cell('triangle', gdim)
 
     
 def extension_element(elm):
@@ -81,7 +81,7 @@ def Extension(v, mesh, type, data=None):
 
     assert extension_cell(v) == mesh.ufl_cell(), (extension_cell(v), mesh.ufl_cell())
 
-    if isinstance(v, ufl.Coefficient):
+    if isinstance(v, ufl_legacy.Coefficient):
         v =  df.Function(v.function_space(), v.vector())
     else:
         # Object copy?

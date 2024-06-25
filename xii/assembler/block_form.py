@@ -3,7 +3,7 @@ from dolfin.function.argument import Argument
 from itertools import dropwhile
 from dolfin import *
 import numpy as np
-import ufl
+import ufl_legacy
 
 
 def is_trial_function(arg):
@@ -23,21 +23,21 @@ def is_number(form):
 
 def trial_function(form):
     '''Extract trial function[s] of [block] form'''
-    if isinstance(form, ufl.Form):
+    if isinstance(form, ufl_legacy.Form):
         return tuple(filter(is_trial_function, form.arguments()))
     return sum(list(map(trial_function, form)), ())
 
 
 def test_function(form):
     '''Extract test function[s] of [block] form'''
-    if isinstance(form, ufl.Form):
+    if isinstance(form, ufl_legacy.Form):
         return tuple(filter(is_test_function, form.arguments()))
     return sum(list(map(test_function, form)), ())
 
 
 def is_bilinear_form(form):
     '''There is a trial function'''
-    if isinstance(form, ufl.Form):
+    if isinstance(form, ufl_legacy.Form):
         return bool(trial_function(form))
     # Block
     return all(map(is_bilinear_form, form))
@@ -45,7 +45,7 @@ def is_bilinear_form(form):
 
 def is_linear_form(form):
     '''There is only a test function'''
-    if isinstance(form, ufl.Form):
+    if isinstance(form, ufl_legacy.Form):
         return not is_bilinear_form(form) and len(test_function(form)) == 1 
     # Block
     return all(map(is_linear_form, form))
@@ -91,7 +91,7 @@ class _block_form(list):
     def add(self, form):
         '''self[i][j] += form with i, j extracted'''
         if len(form.integrals()) > 1:
-            return list(map(self.add, [ufl.Form((i, )) for i in form.integrals()]))
+            return list(map(self.add, [ufl_legacy.Form((i, )) for i in form.integrals()]))
             
         # Linear
         if self.arity == 1:
@@ -153,7 +153,7 @@ def block_form(W, arity):
 def is_null(thing):
     '''Zero block'''
     # Don't check zero-ity of form
-    if isinstance(thing, (Form, ufl.Form)):
+    if isinstance(thing, (Form, ufl_legacy.Form)):
         return False
 
     # Init with Constant(0)    
@@ -179,10 +179,10 @@ def form_adjoint(expr):
     if is_number(expr):
         return expr
     
-    if isinstance(expr, ufl.Form):
-        return ufl.Form(list(map(form_adjoint, expr.integrals())))
+    if isinstance(expr, ufl_legacy.Form):
+        return ufl_legacy.Form(list(map(form_adjoint, expr.integrals())))
 
-    if isinstance(expr, ufl.Integral):
+    if isinstance(expr, ufl_legacy.Integral):
         return expr.reconstruct(integrand=form_adjoint(expr.integrand()))
 
     # For adjoint we need one trial and one test function. The idea is

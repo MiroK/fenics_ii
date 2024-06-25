@@ -1,7 +1,7 @@
-from ufl.corealg.traversal import traverse_unique_terminals
+from ufl_legacy.corealg.traversal import traverse_unique_terminals
 from xii.assembler.ufl_utils import *
 import dolfin as df
-import ufl
+import ufl_legacy
 
 
 def injection_cell(o):
@@ -55,7 +55,7 @@ def Injection(v, fmesh, not_nested_method='interpolate'):
         else:
             assert not_nested_method in ('interpolate', 'project')
 
-    if isinstance(v, ufl.Coefficient):
+    if isinstance(v, ufl_legacy.Coefficient):
         v =  df.Function(v.function_space(), v.vector())
     else:
         v = [df.TestFunction, df.TrialFunction][v.number()](v.function_space())

@@ -1,8 +1,8 @@
-from ufl.corealg.traversal import traverse_unique_terminals
+from ufl_legacy.corealg.traversal import traverse_unique_terminals
 from xii.assembler.ufl_utils import *
 import dolfin as df
 import numpy as np
-import ufl
+import ufl_legacy
 
 
 def trace_cell(o):
@@ -24,7 +24,7 @@ def trace_cell(o):
     cell_name = {'tetrahedron': 'triangle',
                  'triangle': 'interval'}[o.cellname()]
 
-    return ufl.Cell(cell_name, o.geometric_dimension())
+    return ufl_legacy.Cell(cell_name, o.geometric_dimension())
 
 
 def trace_element(elm):
@@ -96,7 +96,7 @@ def Trace(v, mmesh, restriction='', normal=None, tag=None):
     # not work this way.
     # FIXME: should Trace(coeffcient) be a coefficient in the trace space right
     # away, what would be changes to the assembler etc?
-    if isinstance(v, ufl.Coefficient):
+    if isinstance(v, ufl_legacy.Coefficient):
         v =  df.Function(v.function_space(), v.vector())
     else:
         # Object copy?

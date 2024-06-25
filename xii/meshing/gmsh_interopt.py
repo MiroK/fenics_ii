@@ -3,7 +3,7 @@ import dolfin as df
 import numpy as np
 import operator
 import gmsh
-import ufl
+import ufl_legacy
 
 
 def build_mesh(vertices, cells, cell_type):
@@ -124,7 +124,7 @@ def mesh_from_gmsh(nodes, element_data, TOL=1E-13):
     else:
         gdim = 3
 
-    cell = ufl.Cell(elm_name[cell_tdim], gdim)
+    cell = ufl_legacy.Cell(elm_name[cell_tdim], gdim)
     mesh = build_mesh(mesh_vertices, cells_as_nodes, cell)
     
     entity_functions = {}

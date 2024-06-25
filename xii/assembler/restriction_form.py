@@ -1,8 +1,8 @@
-from ufl.corealg.traversal import traverse_unique_terminals
+from ufl_legacy.corealg.traversal import traverse_unique_terminals
 from xii.assembler.ufl_utils import *
 from xii.meshing.subdomain_mesh import SubDomainMesh
 import dolfin as df
-import ufl
+import ufl_legacy
 
 
 def restriction_cell(o):
@@ -36,7 +36,7 @@ def Restriction(v, mmesh):
     assert restriction_cell(v) == mmesh.ufl_cell()
     # assert isinstance(mmesh, SubDomainMesh)
 
-    if isinstance(v, ufl.Coefficient):
+    if isinstance(v, ufl_legacy.Coefficient):
         v =  df.Function(v.function_space(), v.vector())
     else:
         # Object copy?

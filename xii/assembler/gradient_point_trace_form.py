@@ -1,8 +1,8 @@
-from ufl.corealg.traversal import traverse_unique_terminals
+from ufl_legacy.corealg.traversal import traverse_unique_terminals
 from xii.assembler.ufl_utils import *
 import dolfin as df
 import numpy as np
-import ufl
+import ufl_legacy
 
 
 def gradient_point_trace_cell(o):

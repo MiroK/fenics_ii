@@ -1,7 +1,7 @@
 from xii.assembler.ufl_utils import replace as ii_replace
 
 import dolfin as df
-import ufl
+import ufl_legacy
 
 
 def is_okay_functional(L):
@@ -21,9 +21,9 @@ def block_jacobian(bf, foos):
     # Want a square matrix
     assert len(bf) == len(foos)
     # Things in a row are forms
-    assert all(isinstance(L, ufl.Form) for L in bf)
+    assert all(isinstance(L, ufl_legacy.Form) for L in bf)
     # Diff w.r.t functions
-    assert all(isinstance(f, ufl.Coefficient) for f in foos)
+    assert all(isinstance(f, ufl_legacy.Coefficient) for f in foos)
 
     # Each row is supposed to be a function in a non-mixed function space
     test_functions = list(map(is_okay_functional, bf))
@@ -63,7 +63,7 @@ def ii_derivative(f, x):
 
     # FIXME: for now don't allow diffing wrt compound expressions, in particular
     # restricted args. 
-    assert isinstance(x, ufl.Coefficient) and not is_restricted(x)
+    assert isinstance(x, ufl_legacy.Coefficient) and not is_restricted(x)
 
     # So now we have L(arg, v) where arg = (u, ..., T[u], Pi[u], ...) and the idea
     # is to define derivative w.r.t to x by doing
@@ -92,7 +92,7 @@ def ii_derivative(f, x):
             # If the substitution is do nothing then there's no need to diff
             if integrand != integral.integrand():                
                 sub_form_integrals.append(integral.reconstruct(integrand=integrand))
-        sub_form = ufl.Form(sub_form_integrals)
+        sub_form = ufl_legacy.Form(sub_form_integrals)
 
         # Partial wrt to substituated argument
         df_dfi = df.derivative(sub_form, fi_sub)
@@ -103,7 +103,7 @@ def ii_derivative(f, x):
             integrand = ii_replace(integral.integrand(), fi_sub, fi)
             assert integrand != integral.integrand()
             sub_form_integrals.append(integral.reconstruct(integrand=integrand))
-        df_dfi = ufl.Form(sub_form_integrals)
+        df_dfi = ufl_legacy.Form(sub_form_integrals)
 
         # As d Tu / dx = T(x) we now need to restrict the trial function
         if rtype:

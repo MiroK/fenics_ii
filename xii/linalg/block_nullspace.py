@@ -1,4 +1,4 @@
-import dolfin, ufl
+import dolfin
 
 
 class BlockNullspace(object):

@@ -1,9 +1,9 @@
-from ufl.corealg.traversal import traverse_unique_terminals
+from ufl_legacy.corealg.traversal import traverse_unique_terminals
 import xii.assembler.trace_form as trace
 from xii.assembler.ufl_utils import *
 import dolfin as df
 import numpy as np
-import ufl
+import ufl_legacy
 
 
 def surface_mean_cell(o):
@@ -34,7 +34,7 @@ def SurfaceMean(v, mmesh):
 
     assert surface_mean_cell(v) == mmesh.ufl_cell()
     
-    if isinstance(v, ufl.Coefficient):
+    if isinstance(v, ufl_legacy.Coefficient):
         v =  df.Function(v.function_space(), v.vector())
     else:
         # Object copy?

@@ -1,8 +1,8 @@
 from xii.assembler.ufl_utils import *
 
-from ufl.corealg.traversal import traverse_unique_terminals
+from ufl_legacy.corealg.traversal import traverse_unique_terminals
 import dolfin as df
-import ufl
+import ufl_legacy
 
 
 def patch_average_cell(o):
@@ -20,7 +20,7 @@ def patch_average_cell(o):
     cell_name = {'tetrahedron': 'interval',
                  'triangle': 'interval'}[o.cellname()]
     
-    return ufl.Cell(cell_name, o.geometric_dimension())
+    return ufl_legacy.Cell(cell_name, o.geometric_dimension())
 
 
 def patch_average_space(V, mesh, data):
@@ -52,7 +52,7 @@ def CellPatchAverage(v, vertex_f, patch_f, patch_coloring=None):
     assert is_terminal(v)
     assert patch_average_cell(v) == gamma.ufl_cell()
 
-    if isinstance(v, ufl.Coefficient):
+    if isinstance(v, ufl_legacy.Coefficient):
         v =  df.Function(v.function_space(), v.vector())
     else:
         # Object copy?

@@ -1,9 +1,9 @@
 from xii.assembler.ufl_utils import *
 from xii.linalg.matrix_utils import is_number
 
-from ufl.corealg.traversal import traverse_unique_terminals
+from ufl_legacy.corealg.traversal import traverse_unique_terminals
 import dolfin as df
-import ufl
+import ufl_legacy
 
 
 def average_cell(o):
@@ -21,7 +21,7 @@ def average_cell(o):
     # Another cell
     cell_name = {'tetrahedron': 'interval'}[o.cellname()]
     
-    return ufl.Cell(cell_name, o.geometric_dimension())
+    return ufl_legacy.Cell(cell_name, o.geometric_dimension())
 
 
 def average_space(V, mesh):
@@ -74,7 +74,7 @@ def Average(v, line_mesh, shape):
         # Otherise the hope is that we will eval in cell interior which
         print('\tUsing 3d-1d trace!!!!')
         
-    if isinstance(v, ufl.Coefficient):
+    if isinstance(v, ufl_legacy.Coefficient):
         v =  df.Function(v.function_space(), v.vector())
     else:
         # Object copy?

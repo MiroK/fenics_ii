@@ -1,7 +1,7 @@
-from ufl.corealg.traversal import traverse_unique_terminals
-from ufl.algorithms.transformer import ufl2uflcopy
+from ufl_legacy.corealg.traversal import traverse_unique_terminals
+from ufl_legacy.algorithms.transformer import ufl2uflcopy
 from block import block_transpose
-from ufl.form import Form
+from ufl_legacy.form import Form
 import dolfin as df
 import operator
 
