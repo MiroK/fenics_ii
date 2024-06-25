@@ -116,36 +116,39 @@ def walk_cells(cell_f, tag, c2v, v2c, is_loop):
     '''Walk cells where cell_f == tag in a linked way'''
     cell_indices, = np.where(cell_f == tag)
     # Localize to tags
-    c2v = {c: c2v(c) for c in cell_indices}
-    v2c = imap(c2v)
+    lc2v = {c: c2v(c) for c in cell_indices}
+    lv2c = imap(lc2v)
 
     # We return cell index together with orientation, i.e. True if link
     # is v0, v1 False if link is v1, v0
-    def next_vertex(c, v, c2v=c2v):
-        v0, v1 = c2v[c]
+    def next_vertex(c, v, lc2v=lc2v):
+        v0, v1 = lc2v[c]
         return v1 if v == v0 else v0
 
-    def next_cell(v, c, v2c=v2c):
-        c0, c1 = v2c[v]
+    def next_cell(v, c, lv2c=lv2c):
+        c0, c1 = lv2c[v]
         return c1 if c == c0 else c0
 
     if is_loop:
         # Pick first marked cell
         link_cell = cell_indices[0]
         # For loop we pick where to start as either of the first cell
-        start, v1 = c2v[link_cell]
+        start, v1 = lc2v[link_cell]
         # ... and we terminate once we reach the start again
         end = start
     else:
         # If this is a branch we need two end cells/vertices
         # One is a start the other is end
-        start, end = [v for v in v2c if len(v2c[v]) == 1]
+        start, end = [v for v in lv2c if len(lv2c[v]) == 1]
+
+        if len(v2c(start)) < len(v2c(end)):
+            end, start = start, end
         
-        link_cell, = v2c[start]
+        link_cell, = lv2c[start]
         # The linking vertex is not the start
-        v1,  = set(c2v[link_cell]) - set((start, ))
+        v1,  = set(lc2v[link_cell]) - set((start, ))
         
-    yield link_cell, c2v[link_cell][-1] == v1
+    yield link_cell, lc2v[link_cell][-1] == v1
 
     v0 = start
     while next_vertex(link_cell, v0) != end:
@@ -154,7 +157,7 @@ def walk_cells(cell_f, tag, c2v, v2c, is_loop):
         # Because we have not terminal, ==
         link_cell = next_cell(v0, link_cell)
 
-        yield link_cell, c2v[link_cell][0] == v0
+        yield link_cell, lc2v[link_cell][0] == v0
 
     
 def refine_contour(contour, n):

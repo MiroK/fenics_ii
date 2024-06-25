@@ -140,6 +140,8 @@ def trace_mat_no_restrict(V, TV, trace_mesh=None, tag_data=None):
                 # Set which basis foo
                 V_basis_f.dof = local
                 # Get all rows at once
+                # print('>>>>', TV_dof.eval_dofs(V_basis_f))
+                
                 local_values[local][:] = TV_dof.eval_dofs(V_basis_f)
             # Indices for the filled piece
             rows_ = np.tile(trace_dofs, nbasis_elm)
