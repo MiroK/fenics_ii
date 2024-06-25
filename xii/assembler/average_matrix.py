@@ -119,7 +119,7 @@ def average_matrix(V, TV, shape):
                     if c is None:
                         cs = tree.compute_entity_collisions(Point(*ip))[:1]
                     else:
-                        print('>>>', len(tree.compute_entity_collisions(Point(*ip))))
+                        # print('>>>', len(tree.compute_entity_collisions(Point(*ip))))
                         cs = (c, )
                     # assert False
                     for c in cs:
