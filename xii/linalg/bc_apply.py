@@ -46,7 +46,7 @@ def apply_bc(A, b, bcs, diag_val=1., return_apply_b=False):
 
     bcs_ = []
     for bc in bcs:
-        assert isinstance(bc, (DirichletBC, list))
+        assert isinstance(bc, (DirichletBC, list, dict)), (type(bc), )
         if isinstance(bc, DirichletBC):
             bcs_.append([bc])
         else:
