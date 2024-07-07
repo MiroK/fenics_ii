@@ -28,7 +28,7 @@ def mean_space(V, mesh, data):
     return df.FunctionSpace(mesh, 'Real', 0)
 
 
-def Mean(v):
+def Mean(v, weight=None, measure=None):
     '''v -> |domain|^{-1} * \int_{domain} v *dx '''
     # FIXME: Don't want to deal with vectors at this point
     assert v.ufl_shape == ()
@@ -40,7 +40,7 @@ def Mean(v):
         # Object copy?
         v = [df.TestFunction, df.TrialFunction][v.number()](v.function_space())
 
-    v.mean_ = {}
+    v.mean_ = dict(weight=weight, measure=measure)
 
     return v
 

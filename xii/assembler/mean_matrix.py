@@ -16,7 +16,8 @@ def memoize_average(average_mat):
     cache = {}
     def cached_average_mat(V, TV, reduced_mesh, data):
         key = ((V.ufl_element(), V.mesh().id()),
-               (TV.ufl_element(), TV.mesh().id()))
+               (TV.ufl_element(), TV.mesh().id()),
+               data['weight'], data['measure'])
 
         if key not in cache:
             cache[key] = average_mat(V, TV, reduced_mesh, data)
@@ -32,7 +33,14 @@ def mean_mat(V, TV, reduced_mesh, data):
     space TV. 
     '''
     v = df.TestFunction(V)
-    values = df.assemble(v*df.dx)
+
+    measure, weight = data['measure'], data['weight']
+    if measure is None:
+        measure = df.dx
+    if weight is None:
+        weight = df.Constant(1)
+    
+    values = df.assemble(v*weight*measure)
     jj = np.arange(V.dim())
     ii = np.zeros_like(jj)
         

@@ -21,7 +21,7 @@ class MeanFormAssembler(ReducedFormAssembler):
 
     def reduction_matrix_data(self, terminal):
         '''Dict of reduction data and optinal normal'''
-        return {}
+        return terminal.mean_
 
     def reduced_space(self, V, reduced_mesh, data):
         '''Construct a reduced space for V on the mesh'''
