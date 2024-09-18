@@ -1,4 +1,6 @@
 from dolfin import *
+import xii.meshing as iimesh
+import numpy as np
 
 template=r'''
 \documentclass{standalone}
@@ -11,15 +13,18 @@ template=r'''
 
 %(colors)s
 
+
 \begin{document}
 \begin{tikzpicture}
 %(body)s
+
+%(corners)s
 \end{tikzpicture}
 \end{document}
 '''
 
 
-def tikzify_2d_mesh(facet_info, cell_info=None, vertex_info=None, colors=None):
+def tikzify_2d_mesh(facet_info, cell_info=None, vertex_info=None, colors=None, centers=None):
     '''Standalone Tikz representation of the mesh'''
     body = []
     if cell_info is not None:
@@ -83,6 +88,23 @@ def tikzify_2d_mesh(facet_info, cell_info=None, vertex_info=None, colors=None):
                 
     body = '\n'.join(body)
 
+    xmin, ymin = mesh.coordinates().min(axis=0)
+    xmax, ymax = mesh.coordinates().max(axis=0)    
+
+    corners = [rf'\coordinate (LL) at ({xmin}, {ymin});',
+               rf'\coordinate (LR) at ({xmax}, {ymin});',
+               rf'\coordinate (UR) at ({xmax}, {ymax});',
+               rf'\coordinate (UL) at ({xmin}, {ymax});']
+
+    if centers is not None:
+        cell_colors = np.unique(centers.array())
+        for color in cell_colors:
+            color_mesh = iimesh.EmbeddedMesh(centers, color)
+            x0, y0 = np.mean(color_mesh.coordinates(), axis=0)
+            
+            corners.append(rf'\coordinate (C{color}) at ({x0}, {y0});')
+    corners = '\n'.join(corners)
+    
     if colors is None:
         colors = ''
     else:
@@ -91,7 +113,7 @@ def tikzify_2d_mesh(facet_info, cell_info=None, vertex_info=None, colors=None):
         colors = '\n'.join([color_code % {'color': color, 'RED': str(RGB[0]), 'BLUE': str(RGB[1]), 'GREEN': str(RGB[2])}
                             for color, RGB in colors.items()])
         print(colors)
-    return template % {'body': body, 'colors': colors}
+    return template % {'body': body, 'colors': colors, 'corners': corners}
 
 
 def load_mesh(h5_file, data_sets):

@@ -80,3 +80,10 @@ class ii_Function(object):
         assert len(self) == len(f)
         [fi.assign(df.interpolate(f, fi.function_space())) for fi in self]
         
+    def rename(self, names):
+        renamed = []
+        for (name, fi) in zip(names, self):
+            fi.rename(*name)
+            renamed.append(fi.name())
+        return renamed
+        
