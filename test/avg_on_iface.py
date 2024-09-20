@@ -38,7 +38,7 @@ solve(a == L, fh)
 cylinder = Circle(radius, degree=20)
 
 # Which one to pick on the interface ...
-which = 1
+which = 0
 resolve_interfaces = InterfaceResolution(subdomains=cell_f,
                                          resolve_conflicts={(0, 1): which})
 # resolve_interfaces = None
@@ -54,6 +54,5 @@ A, b = (ii_convert(ii_assemble(form)) for form in (a, L))
 
 Pifh = Function(Q)
 solve(A, Pifh.vector(), b)
-
 # ... compare against that
 print(errornorm(fs[which], Pifh))

@@ -163,10 +163,15 @@ def average_matrix(V, TV, shape, normalize=True, resolve_interfaces=None):
                 else:
                     # Which interface is this
                     iface_key = set(t for (t, v) in chain(*data.values()))
-                    assert len(iface_key) == 2, (iface_key, )
-                    iface_key = tuple(sorted(iface_key))
+                    # We might be fully in one domain:
+                    if len(iface_key) == 1:
+                        keep_tag, = iface_key
+                    # Need to be told what to do
+                    else:
+                        assert len(iface_key) == 2, (iface_key, )
+                        iface_key = tuple(sorted(iface_key))
 
-                    keep_tag = resolve_interfaces.resolve_conflicts[iface_key]
+                        keep_tag = resolve_interfaces.resolve_conflicts[iface_key]
   
                 if normalize:
                     curve_len = sum(wq[qp_subdomain == keep_tag])
@@ -290,10 +295,15 @@ def scalar_average_matrix(V, TV, shape, normalize=True, resolve_interfaces=None)
             else:
                 # Which interface is this
                 iface_key = set(t for (t, v) in chain(*data.values()))
-                assert len(iface_key) == 2, (iface_key, )
-                iface_key = tuple(sorted(iface_key))
+                # We might be fully in one domain:
+                if len(iface_key) == 1:
+                    keep_tag, = iface_key
+                # Need to be told what to do
+                else:
+                    assert len(iface_key) == 2, (iface_key, )
+                    iface_key = tuple(sorted(iface_key))
 
-                keep_tag = resolve_interfaces.resolve_conflicts[iface_key]
+                    keep_tag = resolve_interfaces.resolve_conflicts[iface_key]
 
             if normalize:
                 curve_len = sum(wq[qp_subdomain == keep_tag])
