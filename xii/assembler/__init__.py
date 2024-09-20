@@ -1,5 +1,5 @@
 from . trace_form import Trace
-from . average_form import Average
+from . average_form import Average, InterfaceResolution
 from . extension_form import Extension
 from . restriction_form import Restriction
 from . injection_form import Injection

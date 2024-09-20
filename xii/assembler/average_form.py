@@ -2,6 +2,7 @@ from xii.assembler.ufl_utils import *
 from xii.linalg.matrix_utils import is_number
 
 from ufl_legacy.corealg.traversal import traverse_unique_terminals
+from collections import namedtuple
 import dolfin as df
 import ufl_legacy
 
@@ -52,13 +53,21 @@ def average_space(V, mesh):
     return df.FunctionSpace(mesh, elm(family, mesh.ufl_cell(), degree))
 
 
-def Average(v, line_mesh, shape):
+InterfaceResolution = namedtuple('InterfaceResolution', ('subdomains', 'resolve_conflicts'))
+
+
+def Average(v, line_mesh, shape, normalize=True, resolve_interfaces=None):
     '''
     Anoteate v for being a reduction of v obtained by integrating over the 
     shape. Based on shape the reduction is done by a line integral or a 
-    surface integral (over crossection). If shape is None, the reduction 
-    is understood as 3d-1d trace. In this case the reduced function must 
-    be in some CG space!
+    surface integral (over crossection). With normalize = True the value of 
+    v integrated over the shape is normalized as (int_{shape} v)/{int_{shape} 1}.
+    Resolve interfaces speficies which points are taken into account in
+    case during integration over the shape the quadrature points end up in 
+    different subdomains.
+
+    If shape is None, the reduction is understood as 3d-1d trace. In this case 
+    the reduced function must be in some CG space!
     '''
     # Prevent Trace(grad(u)). But it could be interesting to have this
     assert is_terminal(v)
@@ -80,7 +89,8 @@ def Average(v, line_mesh, shape):
         # Object copy?
         v = [df.TestFunction, df.TrialFunction][v.number()](v.function_space())
 
-    v.average_ = {'mesh': line_mesh, 'shape': shape}
+    v.average_ = {'mesh': line_mesh, 'shape': shape, 'normalize': normalize,
+                  'resolve_interfaces': resolve_interfaces}
 
     return v
 

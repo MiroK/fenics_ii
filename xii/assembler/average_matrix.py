@@ -3,6 +3,10 @@ from xii.assembler.average_form import average_cell, average_space
 
 from numpy.polynomial.legendre import leggauss
 from dolfin import PETScMatrix, cells, Point, Cell, Function
+
+from collections import defaultdict
+from itertools import chain
+
 import scipy.sparse as sp
 from petsc4py import PETSc
 import numpy as np
@@ -49,12 +53,13 @@ def avg_mat(V, TV, reduced_mesh, data):
         return PETScMatrix(trace_3d1d_matrix(V, TV, reduced_mesh))
 
     # Surface averages
-    Rmat = average_matrix(V, TV, shape)
+    Rmat = average_matrix(V, TV, shape, normalize=data['normalize'],
+                          resolve_interfaces=data['resolve_interfaces'])
         
     return PETScMatrix(Rmat)
                 
 
-def average_matrix(V, TV, shape):
+def average_matrix(V, TV, shape, normalize=True, resolve_interfaces=None):
     '''
     Averaging matrix for reduction of g in V to TV by integration over shape.
     '''
@@ -62,7 +67,7 @@ def average_matrix(V, TV, shape):
     #
     # Pi(u)(s) = |L(s)|^-1*\int_{L(s)}u(t) dx(s)
     #
-    # Here L is the shape over which u is integrated for reduction.
+    # Here L is the shapse over which u is integrated for reduction.
     # Its measure is |L(s)|.
     mesh_x = TV.mesh().coordinates()
     # The idea for point evaluation/computing dofs of TV is to minimize
@@ -71,9 +76,20 @@ def average_matrix(V, TV, shape):
     value_size = TV.ufl_element().value_size()
 
     if value_size == 1:
-        return scalar_average_matrix(V, TV, shape)
+        return scalar_average_matrix(V, TV, shape, normalize=normalize,
+                                     resolve_interfaces=resolve_interfaces)
     
     mesh = V.mesh()
+    if resolve_interfaces is not None:
+        # Check that we have a valid cell function
+        resolve_interfaces.subdomains.mesh().id() == mesh.id()
+        resolve_interfaces.subdomains.dim() == mesh.topology().dim()
+        # NOTE: for now that the interface is between two subdmomains and
+        # is encoded by an ordered tuple of tags
+        assert all(subdi < subdj for (subdi, subdj) in resolve_interfaces.resolve_conflicts)
+        # And the winning tag is one of the subdomains
+        assert all(val in key for (key, val) in resolve_interfaces.resolve_conflicts.items())
+
     # Eval at points will require serch
     tree = mesh.bounding_box_tree()
     limit = mesh.num_cells()
@@ -105,17 +121,17 @@ def average_matrix(V, TV, shape):
                 # Avg point here has the role of 'height' coordinate
                 quadrature = shape.quadrature(avg_point, n)
                 integration_points = quadrature.points
-                wq = quadrature.weights
+                wq = np.array(quadrature.weights)
+                # Track which subdmoain the quad points ends up in
+                qp_subdomain = np.zeros(len(wq), dtype='uintp')
 
-                curve_measure = sum(wq)
-
-                data = {}
+                data = defaultdict(list)
                 for index, ip in enumerate(integration_points):
                     c = tree.compute_first_entity_collision(Point(*ip))
                     if c >= limit:
                         c = None
                         continue
-
+                    # For every quad point there is None or One cell
                     if c is None:
                         cs = tree.compute_entity_collisions(Point(*ip))[:1]
                     else:
@@ -128,15 +144,38 @@ def average_matrix(V, TV, shape):
                         cell_orientation = Vcell.orientation()
                         basis_values[:] = Vel.evaluate_basis_all(ip, vertex_coordinates, cell_orientation)
 
+                        # What is the subdomain of the quadrature point?
+                        if resolve_interfaces is not None:
+                            cell_tag = resolve_interfaces.subdomains[c]
+                        else:
+                            cell_tag = 0
+                        qp_subdomain[index] = cell_tag
+                        
                         cols_ip = V_dm.cell_dofs(c)
                         values_ip = basis_values*wq[index]
                         # Add
                         for col, value in zip(cols_ip, values_ip.reshape((-1, value_size))):
-                            if col in data:
-                                data[col] += value/curve_measure
-                            else:
-                                data[col] = value/curve_measure
-                            
+                            # Remember contibution of the given quadrature point
+                            data[col].append((cell_tag, value))
+
+                if resolve_interfaces is None:
+                    keep_tag = 0
+                else:
+                    # Which interface is this
+                    iface_key = set(t for (t, v) in chain(*data.values()))
+                    assert len(iface_key) == 2, (iface_key, )
+                    iface_key = tuple(sorted(iface_key))
+
+                    keep_tag = resolve_interfaces.resolve_conflicts[iface_key]
+  
+                if normalize:
+                    curve_len = sum(wq[qp_subdomain == keep_tag])
+                else:
+                    curve_len = 1
+                # Now we can keep only
+                data = {col: sum(v for (t, v) in data[col] if t == keep_tag)/curve_len
+                        for col in data}
+                
                 # The thing now that with data we can assign to several
                 # rows of the matrix
                 column_indices = np.array(list(data.keys()), dtype='int32')
@@ -149,7 +188,7 @@ def average_matrix(V, TV, shape):
     return mat
 
 
-def scalar_average_matrix(V, TV, shape):
+def scalar_average_matrix(V, TV, shape, normalize=True, resolve_interfaces=None):
     '''
     Averaging matrix for reduction of g in V to TV by integration over shape.
     '''
@@ -167,6 +206,16 @@ def scalar_average_matrix(V, TV, shape):
     value_size = TV.ufl_element().value_size()
 
     mesh = V.mesh()
+    if resolve_interfaces is not None:
+        # Check that we have a valid cell function
+        resolve_interfaces.subdomains.mesh().id() == mesh.id()
+        resolve_interfaces.subdomains.dim() == mesh.topology().dim()
+        # NOTE: for now that the interface is between two subdmomains and
+        # is encoded by an ordered tuple of tags
+        assert all(subdi < subdj for (subdi, subdj) in resolve_interfaces.resolve_conflicts)
+        # And the winning tag is one of the subdomains
+        assert all(val in key for (key, val) in resolve_interfaces.resolve_conflicts.items())
+    
     # Eval at points will require serch
     tree = mesh.bounding_box_tree()
     limit = mesh.num_cells()
@@ -179,7 +228,6 @@ def scalar_average_matrix(V, TV, shape):
 
     Vel = V.element()               
     basis_values = np.zeros(V.element().space_dimension()*value_size)
-
 
     II, JJ, VALS = [], [], []
     nnz = 0
@@ -197,11 +245,13 @@ def scalar_average_matrix(V, TV, shape):
             # Avg point here has the role of 'height' coordinate
             quadrature = shape.quadrature(avg_point, n)
             integration_points = quadrature.points
+            
             wq = quadrature.weights
-
-            curve_measure = sum(wq)
-
-            data = {}
+            wq = np.array(quadrature.weights)
+            # Track which subdmoain the quad points ends up in
+            qp_subdomain = np.zeros(len(wq), dtype='uintp')
+            
+            data = defaultdict(list)
             for index, ip in enumerate(integration_points):
                 c = tree.compute_first_entity_collision(Point(*ip))
                 if c >= limit:
@@ -218,17 +268,40 @@ def scalar_average_matrix(V, TV, shape):
                 cell_orientation = Vcell.orientation()
                 basis_values[:] = Vel.evaluate_basis_all(ip, vertex_coordinates, cell_orientation)
 
+                # What is the subdomain of the quadrature point?
+                if resolve_interfaces is not None:
+                    cell_tag = resolve_interfaces.subdomains[c]
+                else:
+                    cell_tag = 0
+                qp_subdomain[index] = cell_tag
+
+                
                 cols_ip = V_dm.cell_dofs(c)
                 values_ip = basis_values*wq[index]
                 # Add
                 for col, value in zip(cols_ip, values_ip):
-                    if col in data:
-                        data[col] += value/curve_measure
-                    else:
-                        data[col] = value/curve_measure
+                    data[col].append((cell_tag, value))
 
             # All points outside it seems
             if not data: continue
+
+            if resolve_interfaces is None:
+                keep_tag = 0
+            else:
+                # Which interface is this
+                iface_key = set(t for (t, v) in chain(*data.values()))
+                assert len(iface_key) == 2, (iface_key, )
+                iface_key = tuple(sorted(iface_key))
+
+                keep_tag = resolve_interfaces.resolve_conflicts[iface_key]
+
+            if normalize:
+                curve_len = sum(wq[qp_subdomain == keep_tag])
+            else:
+                curve_len = 1
+            # Now we can keep only
+            data = {col: sum(v for (t, v) in data[col] if t == keep_tag)/curve_len
+                    for col in data}
             
             column_indices, column_values = zip(*data.items())
             rows = [scalar_row]*len(column_indices)
