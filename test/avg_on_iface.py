@@ -38,9 +38,12 @@ solve(a == L, fh)
 cylinder = Circle(radius, degree=20)
 
 # Which one to pick on the interface ...
-which = 0
+# NOTE: in this case both curves will be ~half circles so in the criteria
+# base on len(half)/half(full) they will tie. Therefore, the weight below
+# is > 1 to break the tie
 resolve_interfaces = InterfaceResolution(subdomains=cell_f,
-                                         resolve_conflicts={(0, 1): which})
+                                         resolve_conflicts={(1, 0): 2.0})
+which = 1
 # resolve_interfaces = None
 Pif = Average(fh, line_mesh, cylinder, normalize=True, resolve_interfaces=resolve_interfaces)
 
