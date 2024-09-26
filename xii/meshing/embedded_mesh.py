@@ -3,6 +3,7 @@ import xii
 from functools import reduce
 from itertools import chain, dropwhile, repeat
 from .make_mesh_cpp import make_mesh
+from .dg_utils import OrientedFacetNormal, pcws_constant
 import networkx as nx
 from collections import defaultdict
 import dolfin as df
@@ -240,6 +241,28 @@ class OuterNormal(df.Function):
         if orientation is None:
             # We assume convex domain and take center as ...
             orientation = mesh.coordinates().mean(axis=0)
+
+        # Normal direction given by surrounding marker function
+        if isinstance(orientation, df.cpp.mesh.MeshFunctionSizet):
+            outer_mesh = orientation.mesh()
+            
+            assert outer_mesh.id() in mesh.parent_entity_map
+
+            skeleton_normal = OrientedFacetNormal(orientation)
+            # Now we get it to manifold
+            dx_ = df.Measure('dx', domain=mesh)
+            V = df.VectorFunctionSpace(mesh, 'DG', 0)
+
+            df.Function.__init__(self, V)                        
+
+            hK = df.CellVolume(mesh)
+            n_vec = xii.ii_convert(xii.ii_assemble(
+                (1/hK)*df.inner(xii.Trace(skeleton_normal, mesh), df.TestFunction(V))*dx_
+            ))
+            
+            self.vector()[:] = n_vec
+
+            return None
 
         if isinstance(orientation, df.Mesh):
             # We set surface normal as outer with respect to orientation mesh
