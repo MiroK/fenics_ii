@@ -141,7 +141,7 @@ class SquareRim(BoundingSurface):
 
 class Circle(BoundingSurface):
     '''Circle in plane(x0, n) with radius given by radius(x0)'''
-    def __init__(self, radius, degree):
+    def __init__(self, radius, degree, quad_rule='gl'):
         # Make constant function
         if is_number(radius):
             assert radius > 0
@@ -150,8 +150,22 @@ class Circle(BoundingSurface):
         else:
             self.radius = radius
 
-        # Will use Gauss quadrature on [-1, 1]
-        self.xq, self.wq = leggauss(degree)
+        # All quadratures are meant for [-1, 1] and then we map them
+        if quad_rule == 'gl':
+            self.xq, self.wq = leggauss(degree)
+        else:
+            assert quad_rule in ('midpoint', 'trapz')
+            print(f'DEGREE {degree} is interpreted as number of partitions of (0, 2pi)')
+
+            if quad_rule == 'midpoint':
+                nodes = np.linspace(-1, 1, degree)
+                mids = 0.5*(nodes[:-1] + nodes[1:])
+                self.xq, self.wq = mids, 2./degree*np.ones(degree)
+
+            if quad_rule == 'trapz':
+                nodes = np.linspace(-1, 1, degree)
+                # We wrap around so eval at -1 is same as 1
+                self.xq, self.wq = nodes[:-1], 2./degree*np.ones(degree)
 
     @staticmethod
     def map_from_reference(x0, n, R):

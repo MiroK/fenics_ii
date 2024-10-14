@@ -35,7 +35,7 @@ L = sum(inner(fi, v)*dx(i) for (i, fi) in fs.items())
 fh = Function(V)
 solve(a == L, fh)
 
-cylinder = Circle(radius, degree=20)
+cylinder = Circle(radius, degree=20, quad_rule='midpoint')
 
 # Which one to pick on the interface ...
 # NOTE: in this case both curves will be ~half circles so in the criteria
