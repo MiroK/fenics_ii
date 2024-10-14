@@ -1,7 +1,7 @@
 from xii.assembler.ufl_utils import replace as ii_replace
 
 import dolfin as df
-import ufl
+import ufl_legacy as ufl
 
 
 def is_okay_functional(L):

@@ -14,7 +14,7 @@ from xii.assembler.ufl_utils import form_arity
 from xii.linalg.list_utils import shape_list, reshape_list, flatten_list
 
 from block import block_vec, block_mat
-from ufl.form import Form
+from ufl_legacy.form import Form
 import dolfin as df
 import numpy as np
 

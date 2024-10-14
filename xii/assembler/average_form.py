@@ -1,9 +1,9 @@
 from xii.assembler.ufl_utils import *
 from xii.linalg.matrix_utils import is_number
 
-from ufl.corealg.traversal import traverse_unique_terminals
+from ufl_legacy.corealg.traversal import traverse_unique_terminals
 import dolfin as df
-import ufl
+import ufl_legacy as ufl
 
 
 def average_cell(o):

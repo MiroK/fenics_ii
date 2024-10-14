@@ -3,7 +3,7 @@ from dolfin.function.argument import Argument
 from itertools import dropwhile
 from dolfin import *
 import numpy as np
-import ufl
+import ufl_legacy as ufl
 
 
 def is_trial_function(arg):

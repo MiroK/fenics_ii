@@ -6,6 +6,7 @@ from .make_mesh_cpp import make_mesh
 from .dg_utils import OrientedFacetNormal, pcws_constant
 import networkx as nx
 from collections import defaultdict
+import ufl_legacy as ufl
 import dolfin as df
 import numpy as np
 import operator
@@ -287,6 +288,32 @@ class OuterNormal(df.Function):
             self.vector()[:] = n_vec
 
             return None
+
+        if isinstance(orientation, ufl.FacetNormal):
+            normal = orientation
+            parent_mesh = normal.ufl_domain().ufl_cargo()
+            assert parent_mesh.id() in mesh.parent_entity_map
+            
+            hA = df.FacetArea(parent_mesh)
+            # Project normal, we have a function on mesh
+            DLT = df.VectorFunctionSpace(parent_mesh, 'Discontinuous Lagrange Trace', 0)
+            n_ = df.Function(DLT)
+            df.assemble((1/hA)*df.inner(normal, df.TestFunction(DLT))*df.ds +
+                        (1/df.avg(hA))*df.inner(normal('+'), df.TestFunction(DLT)('+'))*df.dS,
+                        tensor=n_.vector())
+
+            # Now we get it to manifold
+            dx_ = df.Measure('dx', domain=mesh)
+            V = df.VectorFunctionSpace(mesh, 'DG', 0)
+
+            df.Function.__init__(self, V)                        
+
+            hK = df.CellVolume(mesh)
+            n_vec = xii.ii_convert(xii.ii_assemble((1/hK)*df.inner(xii.Trace(n_, mesh), df.TestFunction(V))*dx_))
+            
+            self.vector()[:] = n_vec
+
+            return None            
             
         # Manifold assumption
         assert 1 <= mesh.topology().dim() < mesh.geometry().dim()

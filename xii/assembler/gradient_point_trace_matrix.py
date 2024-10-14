@@ -3,7 +3,7 @@ from dolfin import PETScMatrix, Point, Cell
 import dolfin as df
 from petsc4py import PETSc
 import numpy as np
-import ufl
+import ufl_legacy as ufl
 
 from xii.assembler.point_trace_matrix import memoize_point_trace
 

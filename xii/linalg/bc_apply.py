@@ -11,7 +11,7 @@ from petsc4py import PETSc
 import numpy as np
 
 
-def apply_bc(A, b, bcs, diag_val=1., return_apply_b=False):
+def apply_bc(A, b, bcs, diag_val=1., symmetric=True, return_apply_b=False):
     '''
     Apply block boundary conditions to block system A, b    
     '''
@@ -97,7 +97,7 @@ def apply_bc(A, b, bcs, diag_val=1., return_apply_b=False):
         blocks.append(PETSc.IS().createStride(last-first, first, 1))
 
         
-    if return_apply_b:
+    if return_apply_b and symmetric:
         # We don't want to reassemble system and apply bcs (when they are 
         # updated) to the (new) matrix and the rhs. Matrix is expensive 
         # AND the change of bcs only effects the rhs. So what we build
@@ -129,8 +129,10 @@ def apply_bc(A, b, bcs, diag_val=1., return_apply_b=False):
             return bb
 
     # Apply to monolithic
-    len(rows) and AA.zeroRowsColumns(rows, diag=diag_val, x=x, b=bb)
-
+    if symmetric:
+        len(rows) and AA.zeroRowsColumns(rows, diag=diag_val, x=x, b=bb)
+    else:
+        len(rows) and AA.zeroRows(rows, diag=diag_val, x=x, b=bb)
     # Reasamble into block shape
     b = as_block(bb, blocks)
     A = as_block(AA, blocks)

@@ -1,8 +1,8 @@
-from ufl.corealg.traversal import traverse_unique_terminals
+from ufl_legacy.corealg.traversal import traverse_unique_terminals
 from xii.assembler.ufl_utils import *
 from xii.meshing.subdomain_mesh import SubDomainMesh
 import dolfin as df
-import ufl
+import ufl_legacy as ufl
 
 
 def restriction_cell(o):

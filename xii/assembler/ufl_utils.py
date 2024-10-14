@@ -1,5 +1,5 @@
 from dolfin.function.argument import Argument
-from ufl.core.terminal import Terminal
+from ufl_legacy.core.terminal import Terminal
 
 import dolfin as df
 

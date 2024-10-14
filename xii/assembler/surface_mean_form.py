@@ -1,9 +1,9 @@
-from ufl.corealg.traversal import traverse_unique_terminals
+from ufl_legacy.corealg.traversal import traverse_unique_terminals
 import xii.assembler.trace_form as trace
 from xii.assembler.ufl_utils import *
 import dolfin as df
 import numpy as np
-import ufl
+import ufl_legacy as ufl
 
 
 def surface_mean_cell(o):

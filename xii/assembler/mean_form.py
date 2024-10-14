@@ -1,8 +1,8 @@
 from xii.assembler.ufl_utils import *
 
-from ufl.corealg.traversal import traverse_unique_terminals
+from ufl_legacy.corealg.traversal import traverse_unique_terminals
 import dolfin as df
-import ufl
+import ufl_legacy as ufl
 
 
 def mean_cell(o):

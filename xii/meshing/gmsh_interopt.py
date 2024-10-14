@@ -3,7 +3,7 @@ import dolfin as df
 import numpy as np
 import operator
 import gmsh
-import ufl
+import ufl_legacy as ufl
 
 
 def build_mesh(vertices, cells, cell_type):

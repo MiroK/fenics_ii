@@ -1,4 +1,5 @@
 from dolfin import *
+import numpy as np
 
 template=r'''
 \documentclass{standalone}
@@ -38,6 +39,8 @@ def tikzify_2d_mesh(facet_info, cell_info=None, vertex_info=None, colors=None):
     if isinstance(facet_info, tuple):
         facet_info = [facet_info]
 
+    interesting_coordinates = []
+    # Here are corners meaning intersects of different colored facets
     for fi in facet_info:
         facet_markers, facet_style_map = fi
         
@@ -49,6 +52,17 @@ def tikzify_2d_mesh(facet_info, cell_info=None, vertex_info=None, colors=None):
         assert dim == 1
         mesh.init(dim)
         mesh.init(dim, 0)
+        f2v = mesh.topology()(dim, 0)
+
+        facet_colors = tuple(set(np.unique(facet_markers.array())) - {0})
+        for (i, ci) in enumerate(facet_colors):
+            ci_vertices = set(np.hstack([f2v(f) for f in facet_markers.where_equal(ci)]))
+            for cj in facet_colors[i+1:]:
+                cj_vertices = set(np.hstack([f2v(f) for f in facet_markers.where_equal(cj)]))
+
+                intersects = ci_vertices & cj_vertices
+                for isect in intersects:
+                    interesting_coordinates.append((x[isect], f'isect of {ci} and {cj}'))
 
         line = r'\draw[%(style)s] (%(x00)g, %(x01)g) -- (%(x10)g, %(x11)g);'
         for color, facet_style in facet_style_map.items():
@@ -58,11 +72,12 @@ def tikzify_2d_mesh(facet_info, cell_info=None, vertex_info=None, colors=None):
             
             for facet in SubsetIterator(facet_markers, color):
                 x0, x1 = x[facet.entities(0)]
-
                 body.append(line % {'style': facet_style, 'x00': x0[0], 'x01': x0[1],
                                     'x10': x1[0], 'x11': x1[1]})
 
-
+    interesting_coordinates.extend([(mesh.coordinates().min(axis=0), 'll'),
+                                    (mesh.coordinates().max(axis=0), 'ur')])
+    
     if vertex_info is not None:
         if isinstance(vertex_info, tuple):
             vertex_info = [vertex_info]
@@ -80,7 +95,11 @@ def tikzify_2d_mesh(facet_info, cell_info=None, vertex_info=None, colors=None):
                 style, marker = vertex_style_map[vertex_markers[idx]]
                 if style is not None:
                     body.append(code % (style, vtx[0], vtx[1], marker))
-                
+
+    # Define some useful coordinates
+    for (i, (point, comment)) in enumerate(interesting_coordinates):
+        body.append(rf'\coordinate (XX{chr(65+i)}) at ({point[0]}, {point[1]});  % {comment}')
+
     body = '\n'.join(body)
 
     if colors is None:

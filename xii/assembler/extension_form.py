@@ -1,7 +1,7 @@
-from ufl.corealg.traversal import traverse_unique_terminals
+from ufl_legacy.corealg.traversal import traverse_unique_terminals
 from xii.assembler.ufl_utils import *
 import dolfin as df
-import ufl
+import ufl_legacy as ufl
 
 
 def extension_cell(o):
