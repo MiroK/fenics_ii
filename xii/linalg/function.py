@@ -36,6 +36,9 @@ class ii_Function(object):
 
         self._W = W
 
+    def rename(self, names):
+        return [fi.rename(*name) for (fi, name) in zip(self, names)]
+            
     def function_space(self):
         return self._W
 
@@ -73,10 +76,12 @@ class ii_Function(object):
     def __iter__(self):
         for i in range(len(self)): yield self[i]
 
-    def interpolate(self, f):
+    def interpolate(self, g):
         '''
         Interpolate other ii_Function/ntuple of interpolable things into self.
         '''
-        assert len(self) == len(f)
-        [fi.assign(df.interpolate(f, fi.function_space())) for fi in self]
+        assert len(self) == len(g)
+        [fi.assign(df.interpolate(gi, fi.function_space())) for (fi, gi) in zip(self, g)]
+
+        return self
         

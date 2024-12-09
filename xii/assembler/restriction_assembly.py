@@ -33,8 +33,9 @@ class RestrictionFormAssembler(ReducedFormAssembler):
         '''Dict of reduction data and optinal normal'''
         return {}
 
-    def reduced_space(self, V, reduced_mesh):
+    def reduced_space(self, V, reduced_mesh, data=None):
         '''Construct a reduced space for V on the mesh'''
+        
         return restriction_space(V, reduced_mesh)
 
     def reduction_matrix(self, V, TV, reduced_mesh, data):
