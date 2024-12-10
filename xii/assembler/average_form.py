@@ -116,9 +116,9 @@ def is_average_integrand(expr, tdim):
 
 def is_average_integral(integral):
     '''Volume integral over an embedded line cell'''
-    return all((integral.integral_type() == 'cell',  # 0
-                (topological_dim(integral) + 2) == geometric_dim(integral),
-                is_average_integrand(integral.integrand(), topological_dim(integral))))
+    return all((#integral.integral_type() == 'cell',  # 0
+                #(topological_dim(integral) + 2) == geometric_dim(integral),
+                is_average_integrand(integral.integrand(), topological_dim(integral)),))
 
 
 def average_integrals(form):
