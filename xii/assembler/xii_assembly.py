@@ -1,4 +1,5 @@
 import xii.assembler.trace_assembly
+import xii.assembler.transpose_trace_assembly
 import xii.assembler.average_assembly
 import xii.assembler.restriction_assembly
 import xii.assembler.extension_assembly
@@ -25,6 +26,7 @@ def assemble(form):
     # for trace/average/restriction problems until something that 
     # dolfin can handle (hopefully)
     modules = (xii.assembler.trace_assembly,        # To Codimension 1
+               xii.assembler.transpose_trace_assembly,        # To Codimension 1
                xii.assembler.average_assembly,      # To Codimension 2 via surface of bding curve
                xii.assembler.patch_average_assembly,
                xii.assembler.mean_assembly,
@@ -35,7 +37,7 @@ def assemble(form):
                xii.assembler.restriction_assembly,
                xii.assembler.injection_assembly)  # Between Codimension 0
 
-    names = ('trace', 'average', 'patch_average', 'mean',
+    names = ('trace', 'transpose_trace', 'average', 'patch_average', 'mean',
              'point_trace', 'gradient_point_trace',
              'surface_mean', 'restriction', 'injection')
     

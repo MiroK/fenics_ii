@@ -60,6 +60,8 @@ class EmbeddedMesh(df.Mesh):
             mesh_key = marking_function.mesh().id()            
             self.parent_entity_map = {mesh_key: {0: dict(enumerate(mapping_0)),
                                                  tdim: dict(enumerate(mapping_tdim))}}
+
+            self.parent_meshes = [base_mesh]
             # Finally it remains to preserve the markers
             f = df.MeshFunction('size_t', self, tdim, 0)
             f_values = f.array()
@@ -70,7 +72,7 @@ class EmbeddedMesh(df.Mesh):
                     f_values[new_cells] = color
             else:
                 f.set_all(next(iter(markers)))
-            
+
             self.marking_function = f
             # Declare which tagged cells are found
             self.tagged_cells = set(markers)
@@ -106,7 +108,8 @@ class EmbeddedMesh(df.Mesh):
         mesh_key = marking_function.mesh().id()
         self.parent_entity_map = {mesh_key: {0: dict(enumerate(tagged_vertices)),
                                              tdim: dict(enumerate(tagged_entities))}}
-
+        self.parent_meshes = [base_mesh]
+        
         f = df.MeshFunction('size_t', self, tdim, 0)
         # Finally the inherited marking function. We colored sequentially so
         if len(markers) > 1:
@@ -181,6 +184,9 @@ class EmbeddedMesh(df.Mesh):
                 # FIXME: do we need vertex embedding here?
         self.parent_entity_map[parent_mesh.id()] = {0: vertex_mapping, tdim: entity_mapping}
 
+        if not any(pmesh.id() == parent_mesh.id() for pmesh in self.parent_meshes):
+            self.parent_meshes.append[parent_mesh]
+        
         return self.parent_entity_map[parent_mesh.id()]
 
     def translate_markers(self, entity_f, tags=None, marker_f=None):
