@@ -37,8 +37,8 @@ def Injection(v, fmesh, not_nested_method='interpolate'):
     if hasattr(v, 'function_space'):
         cmesh = v.function_space().mesh()
         #
-        has_data = hasattr(fmesh, 'parent_entity_map')
-
+        has_data = hasattr(fmesh, 'parent_entity_map') and cmesh.id() in fmesh.parent_entity_map
+        
         if not has_data:
             try:
                 cmap = fmesh.data().array('parent_cell', fmesh.topology().dim())

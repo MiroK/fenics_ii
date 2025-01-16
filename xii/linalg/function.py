@@ -2,7 +2,7 @@ from dolfin import Function, as_backend_type, PETScVector
 import dolfin as df
 from block import block_vec
 from petsc4py import PETSc
-
+import numpy as np
 
 first = lambda iterable: next(iter(iterable))
 
@@ -83,5 +83,12 @@ class ii_Function(object):
         assert len(self) == len(g)
         [fi.assign(df.interpolate(gi, fi.function_space())) for (fi, gi) in zip(self, g)]
 
+        return self
+
+    def randomize(self):
+        '''Assign random coefficients'''
+        for xi in self.vectors():
+            values = np.random.randn(xi.local_size())
+            xi.set_local(values)
         return self
         
