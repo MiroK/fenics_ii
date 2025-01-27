@@ -343,6 +343,7 @@ def _CenterDistance2(mesh, Center):
     if mesh.topology().dim() > 1:
         L = df.FunctionSpace(mesh, 'Discontinuous Lagrange Trace', 0)
     else:
+        raise ValueError
         L = df.FunctionSpace(mesh, 'DG', 0)
         
     fK = df.FacetArea(mesh)
