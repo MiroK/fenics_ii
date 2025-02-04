@@ -101,14 +101,13 @@ def Average(v, line_mesh, shape):
 # each arg above was created by Average
 def is_average_integrand(expr, tdim):
     '''Some of the arguments need restriction'''
-    return any((topological_dim(arg) == tdim + 2) for arg in traverse_unique_terminals(expr))
+    return any((topological_dim(arg) == tdim + 2) and hasattr(arg, 'average_')
+               for arg in traverse_unique_terminals(expr))
 
 
 def is_average_integral(integral):
     '''Volume integral over an embedded line cell'''
-    return all((integral.integral_type() == 'cell',  # 0
-                (topological_dim(integral) + 2) == geometric_dim(integral),
-                is_average_integrand(integral.integrand(), topological_dim(integral))))
+    return is_average_integrand(integral.integrand(), topological_dim(integral))
 
 
 def average_integrals(form):
