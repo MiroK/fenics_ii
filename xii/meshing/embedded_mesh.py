@@ -192,7 +192,7 @@ class EmbeddedMesh(df.Mesh):
     def translate_markers(self, entity_f, tags=None, marker_f=None):
         '''For entity_f.mesh being parent of self tranlate markers'''
         assert entity_f.mesh().id() in self.parent_entity_map
-        assert 0 < entity_f.dim() < self.topology().dim()
+        assert 0 <= entity_f.dim() < self.topology().dim()
         
         if tags is None:
             tags = np.unique(entity_f.array())
@@ -565,8 +565,7 @@ class TangentCurve(df.Function):
                 
             g = nx.Graph()
             g.add_edges_from(mesh.cells())
-            assert len(list(nx.algorithms.connected_components(g))) == 1
-        
+
             for (v0, v1) in nx.algorithms.traversal.dfs_edges(g, root):
                 cell, = set(v2c(v0)) & set(v2c(v1))
                 v0, v1 = X[v0], X[v1]
@@ -575,6 +574,8 @@ class TangentCurve(df.Function):
                 values[cell, :] = t
                 visited[cell] = True
 
+        np.any(visited) and print('Found unvisited edges in tangent curve computation')
+                
         for cell in np.where(~visited)[0]:
             v0, v1 = c2v(cell)
             v0, v1 = X[v0], X[v1]
