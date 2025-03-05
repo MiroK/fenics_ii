@@ -73,6 +73,8 @@ def patch_avg_mat(V, TV, reduced_mesh, data):
     for row in tqdm.tqdm(range(TV.dim()), total=TV.dim()):  # dofs of TV define rows
         color = color_ids[row]
 
+        if abs(color) < 1E-10: continue
+
         patch_cells, = np.where(patch_f == color)
         patch_volume = np.sum(patch_volumes[patch_cells])
         # Update indicator
@@ -125,6 +127,8 @@ def patch_avg_mat_coloring(V, TV, reduced_mesh, data):
     # We will do the integration a group at a time
     groups = defaultdict(list)
     for color in np.asarray(color_ids, dtype='uintp'):
+        if color not in coloring:
+            continue
         group = coloring[color]
         groups[group].append(color)
 

@@ -16,7 +16,7 @@ def apply_bc(A, b, bcs, diag_val=1., symmetric=True, return_apply_b=False):
     Apply block boundary conditions to block system A, b    
     '''
     # Specs of do nothing
-    if bcs is None or not bcs or (not any(bc for bc in bcs) and isinstance(bcs, list)):
+    if bcs is None or not bcs or (isinstance(bcs, list) and not any(bc for bc in bcs)):
         return A, b
     
     # Allow for A, b be simple matrices. To proceed we wrap them as

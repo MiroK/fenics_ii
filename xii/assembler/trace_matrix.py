@@ -83,6 +83,7 @@ def trace_mat_no_restrict(V, TV, trace_mesh=None, tag_data=None):
 
     trace_mesh_subdomains, tags = tag_data
     # Init/extract the mapping
+    get_entity_map(mesh, trace_mesh, trace_mesh_subdomains, tags)    
     try:
         assert get_entity_map(mesh, trace_mesh, trace_mesh_subdomains, tags)
     except (AssertionError, IndexError):
@@ -522,7 +523,13 @@ def get_entity_map(mesh, trace_mesh, subdomains=None, tags=None):
             trace_mesh.parent_entity_map[mesh_id] = parent_entity_map
         else:
             needed_tags = trace_mesh.tagged_cells - tags
+            compute = True
             if needed_tags:
+                tagged_trace_entities = set(np.hstack([subdomains.where_equal(tag) for tag in needed_tags]))
+                mapped_trace_entities = set(trace_mesh.parent_entity_map[mesh_id][subdomains.dim()].keys())
+                compute = tagged_trace_entities <= mapped_trace_entities
+                
+            if compute:
                 info('\tMissing map for tags %r of mesh %d' % (needed_tags, mesh_id))
                 parent_entity_map = build_embedding_map(trace_mesh, mesh, subdomains, tags)
                 # Add new
@@ -530,6 +537,7 @@ def get_entity_map(mesh, trace_mesh, subdomains=None, tags=None):
                     trace_mesh.parent_entity_map[mesh_id][edim].update(parent_entity_map[edim])
     # Compute from scratch and rememeber for future
     else:
+        print('Here')
         info('\tComputing embedding map for mesh %d' % mesh_id)
 
         parent_entity_map = build_embedding_map(trace_mesh, mesh, subdomains, tags)

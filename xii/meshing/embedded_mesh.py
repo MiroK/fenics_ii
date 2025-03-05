@@ -185,7 +185,7 @@ class EmbeddedMesh(df.Mesh):
         self.parent_entity_map[parent_mesh.id()] = {0: vertex_mapping, tdim: entity_mapping}
 
         if not any(pmesh.id() == parent_mesh.id() for pmesh in self.parent_meshes):
-            self.parent_meshes.append[parent_mesh]
+            self.parent_meshes.append(parent_mesh)
         
         return self.parent_entity_map[parent_mesh.id()]
 
