@@ -114,6 +114,8 @@ def tikzify_2d_mesh(facet_info, cell_info=None, vertex_info=None, colors=None, b
             else:
                 code = r'\node[%s] at (%g, %g, %g) {%s};'
             for idx, vtx in enumerate(mesh.coordinates()):
+                if vertex_markers[idx] not in vertex_style_map:
+                    continue
                 style, marker = vertex_style_map[vertex_markers[idx]]
                 if style is not None:
                     body.append(code % ((style,) + tuple(vtx) + (marker, )))

@@ -34,6 +34,9 @@ def patch_avg_mat(V, TV, reduced_mesh, data):
     '''
     vertex_f, patch_f = data['vertex_f'], data['patch_f']
 
+    if patch_f is None:
+        return dirac_avg_mat(V, TV, reduced_mesh, data)
+
     if data['patch_coloring'] is not None:
         return patch_avg_mat_coloring(V, TV, reduced_mesh, data)
     
@@ -182,6 +185,53 @@ def patch_avg_mat_coloring(V, TV, reduced_mesh, data):
             
         # Reset for next round
         chi_array[:] = 0
+        
+    matrix = sp.csr_matrix((values, (ii, jj)), shape=(TV.dim(), V.dim()))
+    mat = PETSc.Mat().createAIJ(comm=PETSc.COMM_SELF,
+                                size=matrix.shape,
+                                csr=(matrix.indptr, matrix.indices, matrix.data))
+
+    mat.assemble()
+    
+    return df.PETScMatrix(mat)
+
+
+@memoize_average
+def dirac_avg_mat(V, TV, reduced_mesh, data):
+    '''
+    A mapping for computing the patch averages of function in V in the 
+    space TV. 
+    '''
+    vertex_f, patch_f = data['vertex_f'], data['patch_f']
+
+    Vgamma = vertex_f.function_space() 
+    gamma = Vgamma.mesh()
+    assert gamma.id() == reduced_mesh.id()
+    
+    assert TV.mesh().id() == reduced_mesh.id()
+    
+    # Compatibility of spaces
+    # FIXME: only want scalars now
+    assert V.ufl_element().value_shape() == TV.ufl_element().value_shape() == ()
+    TV_dofs_x = TV.tabulate_dof_coordinates()
+    
+    assert patch_average_cell(V) == TV.mesh().ufl_cell()
+    assert V.mesh().geometry().dim() == TV.mesh().geometry().dim()
+    
+    V_dofs_x = V.tabulate_dof_coordinates()
+
+    ii, jj, values = [], [], []
+    for row in tqdm.tqdm(range(TV.dim()), total=TV.dim()):  # dofs of TV define rows
+
+        y = TV_dofs_x[row]
+        dists = np.linalg.norm(V_dofs_x - y, 2, axis=1)
+        col = np.argmin(dists)
+        assert dists[col] < 1E-10
+        
+        # Update matrix
+        ii.append(row)
+        jj.append(col)
+        values.append(1.)
         
     matrix = sp.csr_matrix((values, (ii, jj)), shape=(TV.dim(), V.dim()))
     mat = PETSc.Mat().createAIJ(comm=PETSc.COMM_WORLD,

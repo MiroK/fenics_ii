@@ -12,8 +12,8 @@ Vf = FunctionSpace(mesh_f, 'CG', 1)
 u = TrialFunction(Vf)
 q = TestFunction(Vc)
 
-dx_f = Measure('dx', domain=mesh_f)
-a = inner(q, Restriction(u, mesh_c))*dx_f
+dx_c = Measure('dx', domain=mesh_c)
+a = inner(q, Restriction(u, mesh_c))*dx_c
 A = ii_assemble(a)
 
 # f = Expression('x[0]+x[1]', degree=1)

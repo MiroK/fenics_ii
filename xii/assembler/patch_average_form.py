@@ -18,7 +18,8 @@ def patch_average_cell(o):
         return patch_average_cell(o.ufl_element().cell())
     # Another cell
     cell_name = {'tetrahedron': 'interval',
-                 'triangle': 'interval'}[o.cellname()]
+                 'triangle': 'interval',
+                 'interval': 'interval'}[o.cellname()]
     
     return ufl.Cell(cell_name, o.geometric_dimension())
 
@@ -41,9 +42,10 @@ def CellPatchAverage(v, vertex_f, patch_f, patch_coloring=None):
     '''
     # FIXME: Don't want to deal with vectors at this point
     assert v.ufl_shape == ()
-    
-    omega = patch_f.mesh()
-    assert omega.topology().dim() == patch_f.dim()
+
+    if patch_f is not None:
+        omega = patch_f.mesh()
+        assert omega.topology().dim() == patch_f.dim()
     # We want a scalar function that encodes dof color -> patch
     Vgamma = vertex_f.function_space()
     gamma = Vgamma.mesh()

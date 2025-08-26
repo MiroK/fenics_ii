@@ -5,6 +5,7 @@ from ufl_legacy.form import Form
 import dolfin as df
 import operator
 
+from xii.linalg.convert import convert
 from xii.assembler.trace_form import *
 from xii.assembler.ufl_utils import *
 import xii.assembler.xii_assembly

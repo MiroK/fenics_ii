@@ -80,14 +80,8 @@ def is_injection_integral(integral):
     '''
     Cell integral over domain that is that over domain that has child
     '''
-    if not integral.integral_type() == 'cell':
-        return False
-
     fmesh = integral.ufl_domain().ufl_cargo()
     
-    if not is_injection_integrand(integral.integrand()):
-        return False
-
     for arg in filter(is_injection, traverse_unique_terminals(integral.integrand())):
         if arg.injection_['mesh'].id() == fmesh.id():
             return True
