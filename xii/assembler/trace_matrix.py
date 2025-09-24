@@ -251,7 +251,7 @@ def trace_mat_one_restrict(V, TV, restriction, normal, trace_mesh=None, tag_data
     '''
     assert normal.function_space().ufl_element().family() == 'Discontinuous Lagrange'
     assert normal.function_space().ufl_element().degree() == 0
-    
+
     mesh = V.mesh()
 
     if trace_mesh is None: trace_mesh = TV.mesh()
@@ -314,7 +314,6 @@ def trace_mat_one_restrict(V, TV, restriction, normal, trace_mesh=None, tag_data
                     
             r = t_mp - mp
             r = r / np.linalg.norm(r)
-                    
             sign = '+' if np.inner(r, trace_cell_normal) > 0 else '-'
             signs.append(sign)
         cell = facet_cells[signs.index(restriction)]
