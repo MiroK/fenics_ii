@@ -23,15 +23,17 @@ def is_number(form):
 
 def trial_function(form):
     '''Extract trial function[s] of [block] form'''
-    if isinstance(form, ufl.Form):
-        return tuple(filter(is_trial_function, form.arguments()))
+    if isinstance(form, (ufl.Form, ufl.core.expr.Expr)):
+        args = ufl.algorithms.extract_arguments(form)
+        return tuple(filter(is_trial_function, args))
     return sum(list(map(trial_function, form)), ())
 
 
 def test_function(form):
     '''Extract test function[s] of [block] form'''
-    if isinstance(form, ufl.Form):
-        return tuple(filter(is_test_function, form.arguments()))
+    if isinstance(form, (ufl.Form, ufl.core.expr.Expr)):        
+        args = ufl.algorithms.extract_arguments(form)        
+        return tuple(filter(is_test_function, args))
     return sum(list(map(test_function, form)), ())
 
 

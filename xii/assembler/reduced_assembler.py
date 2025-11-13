@@ -40,6 +40,10 @@ class ReducedFormAssembler(object):
         '''Extract normal'''
         raise NotImplementedError
 
+    def domain_space(self, terminal):
+        '''Default to space where terminal is defined'''
+        return terminal.function_space()        
+
     def reduced_space(self, V, reduced_mesh, data=None):
         '''Construct a reduced space for V on the mesh'''
         raise NotImplementedError
@@ -86,7 +90,7 @@ class ReducedFormAssembler(object):
             # With sane inputs we can get the reduced element and setup the
             # intermediate function space where the reduction of terminal
             # lives
-            V = terminal.function_space()
+            V = self.domain_space(terminal)
             TV = self.reduced_space(V, reduced_mesh, data)  #! Space construc
 
             # Setup the matrix to from space of the trace_terminal to the

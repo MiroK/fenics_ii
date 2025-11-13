@@ -1,6 +1,7 @@
 from . trace_form import Trace
 from . transpose_trace_form import TransposeTrace
 from . average_form import Average
+from . flux_average_form import FluxAverage
 from . extension_form import Extension
 from . restriction_form import Restriction
 from . injection_form import Injection

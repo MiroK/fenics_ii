@@ -1,6 +1,7 @@
 import xii.assembler.trace_assembly
 import xii.assembler.transpose_trace_assembly
 import xii.assembler.average_assembly
+import xii.assembler.flux_average_assembly
 import xii.assembler.restriction_assembly
 import xii.assembler.extension_assembly
 import xii.assembler.injection_assembly
@@ -28,6 +29,7 @@ def assemble(form):
     modules = (xii.assembler.trace_assembly,        # To Codimension 1
                xii.assembler.transpose_trace_assembly,        # To Codimension 1
                xii.assembler.average_assembly,      # To Codimension 2 via surface of bding curve
+               xii.assembler.flux_average_assembly,
                xii.assembler.patch_average_assembly,
                xii.assembler.mean_assembly,
                # xii.assembler.extension_assembly,    # From dim 1 to 2
@@ -37,10 +39,10 @@ def assemble(form):
                xii.assembler.restriction_assembly,
                xii.assembler.injection_assembly)  # Between Codimension 0
 
-    names = ('trace', 'transpose_trace', 'average', 'patch_average', 'mean',
+    names = ('trace', 'transpose_trace', 'average', 'flux_average', 'patch_average', 'mean',
              'point_trace', 'gradient_point_trace',
              'surface_mean', 'restriction', 'injection')
-    
+
     if isinstance(form, Form):
         arity = form_arity(form)
         # Try with our reduced assemblers
@@ -58,6 +60,7 @@ def assemble(form):
     if is_number(form): return form
 
     shape = shape_list(form)
+
     # Recurse
     blocks = reshape_list(list(map(assemble, flatten_list(form))), shape)
     

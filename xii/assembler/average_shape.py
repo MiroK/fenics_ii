@@ -14,7 +14,8 @@ from xii.assembler.average_form import average_space
 from xii.meshing.make_mesh_cpp import make_mesh
 import xii.assembler.disk_quadrature as disk_quadrature
 
-Quadrature = namedtuple('quadrature', ('points', 'weights'))
+Quadrature = namedtuple('quadrature', ('points', 'weights'),
+                        defaults=(None, None))
 
 
 class BoundingSurface(metaclass=ABCMeta):
@@ -80,7 +81,7 @@ class Square(BoundingSurface):
         
         return Quadrature(Txq, wq)
 
-
+    
 class SquareRim(BoundingSurface):
     r'''
     Boundary of a square in plane(x0, n) with ll corner given by 
@@ -202,6 +203,18 @@ class Circle(BoundingSurface):
 
         return Quadrature(Txq, wq)
 
+
+    def quadrature_normal(self, x0, n):
+        '''Gaussian qaudrature over the surface of the square + normal vector at quadrature points'''
+        quad = self.quadrature(x0, n)
+
+        xq = np.array(quad.points)
+        nxq = xq - x0
+
+        nxq = nxq/np.linalg.norm(nxq, 2, axis=1).reshape((-1, 1))
+
+        return (quad, nxq)
+    
 
 class Disk(BoundingSurface):
     '''Disk in plane(x0, n) with radius given by radius(x0)'''    
@@ -349,6 +362,9 @@ if __name__ == '__main__':
     size = 0.125
     ci = Circle(radius=lambda x0: size, degree=12)
 
+    from IPython import embed
+    embed()
+    
     u = df.Function(df.FunctionSpace(mesh, 'CG', 1))
     op = Average(u, line_mesh, ci)
         

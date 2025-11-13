@@ -42,4 +42,4 @@ or `pip install . --user`, `python3 setup.py install --user`
   </p>
   
   ## Citing
-  If you use FEniCS_ii for your work please cite our [paper](https://link.springer.com/chapter/10.1007/978-3-030-55874-1_63)
+  If you use FEniCS_ii or the underlying algorithms for your work please cite our [paper](https://link.springer.com/chapter/10.1007/978-3-030-55874-1_63)

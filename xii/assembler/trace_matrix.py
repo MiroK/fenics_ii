@@ -37,6 +37,12 @@ def trace_mat(V, TV, trace_mesh, data):
     then g in TV has coefficients equal to dofs_{TV}(trace V). Trace is 
     understood as D -> D-1.
     '''
+    #print(V, TV)
+    #print(V, V.ufl_element().value_shape())
+    #print(TV, TV.ufl_element().value_shape())
+    #from IPython import embed
+    #embed()
+    
     # Compatibility of spaces
     assert V.ufl_element().value_shape() == TV.ufl_element().value_shape()
     assert trace_cell(V) == TV.mesh().ufl_cell()

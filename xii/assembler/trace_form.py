@@ -36,7 +36,13 @@ def trace_element(elm):
     # it works I don't find it pretty
     if type(elm) == df.MixedElement:
         return df.MixedElement(list(map(trace_element, elm.sub_elements())))
-    
+
+    if type(elm) == df.VectorElement:
+
+        elm_i, = set(elm.sub_elements())
+        Telm_i = trace_element(elm_i)
+
+        return df.VectorElement(Telm_i, dim=elm.num_sub_elements())
     # FIXME: Check out Witze Bonn's work on da Rham for trace spaces
     # in the meantime KISS
     family = elm.family()
