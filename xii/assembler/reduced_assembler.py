@@ -105,7 +105,7 @@ class ReducedFormAssembler(object):
                 # Passing the args to get the comparison a make substitution
                 integrand = replace(integrand, terminal, replacement, attributes=self.attributes)
                 trace_form = Form([integral.reconstruct(integrand=integrand)])
-
+                
                 if arity == 2:
                     # Make attempt on the substituted form
                     A = xii.assembler.xii_assembly.assemble(trace_form)

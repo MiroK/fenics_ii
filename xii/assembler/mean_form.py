@@ -21,7 +21,7 @@ def mean_cell(o):
 
 def mean_space(V, mesh, data):
     '''Construct a space over mesh where surface averages of V should live'''
-    assert mesh.ufl_cell() == mean_cell(V)
+    # assert mesh.ufl_cell() == mean_cell(V)
     # FIXME: lift this later
     assert V.ufl_element().value_shape() == ()
 

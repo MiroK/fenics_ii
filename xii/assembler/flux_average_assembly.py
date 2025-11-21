@@ -22,7 +22,8 @@ class FluxAverageFormAssembler(ReducedFormAssembler):
 
     def reduction_matrix_data(self, terminal):
         '''Dict of reduction data and optinal normal'''
-        return {'shape': terminal.flux_average_['shape']}
+        return {'shape': terminal.flux_average_['shape'],
+                'normalize': terminal.flux_average_['normalize']}
 
     def domain_space(self, terminal):
         '''Default to space where terminal is defined'''

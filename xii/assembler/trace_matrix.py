@@ -89,7 +89,7 @@ def trace_mat_no_restrict(V, TV, trace_mesh=None, tag_data=None):
 
     trace_mesh_subdomains, tags = tag_data
     # Init/extract the mapping
-    get_entity_map(mesh, trace_mesh, trace_mesh_subdomains, tags)    
+    # get_entity_map(mesh, trace_mesh, trace_mesh_subdomains, tags)    
     try:
         assert get_entity_map(mesh, trace_mesh, trace_mesh_subdomains, tags)
     except (AssertionError, IndexError):

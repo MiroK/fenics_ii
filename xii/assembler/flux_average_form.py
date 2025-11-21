@@ -40,7 +40,7 @@ def flux_average_space(V, mesh):
     return df.FunctionSpace(mesh, 'DG', degree)
 
 
-def FluxAverage(v, line_mesh, shape):
+def FluxAverage(v, line_mesh, shape, normalize=True):
     '''Average v.n over shape'''
     assert is_terminal(v)
     assert flux_average_cell(v) == line_mesh.ufl_cell()
@@ -56,7 +56,7 @@ def FluxAverage(v, line_mesh, shape):
         # v.n is a scalar so
         v = [df.TestFunction, df.TrialFunction][v.number()](V)
 
-    v.flux_average_ = {'mesh': line_mesh, 'shape': shape, 'domain': V_}
+    v.flux_average_ = {'mesh': line_mesh, 'shape': shape, 'domain': V_, 'normalize': normalize}
 
     return v
 

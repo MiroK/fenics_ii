@@ -15,7 +15,8 @@ def memoize_average(average_mat):
     def cached_average_mat(V, TV, reduced_mesh, data):
         key = ((V.ufl_element(), V.mesh().id()),
                (TV.ufl_element(), TV.mesh().id()),
-               data['shape'])
+               data['shape'],
+               data['normalize'])
 
         if key not in cache:
             cache[key] = average_mat(V, TV, reduced_mesh, data)
@@ -48,12 +49,12 @@ def flux_avg_mat(V, TV, reduced_mesh, data):
     assert shape is not None
 
     # Surface averages
-    Rmat = flux_average_matrix(V, TV, shape)
+    Rmat = flux_average_matrix(V, TV, shape, data['normalize'])
         
     return PETScMatrix(Rmat)
                 
 
-def flux_average_matrix(V, TV, shape):
+def flux_average_matrix(V, TV, shape, normalize):
     '''
     Averaging matrix for reduction of g in V to TV by integration over shape.
     '''
@@ -103,7 +104,10 @@ def flux_average_matrix(V, TV, shape):
             integration_points = quadrature.points
             wq = quadrature.weights
 
-            curve_measure = sum(wq)
+            if normalize:
+                curve_measure = sum(wq)
+            else:
+                curve_measure = 1.0
 
             data = {}
             for index, (ip, normal_ip) in enumerate(zip(integration_points, quadrature_normal)):
@@ -188,7 +192,7 @@ if __name__ == '__main__':
 
     Pi_f = Function(Q)
     
-    Pi = flux_avg_mat(V, Q, bmesh, {'shape': shape})
+    Pi = flux_avg_mat(V, Q, bmesh, {'shape': shape, 'normalize': True})
     Pi.mult(f.vector(), Pi_f.vector())
 
     # True
@@ -201,7 +205,7 @@ if __name__ == '__main__':
 
     Pi_f = Function(Q)
     
-    Pi = flux_avg_mat(V, Q, bmesh, {'shape': shape})
+    Pi = flux_avg_mat(V, Q, bmesh, {'shape': shape, 'normalize': True})
     Pi.mult(f.vector(), Pi_f.vector())
 
     # True
@@ -214,7 +218,7 @@ if __name__ == '__main__':
 
     Pi_f = Function(Q)
     
-    Pi = flux_avg_mat(V, Q, bmesh, {'shape': shape})
+    Pi = flux_avg_mat(V, Q, bmesh, {'shape': shape, 'normalize': True})
     Pi.mult(f.vector(), Pi_f.vector())
 
     # True
@@ -228,7 +232,7 @@ if __name__ == '__main__':
 
     Pi_f = Function(Q)
     
-    Pi = flux_avg_mat(V, Q, bmesh, {'shape': shape})
+    Pi = flux_avg_mat(V, Q, bmesh, {'shape': shape, 'normalize': True})
     Pi.mult(f.vector(), Pi_f.vector())
 
     # True
