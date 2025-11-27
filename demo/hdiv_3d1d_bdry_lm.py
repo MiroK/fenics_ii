@@ -7,6 +7,57 @@ from gmshnics import msh_gmsh_model, mesh_from_gmsh
 import gmsh
 
 
+def unit_cube_with_mesh(A, B, r, resolution=None):
+    gmsh.initialize()
+
+    model = gmsh.model
+    fac = model.occ
+
+    box = fac.addBox(0, 0, 0, 1, 1, 1)
+    cyl = fac.addCylinder(A[0], A[1], A[2], (B-A)[0], (B-A)[1], (B-A)[2], r)
+
+    fac.fragment([(3, box)], [(3, cyl)])
+    fac.synchronize()
+
+    volumes = model.getEntities(3)
+    bdry0, bdry1 = [model.getBoundary([vol]) for vol in volumes]
+
+    if len(bdry0) < len(bdry1):
+        _, cylinder = volumes[0]
+        cylinder_boundary = bdry0
+
+        _, box = volumes[1]
+        box_boundary = bdry1
+    else:
+        _, cylinder = volumes[1]
+        cylinder_boundary = bdry1
+
+        _, box = volumes[0]
+        box_boundary = bdry0
+    model.addPhysicalGroup(3, [box], 1)
+    model.addPhysicalGroup(3, [cylinder], 2)    
+
+    for (dim, tag) in cylinder_boundary:
+        c = fac.getCenterOfMass(dim, abs(tag))
+        if near(c[2], A[2]):
+            model.addPhysicalGroup(2, [tag], 1)
+        elif near(c[2], B[2]):
+            model.addPhysicalGroup(2, [tag], 2)
+        else:
+            model.addPhysicalGroup(2, [tag], 3)
+    fac.synchronize()
+
+    if resolution is None:
+        resolution = 0.5*r
+    gmsh.option.setNumber('Mesh.MeshSizeMax', resolution)
+
+    nodes, topologies = msh_gmsh_model(model, 3)
+    mesh, entity_fs = mesh_from_gmsh(nodes, topologies)
+    gmsh.finalize()
+    
+    return entity_fs
+
+
 def cylinder_mesh(A, B, r, resolution=None):
     gmsh.initialize()
 
@@ -114,28 +165,112 @@ def extract_P0foo_from(parent_f, submesh):
 
     return f
 
+
+def test(diff, val):
+    assert diff < 1E-8, diff
+
+
+def mark_cube_boundaries(facet_f):
+    '''10 and above'''
+    mesh = facet_f.mesh()
+    assert mesh.geometry().dim() == 3
+    assert mesh.topology().dim() == facet_f.dim() == 2
+
+    CompiledSubDomain('near(x[0], 0)').mark(facet_f, 10)
+    CompiledSubDomain('near(x[0], 1)').mark(facet_f, 11)
+    CompiledSubDomain('near(x[1], 0)').mark(facet_f, 12)
+    CompiledSubDomain('near(x[1], 1)').mark(facet_f, 13)
+    CompiledSubDomain('near(x[2], 0)').mark(facet_f, 14)
+    CompiledSubDomain('near(x[2], 1)').mark(facet_f, 15)
+
+    return facet_f
+
+
+def get_full_system_solution(cell_f, facet_f, Ks, fs, pressure_bcs):
+    '''Reference'''
+    mesh = cell_f.mesh()
+    # Remeber 1 is the box\cylinder, 2 is cylinder
+    dx = Measure('dx', domain=mesh, subdomain_data=cell_f)
+    ds = Measure('ds', domain=mesh, subdomain_data=facet_f)
+
+    cell = mesh.ufl_cell()
+    Velm = FiniteElement('RT', cell, 1)
+    Qelm = FiniteElement('DG', cell, 0)
+    Welm = MixedElement([Velm, Qelm])
+    W = FunctionSpace(mesh, Welm)
+
+    u, p = TrialFunctions(W)
+    v, q = TestFunctions(W)
+
+    K1, K2 = Ks
+    a = ((1/K1)*inner(u, v)*dx(1) + (1/K2)*inner(u, v)*dx(2) - inner(p, div(v))*dx
+         - inner(q, div(u))*dx)
+
+    f1, f2 = fs
+    L = -inner(f1, q)*dx(1) - inner(f2, q)*dx(2)
+
+    n = FacetNormal(mesh)
+    for (tag, value) in pressure_bcs.items():
+        L += -inner(value, dot(v, n))*ds(tag)
+
+    wh = Function(W)
+    solve(a == L, wh)
+
+    uh, ph = wh.split(deepcopy=True)
+
+    return uh, ph
+    
+# Setting up pressure bcs for the full simulation
+
+
 # --------------------------------------------------------------------
 
 if __name__ == '__main__':
     from xii.meshing.generation import StraightLineMesh
     n = 2**4
 
-    test_wall = False
-    test_port = False
-    test_mean = False
+
+    test_wall = True
+    test_port = True
+    test_mean = True
     test_lambda = True
 
     # -----------
     
     Omega = UnitCubeMesh(n-1, n-1, 2*n)
-    radius = 0.01           # Averaging radius for cyl. surface
+    radius = 0.05           # Averaging radius for cyl. surface
     quadrature_degree = 10  # Quadraure degree for that integration
-
-    K = Constant(1E0)
-    Kb = Constant(1E0)
 
     # Want something fully inside
     A, B = np.array([[0.5, 0.5, 0.1], [0.5, 0.5, 0.9]])
+
+    # Materials
+    K1 = Constant(1E0)   # Outside of the cylinder
+    K2 = Constant(1E4)   # Inside
+
+    f1 = Constant(0)     # Outer forcing
+    f2 = Constant(1)
+
+    # On the outer boundary
+    pressure_bcs = {tag: Constant(0) for tag in (10, 11, 12, 13, 14, 15)}
+
+    # ---- Reference solution
+    full_entity_fs = unit_cube_with_mesh(A=A, B=B, r=radius, resolution=2*radius)
+
+    full_cell_f, full_facet_f = full_entity_fs[3], full_entity_fs[2]
+
+    uh_full, ph_full = get_full_system_solution(full_cell_f, full_facet_f, Ks=(K1, K2), fs=(f1, f2),
+                                                pressure_bcs=pressure_bcs)
+    
+
+    with XDMFFile(f'uh_full.xdmf') as out:
+            out.write(uh_full)
+
+    with XDMFFile(f'ph_full.xdmf') as out:
+            out.write(ph_full)
+
+    # ----- Reduced model
+    
     Lambda = StraightLineMesh(A, B, ncells=2*n)
     dL = Measure('dx', domain=Lambda)
 
@@ -145,9 +280,12 @@ if __name__ == '__main__':
     # TODO: these meshes should be computed just based on the `cylinder`
     cylinder_f, cylinder_normal = cylinder_mesh(A, B, r=radius, resolution=radius)
 
+    File('full_cylinder.pvd') << full_entity_fs[3]
     File('cylinder.pvd') << cylinder_f
     File('Omega.pvd') << Omega
     File('Lambda.pvd') << Lambda
+
+
     
     base, top, wall = (EmbeddedMesh(cylinder_f, tag)  for tag in (1, 2, 3))
     # Get normal fields of the piecese
@@ -193,11 +331,6 @@ if __name__ == '__main__':
 
     Mpb, Mqb = (Mean(arg, weight=Constant(1/base_area), measure=dBase) for arg in (pb, qb))
     Mpt, Mqt = (Mean(arg, weight=Constant(1/top_area), measure=dTop) for arg in (pt, qt))    
-    # TODO:
-    # - check that dWall is convergent
-    #
-    #
-    #
     
     if test_wall:
         File('results/wall.pvd') << wall
@@ -217,7 +350,7 @@ if __name__ == '__main__':
             u0 = interpolate(u0_expr, V).vector()
             that = u0.inner(Op*u0)
 
-            print(abs(this-that), this)
+            test(abs(this-that), this)
 
     if test_port:
         File('results/base.pvd') << base
@@ -240,7 +373,7 @@ if __name__ == '__main__':
             p_foo = interpolate(p_expr, Qb).vector()
             that = v_foo.inner(Op*p_foo)
 
-            print(abs(this-that), this)
+            test(abs(this-that), this)
 
     if test_mean:
 
@@ -261,7 +394,7 @@ if __name__ == '__main__':
             q_foo = interpolate(p_expr, Qb).vector()
             that = q_foo.inner(Op*u_foo)
 
-            print(abs(this-that), this)
+            test(abs(this-that), this)
 
     if test_lambda:
 
@@ -279,18 +412,18 @@ if __name__ == '__main__':
             this = assemble(inner(pL_expr, Pi_v_expr)*dL)
 
             that = interpolate(v_expr, V).vector().inner(op*pL_foo.vector())
-            print(abs(this-that))
+            test(abs(this-that), that)
         
-    exit()
-        
+
+    K2_hat, f2_hat = K2*pi*radius**2, f2*pi*radius**2
     # Parts without the coupling
     a, L = block_form(W, 2), block_form(W, 1)
-    a[0][0] = (1/K)*inner(u, v)*dx + inner(dot(Tu_w, n_wall), dot(Tv_w, n_wall))*dWall
+    a[0][0] = (1/K1)*inner(u, v)*dx + inner(dot(Tu_w, n_wall), dot(Tv_w, n_wall))*dWall
     a[0][2] = -inner(p, div(v))*dx
     a[0][4] = inner(pb, dot(Tv_b, n_base))*dBase
     a[0][5] = inner(pt, dot(Tv_t, n_top))*dTop    
     
-    a[1][1] = (1/Kb)*inner(uL, vL)*dL
+    a[1][1] = (1/K2_hat)*inner(uL, vL)*dL
     a[1][3] = -inner(pL, Div(vL))*dL
     a[1][4] = inner(Mpb, vL)*dsL(1)
     a[1][5] = inner(Mpt, vL)*dsL(2)    
@@ -304,7 +437,8 @@ if __name__ == '__main__':
     a[5][0] = inner(qt, dot(Tu_t, n_top))*dTop
     a[5][1] = inner(Mqt, uL)*dsL(2)
     # ---
-    L[3] = inner(Constant(1), qL)*dL
+    L[2] = -inner(f1, q)*dx
+    L[3] = -inner(f2_hat, qL)*dL
     
     A, b = map(ii_assemble, (a, L))
     
