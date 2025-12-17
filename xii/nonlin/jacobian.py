@@ -72,9 +72,16 @@ def ii_derivative(f, x):
     # NOTE: in the following I try to avoid assembly of zero forms because
     # these might not be well-defined for xii assembler. Also, assembling
     # zeros is useless
+    def get_vector_id(foo):
+        try:
+            return foo.vector().id()
+        except:
+            return None
+        
+    
     for fi in [c for c in f.coefficients() if not isinstance(c, df.Constant)]:
         # Short circuit if (partial fi)/(partial x) is 0
-        if not ((fi == x) or fi.vector().id() == x.vector().id()): continue
+        if not ((fi == x) or get_vector_id(fi) == get_vector_id(x)): continue
 
         if is_restricted(fi):
             rtype = restriction_type(fi)

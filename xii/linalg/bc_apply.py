@@ -79,7 +79,8 @@ def apply_bc(A, b, bcs, diag_val=1., symmetric=True, return_apply_b=False):
         for bc in bcs_sub:
             # NOTE: bcs can be a dict or DirichletBC in which case we extract
             # the dict
-            if isinstance(bc, DirichletBC): bc = bc.get_boundary_values()
+            if hasattr(bc, 'get_boundary_values'):
+                bc = bc.get_boundary_values()
             # Dofs and values for rhs
             rows.extend(shift + np.array(list(bc.keys()), dtype='int32'))
             x_values.extend(list(bc.values()))
@@ -105,7 +106,7 @@ def apply_bc(A, b, bcs, diag_val=1., symmetric=True, return_apply_b=False):
         # if by assemble_system (i.e. in a symmetric way)
         def apply_b(bb, AA=AA.copy(), dofs=rows, bcs=bcs, blocks=blocks):
             # Pick up the updated values
-            values = np.array(sum((list(bc.get_boundary_values().values()) if isinstance(bc, DirichletBC) else []
+            values = np.array(sum((list(bc.get_boundary_values().values()) 
                                    for bcs_sub in bcs for bc in bcs_sub),
                                   []))
             # Taken from cbc.block
