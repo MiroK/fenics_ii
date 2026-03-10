@@ -1,4 +1,22 @@
-import numpy as np
+import numpy as np, itertools
+
+
+def simple_disk_quadrature(degree):
+    r = np.linspace(0, 1, degree)
+    theta = 2*np.pi*r
+    dr, dtheta = r[1]-r[0], theta[1]-theta[0]
+    
+    rmid = 0.5*(r[:-1] + r[1:])
+    tmid = 0.5*(theta[:-1] + theta[1:])
+
+    r, th = np.array([rt for rt in itertools.product(rmid, tmid)]).T
+    x, y = r*np.cos(th), r*np.sin(th)
+
+    xq = np.c_[x, y]
+    wq = r.reshape((-1, 1))*dr*dtheta
+
+    return (xq, wq)
+
 
 def disk_quadrature(degree):
     '''

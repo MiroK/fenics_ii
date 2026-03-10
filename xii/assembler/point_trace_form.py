@@ -34,8 +34,8 @@ def PointTrace(v, point, cell):
     # dofs
     assert v.ufl_element().family() in ('Lagrange', 'Discontinuous Lagrange')
     # Don't allow point because then it's difficult to check len
-    assert isinstance(point, (int, np.int32, np.int64, np.uint32, np.uint64))
-    assert isinstance(cell, (int, np.int32, np.int64, np.uint32, np.uint64)), type(cell)
+    #assert isinstance(point, (int, np.int32, np.int64, np.uint32, np.uint64))
+    #assert isinstance(cell, (int, np.int32, np.int64, np.uint32, np.uint64)), type(cell)
 
     # A copy!
     v = reconstruct(v)

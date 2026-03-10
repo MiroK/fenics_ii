@@ -134,7 +134,7 @@ def point_trace_matrix_CG(V, TV, x0):
     value_size = V.ufl_element().value_size()
     basis_values = np.zeros(V.element().space_dimension()*value_size)
 
-    Vel.evaluate_basis_all(basis_values, x0, vertex_coordinates, cell_orientation)
+    basis_values[:] = Vel.evaluate_basis_all(x0, vertex_coordinates, cell_orientation)
 
 
     # Scalar gets all

@@ -45,8 +45,24 @@ def unit_cube_with_mesh(A, B, r, resolution=None):
             model.addPhysicalGroup(2, [tag], 2)
         else:
             model.addPhysicalGroup(2, [tag], 3)
+
+    external_boundaries = ((np.array([0.0, 0.5, 0.5]), 10),
+                           (np.array([1.0, 0.5, 0.5]), 11),
+                           (np.array([0.5, 0.0, 0.5]), 12),
+                           (np.array([0.5, 1.0, 0.5]), 13),
+                           (np.array([0.5, 0.5, 0.0]), 14),
+                           (np.array([0.5, 0.5, 1.0]), 15))
+    for (dim, tag) in box_boundary:
+        c = fac.getCenterOfMass(dim, abs(tag))
+        for (center, phystag) in external_boundaries:
+            if np.linalg.norm(c-center) < 1E-10:
+                model.addPhysicalGroup(2, [tag], phystag)
+            
     fac.synchronize()
 
+    #gmsh.fltk.initialize()
+    #gmsh.fltk.run()
+    
     if resolution is None:
         resolution = 0.5*r
     gmsh.option.setNumber('Mesh.MeshSizeMax', resolution)
@@ -174,7 +190,7 @@ def mark_cube_boundaries(facet_f):
     '''10 and above'''
     mesh = facet_f.mesh()
     assert mesh.geometry().dim() == 3
-    assert mesh.topology().dim() == facet_f.dim() == 2
+    # assert mesh.topology().dim() == facet_f.dim() == 2
 
     CompiledSubDomain('near(x[0], 0)').mark(facet_f, 10)
     CompiledSubDomain('near(x[0], 1)').mark(facet_f, 11)
@@ -211,8 +227,10 @@ def get_full_system_solution(cell_f, facet_f, Ks, fs, pressure_bcs):
 
     n = FacetNormal(mesh)
     for (tag, value) in pressure_bcs.items():
+        print(tag, value(0))
         L += -inner(value, dot(v, n))*ds(tag)
 
+    print('Dim full system', W.dim())
     wh = Function(W)
     solve(a == L, wh)
 
@@ -230,14 +248,18 @@ if __name__ == '__main__':
     n = 2**4
 
 
-    test_wall = True
-    test_port = True
-    test_mean = True
-    test_lambda = True
+    test_wall = False
+    test_port = False
+    test_mean = False
+    test_lambda = False
 
     # -----------
     
     Omega = UnitCubeMesh(n-1, n-1, 2*n)
+    Omega_facet_f = MeshFunction('size_t', Omega, Omega.topology().dim()-1, 0)
+    Omega_facet_f = mark_cube_boundaries(Omega_facet_f)
+    dsOmega = Measure('ds', domain=Omega, subdomain_data=Omega_facet_f)
+    
     radius = 0.05           # Averaging radius for cyl. surface
     quadrature_degree = 10  # Quadraure degree for that integration
 
@@ -252,10 +274,11 @@ if __name__ == '__main__':
     f2 = Constant(1)
 
     # On the outer boundary
-    pressure_bcs = {tag: Constant(0) for tag in (10, 11, 12, 13, 14, 15)}
+    pressure_bcs = {tag: Constant(0) for tag in (15, 11, 12, 13, 14)}
+    pressure_bcs[10] = Constant(0)
 
     # ---- Reference solution
-    full_entity_fs = unit_cube_with_mesh(A=A, B=B, r=radius, resolution=2*radius)
+    full_entity_fs = unit_cube_with_mesh(A=A, B=B, r=radius, resolution=radius)
 
     full_cell_f, full_facet_f = full_entity_fs[3], full_entity_fs[2]
 
@@ -264,10 +287,12 @@ if __name__ == '__main__':
     
 
     with XDMFFile(f'uh_full.xdmf') as out:
-            out.write(uh_full)
+        uh_full.rename('uh_full', '')
+        out.write(uh_full)
 
     with XDMFFile(f'ph_full.xdmf') as out:
-            out.write(ph_full)
+        ph_full.rename('ph_full', '')        
+        out.write(ph_full)
 
     # ----- Reduced model
     
@@ -416,9 +441,10 @@ if __name__ == '__main__':
         
 
     K2_hat, f2_hat = K2*pi*radius**2, f2*pi*radius**2
+    K_n = Constant(K1/radius)
     # Parts without the coupling
     a, L = block_form(W, 2), block_form(W, 1)
-    a[0][0] = (1/K1)*inner(u, v)*dx + inner(dot(Tu_w, n_wall), dot(Tv_w, n_wall))*dWall
+    a[0][0] = (1/K1)*inner(u, v)*dx + (1/K_n)*inner(dot(Tu_w, n_wall), dot(Tv_w, n_wall))*dWall
     a[0][2] = -inner(p, div(v))*dx
     a[0][4] = inner(pb, dot(Tv_b, n_base))*dBase
     a[0][5] = inner(pt, dot(Tv_t, n_top))*dTop    
@@ -426,7 +452,7 @@ if __name__ == '__main__':
     a[1][1] = (1/K2_hat)*inner(uL, vL)*dL
     a[1][3] = -inner(pL, Div(vL))*dL
     a[1][4] = inner(Mpb, vL)*dsL(1)
-    a[1][5] = inner(Mpt, vL)*dsL(2)    
+    a[1][5] = -inner(Mpt, vL)*dsL(2)    
 
     a[2][0] = -inner(q, div(u))*dx
     a[3][1] = -inner(qL, Div(uL))*dL
@@ -436,7 +462,14 @@ if __name__ == '__main__':
 
     a[5][0] = inner(qt, dot(Tu_t, n_top))*dTop
     a[5][1] = inner(Mqt, uL)*dsL(2)
+    
     # ---
+    
+    n = FacetNormal(Omega)
+    for (tag, value) in pressure_bcs.items():
+        print(tag, '->', assemble(Constant(1)*dsOmega(tag)), value(0))
+        L[0] += -inner(value, dot(v, n))*dsOmega(tag)
+    
     L[2] = -inner(f1, q)*dx
     L[3] = -inner(f2_hat, qL)*dL
     

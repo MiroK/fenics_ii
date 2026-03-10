@@ -63,36 +63,45 @@ def inner_point_refine(mesh, new_pts, strict, nrefs=1):
     assert any((nvtx_cell == 2,
                 nvtx_cell == 3,
                 nvtx_cell == 4 and mesh.topology().dim() == 3))
-
+    
     # Center points will be new coordinates
     xnew = new_pts(mesh)
-    # We have to check for duplicates
-    #if not unique_guarantee:
-    #    pass
-    if strict > 0:
-        tol = mesh.hmin()*strict
-        # The collision
-        assert point_is_inside(xnew, x[cells], tol)
+    if isinstance(xnew, np.ndarray):
+        is_refined_cells = np.ones(ncells, dtype=bool)        
+    else:
+        pcs, xnew = xnew
+
+        is_refined_cells = np.zeros(ncells, dtype=bool)
+        is_refined_cells[pcs] = True
         
-    # Each cell gives rise to ...
-    child2parent = np.empty(ncells*nvtx_cell, dtype='uintp')
-    fine_cells = np.empty((ncells*nvtx_cell, nvtx_cell), dtype='uintp')
+    nnewcells = nvtx_cell*np.sum(is_refined_cells) + 1*np.sum(~is_refined_cells)
+    # In this case only pcs cell are refind so
+    child2parent = np.empty(nnewcells, dtype='uintp')
+    fine_cells = np.empty((nnewcells, nvtx_cell), dtype='uintp')
+
     # How we build new cells
     basis = list(map(list, combinations(list(range(nvtx_cell)), nvtx_cell-1)))
-
+        
     fine_coords = np.row_stack([x, xnew])
-    
-    fc, center = 0, len(x)
-    for pc, cell in enumerate(cells):
-        for base in basis:
-            new_cell = np.r_[cell[base], center]
-            # Every new cell must be non-empty
-            assert simplex_area(fine_coords[new_cell]) > 1E-15
 
+    fc, center = 0, len(x)
+    for (pc, cell) in enumerate(cells):
+        if is_refined_cells[pc]:
+            for base in basis:
+                new_cell = np.r_[cell[base], center]
+                # Every new cell must be non-empty
+                assert simplex_area(fine_coords[new_cell]) > 1E-15
+
+                fine_cells[fc, :] = new_cell
+                child2parent[fc] = pc
+                fc += 1
+            center += 1
+        else:
+            new_cell = cell
+            
             fine_cells[fc, :] = new_cell
             child2parent[fc] = pc
-            fc += 1
-        center += 1
+            fc += 1            
 
     tdim = mesh.topology().dim()
                                               

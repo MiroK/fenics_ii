@@ -218,7 +218,7 @@ class Circle(BoundingSurface):
 
 class Disk(BoundingSurface):
     '''Disk in plane(x0, n) with radius given by radius(x0)'''    
-    def __init__(self, radius, degree):
+    def __init__(self, radius, degree, quad_scheme=None):
         # Make constant function
         if is_number(radius):
             assert radius > 0
@@ -229,8 +229,11 @@ class Disk(BoundingSurface):
 
         # Will use quadrature from quadpy over unit disk in z=0 plane
         # and center (0, 0, 0)
-        self.xq, self.wq = disk_quadrature.disk_quadrature(degree)
-
+        if quad_scheme == 'simple':
+            self.xq, self.wq = disk_quadrature.simple_disk_quadrature(degree)
+        else:
+            self.xq, self.wq = disk_quadrature.disk_quadrature(degree)
+            
     @staticmethod
     def map_from_reference(x0, n, R):
         '''
