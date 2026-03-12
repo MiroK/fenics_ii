@@ -101,6 +101,8 @@ def stokes_solver(mesh3d, sources):
 
         n_disk = Constant(source.normal)
         area = Constant(pi*source.radius**2)
+
+        assert assemble(Constant(1)*ds_(k)) > 0
         
         a[2][0] += area*inner(dot(Pi_u, n_disk), m[k-1])*ds_(k)
         a[0][2] += area*inner(dot(Pi_v, n_disk), l[k-1])*ds_(k)

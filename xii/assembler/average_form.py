@@ -52,7 +52,7 @@ def average_space(V, mesh):
     return df.FunctionSpace(mesh, elm(family, mesh.ufl_cell(), degree))
 
 
-def Average(v, line_mesh, shape):
+def Average(v, line_mesh, shape, normalize=True):
     '''
     Anoteate v for being a reduction of v obtained by integrating over the 
     shape. Based on shape the reduction is done by a line integral or a 
@@ -80,7 +80,7 @@ def Average(v, line_mesh, shape):
         # Object copy?
         v = [df.TestFunction, df.TrialFunction][v.number()](v.function_space())
 
-    v.average_ = {'mesh': line_mesh, 'shape': shape}
+    v.average_ = {'mesh': line_mesh, 'shape': shape, 'normalize': normalize}
 
     return v
 

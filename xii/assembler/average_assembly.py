@@ -22,7 +22,7 @@ class AverageFormAssembler(ReducedFormAssembler):
 
     def reduction_matrix_data(self, terminal):
         '''Dict of reduction data and optinal normal'''
-        return {'shape': terminal.average_['shape']}
+        return {'shape': terminal.average_['shape'], 'normalize': terminal.average_['normalize']}
 
     def reduced_space(self, V, reduced_mesh, data=None):
         '''Construct a reduced space for V on the mesh'''

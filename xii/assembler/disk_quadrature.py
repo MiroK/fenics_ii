@@ -1,6 +1,49 @@
 import numpy as np, itertools
 
 
+def simple_ball_quadrature(degree):
+    r = np.linspace(0, 1, degree)
+    theta = 2*np.pi*r
+    fi = np.linspace(0, np.pi, degree)
+    
+    dr, dtheta, dfi= r[1]-r[0], theta[1]-theta[0], fi[1]-fi[0]
+    
+    rmid = 0.5*(r[:-1] + r[1:])
+    tmid = 0.5*(theta[:-1] + theta[1:])
+    fmid = 0.5*(fi[:-1] + fi[1:])
+
+    r, th, f = np.array([rthf for rthf in itertools.product(rmid, tmid, fmid)]).T
+    x, y, z = r*np.cos(th)*np.sin(f), r*np.sin(th)*np.sin(f), r*np.cos(f)
+
+    xq = np.c_[x, y, z]
+
+    wq = r**2*np.sin(f)*dr*dtheta*dfi
+
+    return (xq, wq)
+
+
+def simple_ball_surface_quadrature(degree):
+    r = np.linspace(0, 1, degree)
+    theta = 2*np.pi*r
+    fi = np.linspace(0, np.pi, degree)
+    
+    dr, dtheta, dfi= r[1]-r[0], theta[1]-theta[0], fi[1]-fi[0]
+    
+    rmid = np.ones_like(0.5*(r[:-1] + r[1:]))
+    tmid = 0.5*(theta[:-1] + theta[1:])
+    fmid = 0.5*(fi[:-1] + fi[1:])
+
+    th, f = np.array([rthf for rthf in itertools.product(tmid, fmid)]).T
+    x, y, z = np.cos(th)*np.sin(f), np.sin(th)*np.sin(f), np.cos(f)
+
+    xq = np.c_[x, y, z]
+
+    wq = np.sin(f)*dtheta*dfi
+
+    return (xq, wq)
+
+
+
 def simple_disk_quadrature(degree):
     r = np.linspace(0, 1, degree)
     theta = 2*np.pi*r
@@ -13,10 +56,11 @@ def simple_disk_quadrature(degree):
     x, y = r*np.cos(th), r*np.sin(th)
 
     xq = np.c_[x, y]
-    wq = r.reshape((-1, 1))*dr*dtheta
+    wq = r*dr*dtheta
 
     return (xq, wq)
 
+# ---------------------------------------------------------------------
 
 def disk_quadrature(degree):
     '''
@@ -130,3 +174,20 @@ def disk_quadrature(degree):
                 wqs.append(weight)
     xqs, wqs = np.array(xqs), np.array(wqs)
     return xqs, wqs
+
+# --------------------------------------------------------------------
+
+if __name__ == '__main__':
+    xq, wq = simple_ball_quadrature(degree=20)
+    print(np.sum(wq), 4/3*np.pi)
+
+    #xq, wq = simple_ball_surface_quadrature(degree=20)
+    #print(np.sum(wq), 4*np.pi)
+
+
+    f = lambda x, y, z: x**2 + y**2 + z**2
+
+    x, y, z = xq.T
+
+    this = np.sum(wq*f(x, y, z))
+    print(this, np.pi*4/5, np.sum(wq))

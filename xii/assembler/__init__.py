@@ -10,6 +10,6 @@ from . gradient_point_trace_form import GradientPointTrace
 from . patch_average_form import CellPatchAverage
 from . surface_mean_form import SurfaceMean
 from . xii_assembly import assemble as ii_assemble
-from . average_shape import Square, SquareRim, Circle, Disk
+from . average_shape import Square, SquareRim, Circle, Disk, Ball, BallSurface
 from . block_form import block_form
 from . mean_form import Mean

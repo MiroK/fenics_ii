@@ -70,9 +70,10 @@ if __name__ == '__main__':
 
     V = VectorFunctionSpace(mesh, 'CG', 1)
     f = Expression(('x[0]', 'x[1]', 'x[2]'), degree=1)
+    f = Expression(('1', '2', '3'), degree=1)    
     uh = interpolate(f, V)
 
-    radius = 0.1
+    radius = 0.05
     disk = Disk(radius=radius, degree=30, quad_scheme='simple')
     Pi_u = Average(uh, line_mesh, disk)  # This divides by area!
 

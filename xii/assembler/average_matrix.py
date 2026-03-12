@@ -15,7 +15,8 @@ def memoize_average(average_mat):
     def cached_average_mat(V, TV, reduced_mesh, data):
         key = ((V.ufl_element(), V.mesh().id()),
                (TV.ufl_element(), TV.mesh().id()),
-               data['shape'])
+               data['shape'],
+               data['normalize'])
 
         if key not in cache:
             cache[key] = average_mat(V, TV, reduced_mesh, data)
@@ -49,12 +50,12 @@ def avg_mat(V, TV, reduced_mesh, data):
         return PETScMatrix(trace_3d1d_matrix(V, TV, reduced_mesh))
 
     # Surface averages
-    Rmat = average_matrix(V, TV, shape)
+    Rmat = average_matrix(V, TV, shape, normalize=data['normalize'])
         
     return PETScMatrix(Rmat)
                 
 
-def average_matrix(V, TV, shape):
+def average_matrix(V, TV, shape, normalize):
     '''
     Averaging matrix for reduction of g in V to TV by integration over shape.
     '''
@@ -71,7 +72,7 @@ def average_matrix(V, TV, shape):
     value_size = TV.ufl_element().value_size()
 
     if value_size == 1:
-        return scalar_average_matrix(V, TV, shape)
+        return scalar_average_matrix(V, TV, shape, normalize)
     
     mesh = V.mesh()
     # Eval at points will require serch
@@ -94,7 +95,7 @@ def average_matrix(V, TV, shape):
         for line_cell in tqdm.tqdm(cells(line_mesh), desc=f'Averaging over {line_mesh.num_cells()} cells',
                                    total=line_mesh.num_cells()):
             # Get the tangent (normal of the plane which cuts the virtual
-            # surface to yield the bdry curve
+            # surface to yield thd bdry curve
             v0, v1 = mesh_x[line_cell.entities(0)]
             n = v0 - v1
 
@@ -107,7 +108,10 @@ def average_matrix(V, TV, shape):
                 integration_points = quadrature.points
                 wq = quadrature.weights
 
-                curve_measure = sum(wq)
+                if normalize:
+                    curve_measure = sum(wq)
+                else:
+                    curve_measure = 1
 
                 data = {}
                 for index, ip in enumerate(integration_points):
@@ -148,7 +152,7 @@ def average_matrix(V, TV, shape):
     return mat
 
 
-def scalar_average_matrix(V, TV, shape):
+def scalar_average_matrix(V, TV, shape, normalize):
     '''
     Averaging matrix for reduction of g in V to TV by integration over shape.
     '''
@@ -198,7 +202,10 @@ def scalar_average_matrix(V, TV, shape):
             integration_points = quadrature.points
             wq = quadrature.weights
 
-            curve_measure = sum(wq)
+            if normalize:
+                curve_measure = sum(wq)
+            else:
+                curve_measure = 1
 
             data = {}
             for index, ip in enumerate(integration_points):
