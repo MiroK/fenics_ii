@@ -19,7 +19,8 @@ def average_cell(o):
         return average_cell(o.ufl_element().cell())
 
     # Another cell
-    cell_name = {'tetrahedron': 'interval'}[o.cellname()]
+    cell_name = {'tetrahedron': 'interval',
+                 'triangle': 'interval'}[o.cellname()]
     
     return ufl.Cell(cell_name, o.geometric_dimension())
 
@@ -101,7 +102,7 @@ def Average(v, line_mesh, shape, normalize=True):
 # each arg above was created by Average
 def is_average_integrand(expr, tdim):
     '''Some of the arguments need restriction'''
-    return any((topological_dim(arg) == tdim + 2) and hasattr(arg, 'average_')
+    return any((topological_dim(arg) in (tdim + 2, tdim + 1)) and hasattr(arg, 'average_')
                for arg in traverse_unique_terminals(expr))
 
 

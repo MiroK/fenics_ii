@@ -269,84 +269,34 @@ class Disk(BoundingSurface):
             
         return transform
 
-    def quadrature(self, x0, n):
-        '''Quadrature for disk(center x0, normal n, radius x0)'''
-        xq, wq = self.xq, self.wq
-        
-        xq = np.c_[xq, np.zeros_like(wq)]
 
-        R = self.radius(x0)
-        # Circle viewed from reference
-        Txq = list(map(Disk.map_from_reference(x0, n, R), xq))
-        
-        wq = wq*R**2
-
-        return Quadrature(Txq, wq)
-
-class Disk(BoundingSurface):
-    '''Disk in plane(x0, n) with radius given by radius(x0)'''    
-    def __init__(self, radius, degree, quad_scheme=None):
-        # Make constant function
-        if is_number(radius):
-            assert radius > 0
-            self.radius = lambda x0, r=radius: r
-        # Then this must map points on centerline to radius
-        else:
-            self.radius = radius
-
-        # Will use quadrature from quadpy over unit disk in z=0 plane
-        # and center (0, 0, 0)
-        if quad_scheme == 'simple':
-            self.xq, self.wq = disk_quadrature.simple_disk_quadrature(degree)
-        else:
-            self.xq, self.wq = disk_quadrature.disk_quadrature(degree)
-            
     @staticmethod
-    def map_from_reference(x0, n, R):
+    def map_from_reference_2d(x0, n, R):
         '''
         Map unit disk in z = 0 to plane to disk of radius R with center at x0.
         '''
-        ez = np.array([0., 0., 1.])
-        n = n / np.linalg.norm(n)
-        # The idea here is to rotatate our z plane passing through origin
-        # to the one with normal  n ...
-        axis = np.cross(ez, n)
-        if np.linalg.norm(axis) < 1E-13:
-            axis = ez
-        else:
-            axis = axis / np.linalg.norm(axis)        
-        
-        ctheta = np.dot(ez, n)
-        stheta = np.sqrt(1 - ctheta**2)
-        # Rotation matrix
-        Rot = ctheta*np.eye(3) + stheta*np.array([[0, -axis[2], axis[1]],
-                                                  [axis[2], 0, -axis[0]],
-                                                  [-axis[1], axis[0], 0]]) + (1-ctheta)*np.outer(axis, axis)
-        
-        def transform(x, x0=x0, n=n, R=R, Rot=Rot):
-            norm = np.dot(x, x)
-            assert abs(np.linalg.norm(n) - 1) < 1E-13
-            # Check assumptions
-            # assert abs(norm - 1) < 1E-13 and abs(x[2]) < 1E-13, (norm, x[2])
-
-            y = Rot@x
-
+        def transform(x, x0=x0, n=n, R=R):
             # And then we just shift the origin
-            return x0 + R*y
+            return x0 + R*x
             
         return transform
-
+    
+    
     def quadrature(self, x0, n):
         '''Quadrature for disk(center x0, normal n, radius x0)'''
         xq, wq = self.xq, self.wq
-        
-        xq = np.c_[xq, np.zeros_like(wq)]
 
-        R = self.radius(x0)
-        # Circle viewed from reference
-        Txq = list(map(Disk.map_from_reference(x0, n, R), xq))
-        
+        R = self.radius(x0)        
         wq = wq*R**2
+
+        assert len(x0) == len(n)
+
+        if len(x0) == 3:
+            xq = np.c_[xq, np.zeros_like(wq)]
+            # Circle viewed from reference
+            Txq = list(map(Disk.map_from_reference(x0, n, R), xq))
+        else:
+            Txq = list(map(Disk.map_from_reference_2d(x0, n, R), xq))
 
         return Quadrature(Txq, wq)
 
