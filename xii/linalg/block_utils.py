@@ -413,6 +413,29 @@ class RegroupOperator(block_base):
         return block_vec(b_block)
 
     
+class StackOperator(block_base):
+    '''V -> V x V'''
+    def __init__(self, n, V):
+        self.n = n
+        self.V = V
+
+    def create_vec(self, dim=1):
+        if dim == 1:
+            return Function(self.V).vector()
+
+        x = self.create_vec(dim=1)
+        return self*x
+
+    def matvec(self, b):
+        '''Stack up'''
+        return block_vec([1*b for _ in range(self.n)])
+
+    def transpmult(self, b):
+        '''Unpack'''
+        b0, *b1s = b
+        return sum(b1s, b0)
+    
+    
 class BlockPC(block_base):
     '''Wrap petsc preconditioner for cbc.block'''
     def __init__(self, pc):
