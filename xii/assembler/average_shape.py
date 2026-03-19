@@ -31,7 +31,7 @@ class Square(BoundingSurface):
     r'''
     Square in plane(x0, n) with ll corner given by P(x\in R^3) -> R^3
     '''
-    def __init__(self, P, degree):
+    def __init__(self, P, degree, quad_scheme=None):
         if isinstance(P, (tuple, list, np.ndarray)):
             assert all(is_number(Pi) for Pi in P)
             self.P = lambda x0, p=P: p
@@ -87,7 +87,7 @@ class SquareRim(BoundingSurface):
     Boundary of a square in plane(x0, n) with ll corner given by 
     P(x\in R^3) -> R^3
     '''
-    def __init__(self, P, degree):
+    def __init__(self, P, degree, quad_scheme=None):
         if isinstance(P, (tuple, list, np.ndarray)):
             assert all(is_number(Pi) for Pi in P)
             self.P = lambda x0, p=P: p
@@ -142,7 +142,7 @@ class SquareRim(BoundingSurface):
 
 class Circle(BoundingSurface):
     '''Circle in plane(x0, n) with radius given by radius(x0)'''
-    def __init__(self, radius, degree):
+    def __init__(self, radius, degree, quad_scheme=None):
         # Make constant function
         if is_number(radius):
             assert radius > 0
