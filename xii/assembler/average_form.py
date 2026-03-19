@@ -57,7 +57,7 @@ def average_space(V, mesh):
 InterfaceResolution = namedtuple('InterfaceResolution', ('subdomains', 'resolve_conflicts'))
 
 
-def Average(v, line_mesh, shape, normalize=True, resolve_interfaces=None):
+def Average(v, line_mesh, shape, normalize=True, resolve_interfaces=None, restrict_cell_f=None):
     '''
     Anoteate v for being a reduction of v obtained by integrating over the 
     shape. Based on shape the reduction is done by a line integral or a 
@@ -73,6 +73,12 @@ def Average(v, line_mesh, shape, normalize=True, resolve_interfaces=None):
     assert is_terminal(v)
     assert average_cell(v) == line_mesh.ufl_cell()
 
+    if restrict_cell_f is None:
+        # Every cell will be active
+        restrict_cell_f = df.MeshFunction('size_t', line_mesh, line_mesh.topology().dim(), 1)
+    assert restrict_cell_f.mesh().id() == line_mesh.id()
+    assert restrict_cell_f.dim() == 1
+    
     # Some sanity check for the radius
     if shape is None:
         v_family = v.ufl_element().family()
@@ -92,7 +98,8 @@ def Average(v, line_mesh, shape, normalize=True, resolve_interfaces=None):
     v.average_ = {'mesh': line_mesh,
                   'shape': shape,
                   'normalize': normalize,
-                  'resolve_interfaces': resolve_interfaces}
+                  'resolve_interfaces': resolve_interfaces,
+                  'restrict_cell_f': restrict_cell_f}
 
     return v
 

@@ -53,13 +53,18 @@ def avg_mat(V, TV, reduced_mesh, data):
     if shape is None:
         return PETScMatrix(trace_3d1d_matrix(V, TV, reduced_mesh))
 
+
+
+    restrict_cell_f = data['restrict_cell_f']
+    print(f'Averaging will use {restrict_cell_f.array().sum()} cell of {len(restrict_cell_f.array())}')    
     # Surface averages
     Rmat = average_matrix(V, TV, shape, normalize=data['normalize'],
-                          resolve_interfaces=data['resolve_interfaces'])
+                          resolve_interfaces=data['resolve_interfaces'],
+                          restrict_cell_f=restrict_cell_f)
         
     return PETScMatrix(Rmat)
                 
-def average_matrix(V, TV, shape, normalize=True, resolve_interfaces=None):
+def average_matrix(V, TV, shape, normalize=True, resolve_interfaces=None, restrict_cell_f=None):
     '''
     Averaging matrix for reduction of g in V to TV by integration over shape.
     '''
@@ -77,7 +82,8 @@ def average_matrix(V, TV, shape, normalize=True, resolve_interfaces=None):
 
     if value_size == 1:
         return scalar_average_matrix(V, TV, shape, normalize=normalize,
-                                     resolve_interfaces=resolve_interfaces)
+                                     resolve_interfaces=resolve_interfaces,
+                                     restrict_cell_f=restrict_cell_f)
     
     mesh = V.mesh()
     if resolve_interfaces is not None:
@@ -104,6 +110,8 @@ def average_matrix(V, TV, shape, normalize=True, resolve_interfaces=None):
 
         for line_cell in tqdm.tqdm(cells(line_mesh), desc=f'Averaging over {line_mesh.num_cells()} cells',
                                    total=line_mesh.num_cells()):
+            if not resctrict_cell_f[line_cell]:
+                continue
             # Get the tangent (normal of the plane which cuts the virtual
             # surface to yield the bdry curve
             v0, v1 = mesh_x[line_cell.entities(0)]
@@ -190,7 +198,7 @@ def average_matrix(V, TV, shape, normalize=True, resolve_interfaces=None):
     return mat
 
 
-def scalar_average_matrix(V, TV, shape, normalize=True, resolve_interfaces=None):
+def scalar_average_matrix(V, TV, shape, normalize=True, resolve_interfaces=None, restrict_cell_f=None):
     '''
     Averaging matrix for reduction of g in V to TV by integration over shape.
     '''
@@ -230,6 +238,8 @@ def scalar_average_matrix(V, TV, shape, normalize=True, resolve_interfaces=None)
     nnz = 0
     for line_cell in tqdm.tqdm(cells(line_mesh), desc=f'Averaging over {line_mesh.num_cells()} cells',
                                total=line_mesh.num_cells()):
+        if not restrict_cell_f[line_cell]:
+            continue
         # Get the tangent (normal of the plane which cuts the virtual
         # surface to yield the bdry curve
         v0, v1 = mesh_x[line_cell.entities(0)]
@@ -381,7 +391,7 @@ def trace_3d1d_matrix(V, TV, reduced_mesh):
     with petsc_serial_matrix(TV, V) as mat:
 
         for line_cell in tqdm.tqdm(cells(line_mesh), desc=f'Averaging over {line_mesh.num_cells()} cells',
-                                   total=line_mesh.num_cells()):
+                                   total=line_mesh.num_cells()):            
             # Get the tangent => orthogonal tangent vectors
             # The idea is now to minimize the point evaluation
             scalar_dofs = TV_dm.cell_dofs(line_cell.index())

@@ -24,7 +24,8 @@ class AverageFormAssembler(ReducedFormAssembler):
         '''Dict of reduction data and optinal normal'''
         return {'shape': terminal.average_['shape'],
                 'normalize': terminal.average_['normalize'],
-                'resolve_interfaces': terminal.average_['resolve_interfaces']}
+                'resolve_interfaces': terminal.average_['resolve_interfaces'],
+                'restrict_cell_f': terminal.average_['restrict_cell_f']}
 
     def reduced_space(self, V, reduced_mesh, data=None):
         '''Construct a reduced space for V on the mesh'''
