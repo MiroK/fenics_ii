@@ -59,8 +59,7 @@ def avg_mat(V, TV, reduced_mesh, data):
         
     return PETScMatrix(Rmat)
                 
-
-def average_matrix(V, TV, shape, normalize, resolve_interfaces=None):
+def average_matrix(V, TV, shape, normalize=True, resolve_interfaces=None):
     '''
     Averaging matrix for reduction of g in V to TV by integration over shape.
     '''
@@ -68,8 +67,12 @@ def average_matrix(V, TV, shape, normalize, resolve_interfaces=None):
     #
     # Pi(u)(s) = |L(s)|^-1*\int_{L(s)}u(t) dx(s)
     #
-    # Here L is the shape over which u is integrated for reduction.
+    # Here L is the shapse over which u is integrated for reduction.
     # Its measure is |L(s)|.
+    mesh_x = TV.mesh().coordinates()
+    # The idea for point evaluation/computing dofs of TV is to minimize
+    # the number of evaluation. I mean a vector dof if done naively would
+    # have to evaluate at same x number of component times.
     value_size = TV.ufl_element().value_size()
 
     if value_size == 1:
@@ -81,11 +84,6 @@ def average_matrix(V, TV, shape, normalize, resolve_interfaces=None):
         # Check that we have a valid cell function
         resolve_interfaces.subdomains.mesh().id() == mesh.id()
         resolve_interfaces.subdomains.dim() == mesh.topology().dim()
-        # NOTE: for now that the interface is between two subdmomains and
-        # is encoded by an ordered tuple of tags
-        assert all(subdi < subdj for (subdi, subdj) in resolve_interfaces.resolve_conflicts)
-        # And the winning tag is one of the subdomains
-        assert all(val in key for (key, val) in resolve_interfaces.resolve_conflicts.items())
 
     # Eval at points will require serch
     tree = mesh.bounding_box_tree()
@@ -158,12 +156,19 @@ def average_matrix(V, TV, shape, normalize, resolve_interfaces=None):
                 if resolve_interfaces is None:
                     keep_tag = 0
                 else:
-                    # Which interface is this
-                    iface_key = set(t for (t, v) in chain(*data.values()))
-                    assert len(iface_key) == 2, (iface_key, )
-                    iface_key = tuple(sorted(iface_key))
+                    subdi, subdj = iface_key
+                    keyfound = (subdi, subdj) in resolve_interfaces.resolve_conflicts
+                    if not keyfound:
+                        subdi, subdj = subdj, subdi
+                        keyfound = (subdi, subdj) in resolve_interfaces.resolve_conflicts
+                    assert keyfound
 
-                    keep_tag = resolve_interfaces.resolve_conflicts[iface_key]
+                    curve_leni = sum(wq[qp_subdomain == subdi])
+                    curve_lenj = sum(wq[qp_subdomain == subdj])                                        
+                    total_len = sum(wq)
+
+                    weight = resolve_interfaces.resolve_conflicts[(subdi, subdj)]
+                    keep_tag = subdi if weight*curve_leni/total_len > curve_lenj/total_len else subdj
   
                 if normalize:
                     curve_len = sum(wq[qp_subdomain == keep_tag])
@@ -185,7 +190,7 @@ def average_matrix(V, TV, shape, normalize, resolve_interfaces=None):
     return mat
 
 
-def scalar_average_matrix(V, TV, shape, normalize, resolve_interfaces=None):
+def scalar_average_matrix(V, TV, shape, normalize=True, resolve_interfaces=None):
     '''
     Averaging matrix for reduction of g in V to TV by integration over shape.
     '''
@@ -195,6 +200,7 @@ def scalar_average_matrix(V, TV, shape, normalize, resolve_interfaces=None):
     #
     # Here L is the shape over which u is integrated for reduction.
     # Its measure is |L(s)|.
+    
     mesh_x = TV.mesh().coordinates()
     # The idea for point evaluation/computing dofs of TV is to minimize
     # the number of evaluation. I mean a vector dof if done naively would
@@ -206,11 +212,6 @@ def scalar_average_matrix(V, TV, shape, normalize, resolve_interfaces=None):
         # Check that we have a valid cell function
         resolve_interfaces.subdomains.mesh().id() == mesh.id()
         resolve_interfaces.subdomains.dim() == mesh.topology().dim()
-        # NOTE: for now that the interface is between two subdmomains and
-        # is encoded by an ordered tuple of tags
-        assert all(subdi < subdj for (subdi, subdj) in resolve_interfaces.resolve_conflicts)
-        # And the winning tag is one of the subdomains
-        assert all(val in key for (key, val) in resolve_interfaces.resolve_conflicts.items())
     
     # Eval at points will require serch
     tree = mesh.bounding_box_tree()
@@ -286,10 +287,24 @@ def scalar_average_matrix(V, TV, shape, normalize, resolve_interfaces=None):
             else:
                 # Which interface is this
                 iface_key = set(t for (t, v) in chain(*data.values()))
-                assert len(iface_key) == 2, (iface_key, )
-                iface_key = tuple(sorted(iface_key))
+                # We might be fully in one domain:
+                if len(iface_key) == 1:
+                    keep_tag, = iface_key
+                # Need to be told what to do
+                else:
+                    subdi, subdj = iface_key
+                    keyfound = (subdi, subdj) in resolve_interfaces.resolve_conflicts
+                    if not keyfound:
+                        subdi, subdj = subdj, subdi
+                        keyfound = (subdi, subdj) in resolve_interfaces.resolve_conflicts
+                    assert keyfound
 
-                keep_tag = resolve_interfaces.resolve_conflicts[iface_key]
+                    curve_leni = sum(wq[qp_subdomain == subdi])
+                    curve_lenj = sum(wq[qp_subdomain == subdj])                                        
+                    total_len = sum(wq)
+
+                    weight = resolve_interfaces.resolve_conflicts[(subdi, subdj)]
+                    keep_tag = subdi if weight*curve_leni/total_len > curve_lenj/total_len else subdj
 
             if normalize:
                 curve_len = sum(wq[qp_subdomain == keep_tag])
@@ -317,6 +332,7 @@ def scalar_average_matrix(V, TV, shape, normalize, resolve_interfaces=None):
                                 csr=(csr.indptr, csr.indices, csr.data))
     
     return mat
+
 
 
 def trace_3d1d_matrix(V, TV, reduced_mesh):
