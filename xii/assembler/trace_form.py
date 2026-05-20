@@ -88,6 +88,9 @@ def Trace(v, mmesh, restriction='', normal=None, tag=None):
     # Prevent Trace(grad(u)). But it could be interesting to have this
     assert is_terminal(v)
 
+    if isinstance(v, df.Expression):
+        return v
+    
     assert trace_cell(v) == mmesh.ufl_cell()
     # Not sure if it is really needed but will allow 5 types of traces
     assert restriction in ('',      # This makes sense for continuous foos
@@ -104,9 +107,11 @@ def Trace(v, mmesh, restriction='', normal=None, tag=None):
     # away, what would be changes to the assembler etc?
     if isinstance(v, ufl.Coefficient):
         v =  df.Function(v.function_space(), v.vector())
-    else:
+    elif isinstance(v, ufl.Argument):
         # Object copy?
         v = [df.TestFunction, df.TrialFunction][v.number()](v.function_space())
+    else:
+        raise ValueError
 
     if tag is not None:
         if isinstance(tag, int):

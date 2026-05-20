@@ -11,8 +11,25 @@ import dolfin as df
 import numpy as np
 import operator
 
+from cachetools import cached, LRUCache
 
-class EmbeddedMesh(df.Mesh):
+
+def embedded_mesh_key(marking_function, markers):
+    if not isinstance(markers, (list, tuple, set)):
+        markers = [markers]
+    key = (marking_function.mesh().id(),
+           marking_function.mesh().num_cells(),
+           marking_function.mesh().ufl_cell()) + tuple(sorted(markers))
+    return key
+
+
+@cached(cache={}, key=embedded_mesh_key)
+def EmbeddedMesh(marking_function, markers):
+    return _EmbeddedMesh(marking_function, markers)
+
+
+
+class _EmbeddedMesh(df.Mesh):
     '''
     Construct a mesh of marked entities in marking_function.
     The output is the mesh with cell function which inherited the markers. 
@@ -20,6 +37,8 @@ class EmbeddedMesh(df.Mesh):
     mesh vertices to the old ones, and new mesh cells to the old mesh entities.
     Having several maps in the dict is useful for mortaring.
     '''
+    __cache__ = []
+    
     def __init__(self, marking_function, markers):
         if not isinstance(markers, (list, tuple, set)): markers = [markers]
         

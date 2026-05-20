@@ -3,6 +3,22 @@ from dolfin import *
 import numpy as np
 
 
+def test_cache():
+    mesh = UnitCubeMesh(10, 10, 10)
+
+    f = MeshFunction('size_t', mesh, mesh.topology().dim()-1, 0)
+
+    CompiledSubDomain('near(x[0], 0.5)').mark(f, 1)
+    CompiledSubDomain('near(x[1], 0.5)').mark(f, 2)
+    CompiledSubDomain('near(x[2], 0.5)').mark(f, 3)    
+
+    mesh = EmbeddedMesh(f, [1, 2, 3])
+    mesh = EmbeddedMesh(f, [1, 2, 3])
+
+    from IPython import embed
+    embed()
+
+    
 def test_2d_cell(n=32, tol=1E-10):
     '''[|]'''
     mesh = UnitSquareMesh(n, n)

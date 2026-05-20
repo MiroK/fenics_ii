@@ -2,14 +2,14 @@ from collections import defaultdict
 import dolfin as df
 import numpy as np
 
-from xii.meshing.embedded_mesh import EmbeddedMesh
+from xii.meshing.embedded_mesh import _EmbeddedMesh
 
 
-class SubDomainMesh(EmbeddedMesh):
+class SubDomainMesh(_EmbeddedMesh):
     '''Embedded mesh for cell funcions.'''
     def __init__(self, marking_function, markers):
         assert marking_function.dim() == marking_function.mesh().topology().dim()
-        EmbeddedMesh.__init__(self, marking_function, markers)
+        _EmbeddedMesh.__init__(self, marking_function, markers)
 
         
 def OverlapMesh(mesh1, mesh2, tol=1E-14):
