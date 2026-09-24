@@ -24,7 +24,7 @@ template=r'''
 import xii
 
 
-def tikzify_2d_mesh(facet_info, cell_info=None, vertex_info=None, colors=None, bifurcation_nodes_for=None):
+def tikzify_2d_mesh(facet_info, cell_info=None, vertex_info=None, colors=None, bifurcation_nodes_for=None, addons=None):
     '''Standalone Tikz representation of the mesh'''
     body, interesting_coordinates = [], []
     if cell_info is not None:
@@ -141,7 +141,11 @@ def tikzify_2d_mesh(facet_info, cell_info=None, vertex_info=None, colors=None, b
 
         if comment == 'bif':
             body.append(r'\node[red, mark size=1pt] at (P%s%s) {$\pgfuseplotmark{*}$};' % (chr(65+j), chr(65+k)))
-            # \node[mark size=1pt] at (XXX) {$\pgfuseplotmark{*}$};            
+            # \node[mark size=1pt] at (XXX) {$\pgfuseplotmark{*}$};
+
+    if addons is not None:
+        body.append(addons())
+            
     body = '\n'.join(body)
 
     if colors is None:

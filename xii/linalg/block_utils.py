@@ -4,11 +4,11 @@ from block import block_transpose
 
 from xii.linalg.convert import bmat_sizes, get_dims, convert
 from xii.linalg.function import as_petsc_nest
-from xii.linalg.matrix_utils import as_petsc
+from xii.linalg.matrix_utils import as_petsc, identity_matrix
 
 from block import block_mat, block_vec
 from dolfin import (PETScVector, as_backend_type, Function, Vector, GenericVector,
-                    Matrix, PETScMatrix)
+                    Matrix, PETScMatrix, FunctionSpace)
 from petsc4py import PETSc
 import itertools
 import numpy as np
@@ -261,6 +261,7 @@ class SubSelectOperator(block_base):
         self.indices = indices
         self.W = W
 
+    @vec_pool
     def create_vec(self, dim=1):
         if dim == 1:
             return block_vec([Function(Wi).vector() for Wi in self.W])
@@ -316,6 +317,7 @@ class RearangeOperator(block_base):
 
         self.W = W
 
+    @vec_pool
     def create_vec(self, dim=1):
         if dim == 1:
             return block_vec([Function(Wi).vector() for Wi in self.W])
@@ -412,29 +414,76 @@ class RegroupOperator(block_base):
                 
         return block_vec(b_block)
 
-    
-class StackOperator(block_base):
-    '''V -> V x V'''
-    def __init__(self, n, V):
-        self.n = n
-        self.V = V
 
+
+class StackOperator(block_base):
+    '''pre, V(n), post -> pre x V x V x post'''
+    # Witought pre and post we just have a 1 column matrix
+    # each pre and post adds one column with identity at the right place
+    def __init__(self, n, V, pre=None, post=None):
+        assert n > 1
+        if pre is None:
+            pre = []
+        else:
+            if isinstance(pre, FunctionSpace):
+                pre = [pre]
+            assert all(isinstance(X, FunctionSpace) for X in pre)
+
+        if post is None:
+            post = []
+        else:
+            if isinstance(post, FunctionSpace):
+                post = [post]
+            assert all(isinstance(X, FunctionSpace) for X in post)        
+
+        ncols = len(pre) + 1 + len(post)
+        nrows = len(pre) + n + len(post)
+        blocks = [[0]*ncols for _ in range(nrows)]
+        blocksT = [[0]*nrows for _ in range(ncols)]
+
+        spaces = pre + [V]*n + post
+        ridx = np.arange(len(spaces))
+        cidx = np.zeros_like(ridx)
+
+        index, col = 0, 0
+        for _ in pre:
+            cidx[index] = col
+            col += 1
+            index += 1
+
+        for _ in range(n):
+            cidx[index] = col
+            index += 1
+        col += 1
+
+        for _ in post:
+            cidx[index] = col
+            col += 1
+            index += 1
+
+        for (r, c, Vi) in zip(ridx, cidx, spaces):
+            M = identity_matrix(Vi)
+            blocks[r][c] = M
+            blocksT[c][r] = M
+
+        S = block_mat(blocks)
+        ST = block_mat(blocksT)
+
+        self.S = S
+        self.ST = ST
+
+    @vec_pool
     def create_vec(self, dim=1):
         if dim == 1:
-            return Function(self.V).vector()
-
-        x = self.create_vec(dim=1)
-        return self*x
+            return self.S.create_vec()
+        return self.ST.create_vec()
 
     def matvec(self, b):
-        '''Stack up'''
-        return block_vec([1*b for _ in range(self.n)])
+        return self.S*b
 
     def transpmult(self, b):
-        '''Unpack'''
-        b0, *b1s = b
-        return sum(b1s, b0)
-    
+        return self.ST*b
+
     
 class BlockPC(block_base):
     '''Wrap petsc preconditioner for cbc.block'''

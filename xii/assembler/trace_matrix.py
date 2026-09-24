@@ -124,8 +124,8 @@ def trace_mat_no_restrict(V, TV, trace_mesh=None, tag_data=None):
     ndofs_elm, nbasis_elm = TV_dof.elm.space_dimension(), V_basis_f.elm.space_dimension()
     local_values = np.zeros((nbasis_elm, ndofs_elm))
     
-    if len(trace_cells) > 10_000:
-        print(f'Trace mat {TV.ufl_element()} -> {V.ufl_element()}')
+    if len(trace_cells) > 0:
+        print(f'Trace mat {TV.ufl_element()} of {TV.mesh().id()} -> {V.ufl_element()} of {V.mesh().id()}')
         trace_cells = tqdm.tqdm(trace_cells, total=len(trace_cells))
 
     rows, cols, values = [], [], []

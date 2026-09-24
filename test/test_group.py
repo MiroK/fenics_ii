@@ -5,7 +5,7 @@ from xii.linalg.convert import numpy_to_petsc
 from block import block_mat
 import numpy as np
 
-from block.algebraic.petsc import LU
+from block.algebraic.petsc import LU, AMG
 from block.algebraic.petsc import KSP
 from block.iterative import ConjGrad
 
@@ -37,6 +37,7 @@ BB = block_mat([[M + C, C],
                 [C, K + C]])
 
 B = monolithic(BB)
+# ----
 invB = LU(B)
 
 S = StackOperator(2, V)  # V - >
@@ -51,6 +52,14 @@ eigv = invA.eigenvalue_estimates()
 lmin, lmax = np.sort(eigv)[[0, -1]]
 print(x.norm('l2'), lmin, lmax, (AA*x - b).norm('l2'))
 
+# ---
+einvB = AMG(B)
 
-# V -> (VxV) -> R ...
-# 
+precond = S.T*R.T*einvB*R*S
+invA = ConjGrad(AA, precond=precond, tolerance=1E-14)
+
+x = invA*b
+eigv = invA.eigenvalue_estimates()
+lmin, lmax = np.sort(eigv)[[0, -1]]
+print(x.norm('l2'), lmin, lmax, (AA*x - b).norm('l2'))
+
