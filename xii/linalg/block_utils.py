@@ -420,8 +420,14 @@ class StackOperator(block_base):
     '''pre, V(n), post -> pre x V x V x post'''
     # Witought pre and post we just have a 1 column matrix
     # each pre and post adds one column with identity at the right place
-    def __init__(self, n, V, pre=None, post=None):
-        assert n > 1
+    def __init__(self, nVs, pre=None, post=None):
+        if isinstance(nVs, tuple):
+            assert len(nVs) == 2
+            nVs = [nVs]
+        for (n, V) in nVs:
+            assert n > 1
+            assert isinstance(V, FunctionSpace)
+            
         if pre is None:
             pre = []
         else:
@@ -436,12 +442,13 @@ class StackOperator(block_base):
                 post = [post]
             assert all(isinstance(X, FunctionSpace) for X in post)        
 
-        ncols = len(pre) + 1 + len(post)
-        nrows = len(pre) + n + len(post)
+        ncols = len(pre) + len(nVs) + len(post)
+        spaces = pre + sum(([Vi]*ni for (ni, Vi) in nVs), []) + post
+        
+        nrows = len(spaces)
         blocks = [[0]*ncols for _ in range(nrows)]
         blocksT = [[0]*nrows for _ in range(ncols)]
 
-        spaces = pre + [V]*n + post
         ridx = np.arange(len(spaces))
         cidx = np.zeros_like(ridx)
 
@@ -451,10 +458,11 @@ class StackOperator(block_base):
             col += 1
             index += 1
 
-        for _ in range(n):
-            cidx[index] = col
-            index += 1
-        col += 1
+        for (ni, _) in nVs:
+            for _ in range(ni):
+                cidx[index] = col
+                index += 1
+            col += 1
 
         for _ in post:
             cidx[index] = col
