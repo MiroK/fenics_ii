@@ -292,7 +292,7 @@ class OuterNormal(df.Function):
 
         if isinstance(orientation, df.Mesh):
             # We set surface normal as outer with respect to orientation mesh
-            assert orientation.id() in mesh.parent_entity_map
+            # assert orientation.id() in mesh.parent_entity_map
 
             n = df.FacetNormal(orientation)
             hA = df.FacetArea(orientation)

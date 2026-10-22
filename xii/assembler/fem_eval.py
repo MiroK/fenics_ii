@@ -68,6 +68,9 @@ class FEBasisFunction(UserExpression):
         is_1d_in_3d = self.mesh.topology().dim() == 1 and self.mesh.geometry().dim() == 3
         self.orient_cell = cell_orientation(is_1d_in_3d)
 
+        self._cell_orientations = self.mesh.cell_orientations()
+        if not self._cell_orientations:
+            self._cell_orientations = np.zeros(self.mesh.num_cells(), dtype='uintp')
         # Allocs
         self.__cell = Cell(self.mesh, 0)
         self.__cell_vertex_x = self.__cell.get_vertex_coordinates()
@@ -92,7 +95,7 @@ class FEBasisFunction(UserExpression):
     def cell(self, value):
         cell_ = Cell(self.mesh, value)
         self.__cell_vertex_x[:] = cell_.get_vertex_coordinates()
-        self.__cell_orientation = self.orient_cell(cell_)
+        self.__cell_orientation = self._cell_orientations[value]
         self.__cell = cell_
 
     def eval_cell(self, values, x, cell):
