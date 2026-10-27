@@ -17,11 +17,12 @@ from cachetools import cached, LRUCache
 def embedded_mesh_key(marking_function, markers):
     if not isinstance(markers, (list, tuple, set)):
         markers = [markers]
-    key = (marking_function.mesh().id(),
-           marking_function.mesh().num_cells(),
-           marking_function.mesh().ufl_cell()) + tuple(sorted(markers))
+    key = (
+        marking_function.dim(),        
+        marking_function.mesh().id(),
+        marking_function.mesh().num_cells(),
+        marking_function.mesh().ufl_cell()) + tuple(sorted(markers))
     return key
-
 
 @cached(cache={}, key=embedded_mesh_key)
 def EmbeddedMesh(marking_function, markers):
