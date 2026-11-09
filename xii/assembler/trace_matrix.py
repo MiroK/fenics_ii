@@ -201,6 +201,9 @@ def trace_mat_no_restrict(V, TV, trace_mesh=None, tag_data=None):
 def DLT_trace_mat(V, TV, trace_mesh=None, tag_data=None):
     '''Inject dofs from facets to DLT'''
     mesh = V.mesh()
+    assert V.ufl_element().family() == 'HDiv Trace'
+    assert TV.ufl_element().family() == 'Discontinuous Lagrange'
+    assert V.ufl_element().degree() == TV.ufl_element().degree()
 
     if trace_mesh is None: trace_mesh = TV.mesh()
 
@@ -225,11 +228,13 @@ def DLT_trace_mat(V, TV, trace_mesh=None, tag_data=None):
     else:
         Tdmaps = [TV.sub(i).dofmap() for i in range(TV.num_sub_spaces())]
 
+    ndofs_per_facet
     if V.num_sub_spaces() == 0:
         dmap = V.dofmap()
-        facet2dofs = [dmap.entity_dofs(mesh, fdim)]
+        facet2dofs = [np.array(dmap.entity_dofs(mesh, fdim)).reshape((-1, ndofs_per_facet))]
     else:
-        facet2dofs = [V.sub(i).dofmap().entity_dofs(mesh, fdim) for i in range(V.num_sub_spaces())]
+        facet2dofs = [np.array(V.sub(i).dofmap().entity_dofs(mesh, fdim)).reshape((-1, ndofs_per_facet))
+                      for i in range(V.num_sub_spaces())]
 
     assert len(Tdmaps) == len(facet2dofs)
 
@@ -237,14 +242,17 @@ def DLT_trace_mat(V, TV, trace_mesh=None, tag_data=None):
     trace_cells = list(itertools.chain(*[map(operator.methodcaller('index'),
                                              SubsetIterator(trace_mesh_subdomains, tag))
                                          for tag in tags]))
-
+    from IPython import embed
+    embed()
     # Rows
     with petsc_serial_matrix(TV, V) as mat:
 
         for Tdmap, facet2dof in zip(Tdmaps, facet2dofs):
             for trace_cell in trace_cells:
-                trace_dof, = Tdmap.cell_dofs(trace_cell)
-                DLT_dof = facet2dof[mapping[trace_cell]]
+                trace_dofs = Tdmap.cell_dofs(trace_cell)
+                DLT_dofs = facet2dof[mapping[trace_cell]]
+                print(trace_dofs, DLT_dofs)
+                exit()
                 mat.setValues([trace_dof], [DLT_dof], [1.], PETSc.InsertMode.INSERT_VALUES)
     return mat
 

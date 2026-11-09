@@ -118,6 +118,11 @@ def is_test_function(v):
     return isinstance(v, Argument) and v.number() == 0
 
 
+def is_argument(v):
+    '''Is v a test function'''
+    return isinstance(v, Argument)
+
+
 def form_arity(form):
     '''How many args in the form'''
     return len(form.arguments())

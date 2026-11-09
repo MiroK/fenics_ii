@@ -27,7 +27,7 @@ def trace_cell(o):
     return ufl.Cell(cell_name, o.geometric_dimension())
 
 
-def trace_element(elm):
+def trace_element(elm, given_degree=None, quad_scheme='default'):
     '''
     Produce an intermerdiate element for computing with trace of 
     functions in FEM space over elm
@@ -35,14 +35,16 @@ def trace_element(elm):
     # Want exact match here; otherwise VectorElement is MixedElement and while
     # it works I don't find it pretty
     if type(elm) == df.MixedElement:
-        return df.MixedElement(list(map(trace_element, elm.sub_elements())))
+        return df.MixedElement([
+            trace_element(elm, given_degree=given_degree, quad_scheme=quad_scheme)
+            for elm in elm.sub_elements()], quad_scheme=quad_scheme)
 
     if type(elm) == df.VectorElement:
 
         elm_i, = set(elm.sub_elements())
-        Telm_i = trace_element(elm_i)
+        Telm_i = trace_element(elm_i, given_degree=given_degree, quad_scheme=quad_scheme)
 
-        return df.VectorElement(Telm_i, dim=elm.num_sub_elements())
+        return df.VectorElement(Telm_i, dim=elm.num_sub_elements(), quad_scheme=quad_scheme)
     # FIXME: Check out Witze Bonn's work on da Rham for trace spaces
     # in the meantime KISS
     family = elm.family()
@@ -50,8 +52,11 @@ def trace_element(elm):
     family_map = {}  #'Lagrange': 'Lagrange'}
     # This seems like a reasonable fall back option
     family = family_map.get(family, 'Discontinuous Lagrange')
+    # family = family_map.get(family, 'Quadrature')
 
     degree = elm.degree()  # Preserve degree
+    if given_degree is not None:
+        degree = given_degree
     cell = trace_cell(elm)
 
     # How to construct:
@@ -67,16 +72,18 @@ def trace_element(elm):
     else:
         elm = elmtype_map[rank]
 
+    if family == 'Quadrature':
+        return elm(family, cell, degree, quad_scheme=quad_scheme)
+    else:
+        return elm(family, cell, degree)
 
-    return elm(family, cell, degree)
 
-
-def trace_space(V, mesh):
+def trace_space(V, mesh, given_degree=None):
     '''
     Produce an intermerdiate function space for computing with trace of 
     functions in FEM space over elm
-    '''    
-    return df.FunctionSpace(mesh, trace_element(V.ufl_element()))
+    '''
+    return df.FunctionSpace(mesh, trace_element(V.ufl_element(), given_degree))
 
 
 def Trace(v, mmesh, restriction='', normal=None, tag=None):
@@ -86,11 +93,15 @@ def Trace(v, mmesh, restriction='', normal=None, tag=None):
     a cell function with those markers
     '''
     # Prevent Trace(grad(u)). But it could be interesting to have this
-    assert is_terminal(v)
-
     if isinstance(v, df.Expression):
         return v
-    
+
+    v_expr = None
+    if not is_terminal(v):
+        v_expr = v
+        # We have an expression involving trial/test function
+        v, = set(filter(is_argument, traverse_terminals(v)))
+        
     assert trace_cell(v) == mmesh.ufl_cell()
     # Not sure if it is really needed but will allow 5 types of traces
     assert restriction in ('',      # This makes sense for continuous foos
@@ -131,7 +142,7 @@ def Trace(v, mmesh, restriction='', normal=None, tag=None):
         tag_data = (marking_f, set(np.unique(marking_f.array())))
         
     v.trace_ = {'type': restriction, 'mesh': mmesh, 'normal': normal,
-                'tag': tag_data}
+                'tag': tag_data, 'expr': v_expr}
 
     return v
 
