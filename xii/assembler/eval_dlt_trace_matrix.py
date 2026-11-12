@@ -21,7 +21,7 @@ import tqdm
 
 # Restriction operators are potentially costly so we memoize the results.
 # Let every operator deal with cache keys as it sees fit
-def memoize_trace(trace_mat):
+def memoize_trace(foo):
     '''Cached trace'''
     cache = {}
     def cached_trace_mat(V, TV, trace_mesh, data):
@@ -30,13 +30,15 @@ def memoize_trace(trace_mat):
                data['restriction'], data['normal'], tuple(data['tag_data'][1]), data['expr'])
                
         if key not in cache:
-            cache[key] = eval_dlt_trace_mat(V, TV, trace_mesh, data)
+            cache[key] = foo(V, TV, trace_mesh, data)
+        else:
+            print('Retrieving from cache')
         return cache[key]
 
     return cached_trace_mat
 
 
-#@memoize_trace
+@memoize_trace
 def eval_dlt_trace_mat(V, TV, trace_mesh, data):
     '''Eval in DLT and restrict'''
     
